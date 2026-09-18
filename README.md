@@ -45,14 +45,14 @@
 </p>
 
 <p align="center">
-  <b>⚡ Atomic Slot Reservation • Instant Room Credentials Vault • Sub-Second Socket Sync • Fair-Play AI Sentinel</b>
+  <b> Atomic Slot Reservation • Instant Room Credentials Vault • Sub-Second Socket Sync • Fair-Play AI Sentinel</b>
 </p>
 
 ---
 
 </div>
 
-## 🌐 Live System Status & Telemetry
+##  Live System Status & Telemetry
 
 ```diff
 + [ONLINE]  Firebase Realtime WebSocket (Global Node)       : 14ms Latency
@@ -64,18 +64,18 @@
 
 ---
 
-## 📌 Executive Summary
+##  Executive Summary
 
 **VeloRix Tournaments** is a high-performance native Android esports platform engineered for competitive mobile gamers across premier titles like **Free Fire** and **BGMI**. Built with strict adherence to **Material Design 3 (M3)**, modern **Clean Architecture**, and **reactive state streaming (Coroutines + Flow)**, VeloRix delivers:
 
-- ⚡ **Sub-second slot booking** with zero-collision atomic reservation.
-- 🔐 **Automated room credential reveals** synchronized to match countdowns.
-- 🏆 **Dynamic esports tier progression** from Bronze to Esports Elite.
-- 🤖 **Continuous 24/7 operations** powered by an autonomous **Gemini AI Watchdog Bot**.
+-  **Sub-second slot booking** with zero-collision atomic reservation.
+-  **Automated room credential reveals** synchronized to match countdowns.
+-  **Dynamic esports tier progression** from Bronze to Esports Elite.
+-  **Continuous 24/7 operations** powered by an autonomous **Gemini AI Watchdog Bot**.
 
 ---
 
-## 🏛️ System Architecture
+##  System Architecture
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -102,7 +102,7 @@
 
 ---
 
-## ✨ Core Pillars & Capabilities
+##  Core Pillars & Capabilities
 
 <table>
   <tr>
@@ -113,12 +113,12 @@
     </td>
     <td width="33%" align="center">
       <img src="https://img.shields.io/badge/Security-Credential_Vault-00C853?style=for-the-badge&logo=1password&logoColor=white" /><br><br>
-      <b>🔐 Timed Room Vault</b><br>
+      <b> Timed Room Vault</b><br>
       Room ID & Password unlock automatically at <code>T-15 minutes</code> prior to kickoff exclusively for verified registrants.
     </td>
     <td width="33%" align="center">
       <img src="https://img.shields.io/badge/AI-Watchdog_Sentinel-7C4DFF?style=for-the-badge&logo=openai&logoColor=white" /><br><br>
-      <b>🤖 Gemini AI Ops</b><br>
+      <b> Gemini AI Ops</b><br>
       Autonomous 24/7 Telegram bot monitoring lobby anomalies, unassigned rooms, and player dispute logs with LLM intelligence.
     </td>
   </tr>
@@ -126,7 +126,7 @@
 
 ---
 
-## 🏆 Competitive Tier Progression
+##  Competitive Tier Progression
 
 Players climb through competitive ranks calculated dynamically from tournament finish positions, kill ratios, and MVP badges:
 
@@ -136,7 +136,7 @@ Players climb through competitive ranks calculated dynamically from tournament f
 
 ---
 
-## 🛠️ Engineering Stack
+##  Engineering Stack
 
 | Component | Technical Selection | Rationale |
 |---|---|---|
@@ -150,7 +150,7 @@ Players climb through competitive ranks calculated dynamically from tournament f
 
 ---
 
-## 🤖 24/7 AI Watchdog Daemon Console Preview
+##  24/7 AI Watchdog Daemon Console Preview
 
 ```bash
 [VELORIX-WATCHDOG-V2] Initializing Gemini 3.6 Flash Sentinel...
@@ -162,7 +162,7 @@ Players climb through competitive ranks calculated dynamically from tournament f
 
 ---
 
-## 📁 Repository Structure
+##  Repository Structure
 
 ```text
 velorix-tournaments/
@@ -184,7 +184,7 @@ velorix-tournaments/
 
 ---
 
-## 🚀 Development & Build Instructions
+##  Development & Build Instructions
 
 ### Prerequisites
 - **Android Studio** Ladybug (2024.2.1+) or Meerkat
@@ -220,7 +220,7 @@ velorix-tournaments/
 
 ---
 
-## 🔒 Security & Fair-Play Protocols
+##  Security & Fair-Play Protocols
 
 - **Row-Level RTDB Rules:** Users can only modify their own profile data; tournament slots and match points require authorized service writes.
 - **Client-Side Anti-Spam:** Action cooldowns and request mutexes prevent double-submission during network spikes.
@@ -228,7 +228,7 @@ velorix-tournaments/
 
 ---
 
-## 👨‍💻 Creator & Community Support
+##  Creator & Community Support
 
 <div align="center">
 
