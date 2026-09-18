@@ -1,0 +1,19 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24.0"
+    android:viewportHeight="24.0">
+    <!-- Untitled UI Help Circle / Support Icon -->
+    <path
+        android:pathData="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M9.09 9C9.3251 8.33167 9.78915 7.76811 10.4 7.39913C11.0108 7.03015 11.7289 6.87898 12.4372 6.97051C13.1455 7.06204 13.7997 7.39055 14.292 7.90152C14.7843 8.41249 15.084 9.07365 15.1415 9.77587C15.199 10.4781 15.0109 11.1793 14.6083 11.7645C14.2057 12.3497 13.6133 12.7831 12.926 13C12.28 13.2 12 13.8 12 14.5V15M12 18H12.01"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

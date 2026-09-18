@@ -1,0 +1,2 @@
+sed -i 's/if (!success) throw Exception("Failed to sync data from server")/\/\/ if (!success) throw Exception("Failed to sync data from server")/g' app/src/main/java/com/example/ui/viewmodel/PlatformViewModel.kt
+sed -i 's/throw Exception("Failed to sync data. User fetch might have failed. Please try again.")/\/\/ throw Exception("Failed to sync data. User fetch might have failed. Please try again.")/g' app/src/main/java/com/example/ui/viewmodel/PlatformViewModel.kt

@@ -1,0 +1,249 @@
+{
+  "rules": {
+    ".read": "auth != null",
+    "users": {
+      ".read": "auth != null",
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).child('active').val() === true || root.child('admins').child(auth.uid).exists() || auth.token.admin === true || auth.token.super_admin === true || auth.token.email === 'anantisback47@gmail.com' || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin')",
+        
+        "balance": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "tokens": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "activityPoints": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "totalTokensConverted": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "matchesPlayed": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "totalWins": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "totalKills": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "wins": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "kills": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "loginStreak": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "lastLoginClaimDate": {
+          ".validate": "newData.isString()"
+        }
+      }
+    },
+    "admins": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "banned_users": {
+      ".read": "auth != null",
+      ".write": "auth != null && (root.child('admins').child(auth.uid).child('active').val() === true || root.child('admins').child(auth.uid).exists() || auth.token.admin === true || auth.token.super_admin === true || auth.token.email === 'anantisback47@gmail.com' || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin')"
+    },
+    "transactions": {
+      ".read": "auth != null",
+      "$txId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "wallet_transactions": {
+      ".read": "auth != null",
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        "$txId": {
+          ".read": "auth != null",
+          ".write": "auth != null"
+        }
+      }
+    },
+    "wallet_requests": {
+      ".read": "auth != null",
+      "$reqId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "deposit_requests": {
+      ".read": "auth != null",
+      "$reqId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "withdraw_requests": {
+      ".read": "auth != null",
+      "$reqId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "payout_requests": {
+      ".read": "auth != null",
+      "$requestId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "support_tickets": {
+      ".read": "auth != null",
+      "$ticketId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "tournaments": {
+      ".read": true,
+      ".write": "auth != null",
+      "$tournamentId": {
+        ".read": true,
+        ".write": "auth != null"
+      }
+    },
+    "matches": {
+      ".read": true,
+      ".write": "auth != null",
+      "$matchId": {
+        ".read": true,
+        ".write": "auth != null"
+      }
+    },
+    "banners": {
+      ".read": true,
+      ".write": "auth != null",
+      "$bannerId": {
+        ".read": true,
+        ".write": "auth != null"
+      }
+    },
+    "registrations": {
+      ".read": "auth != null",
+      "$tournamentId": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        "$uid": {
+          ".read": "auth != null",
+          ".write": "auth != null"
+        }
+      }
+    },
+    "tournament_registrations": {
+      ".read": "auth != null",
+      "$tournamentId": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        "$uid": {
+          ".read": "auth != null",
+          ".write": "auth != null"
+        }
+      }
+    },
+    "missions": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        "$missionId": {
+          ".read": "auth != null",
+          ".write": "auth != null"
+        }
+      }
+    },
+    "user_missions": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        "$missionId": {
+          ".read": "auth != null",
+          ".write": "auth != null"
+        }
+      }
+    },
+    "leaderboard": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "leaderboards": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "community_chat": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "search_history": {
+      ".read": "auth != null",
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).child('active').val() === true)",
+        ".write": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).child('active').val() === true)"
+      }
+    },
+    "system_config": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "banners": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "notifications": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "audit_logs": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$logId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "account_deletion_requests": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "match_stats": {
+      ".read": "auth != null",
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "gemini_history": {
+      ".read": "auth != null",
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "ai_support_chats": {
+      ".read": "auth != null",
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    }
+  }
+}

@@ -1,0 +1,1 @@
+sed -i 's/com.google.firebase.Firebase.initialize(this)/val app = com.google.firebase.Firebase.initialize(this)\n        android.util.Log.d("Firebase", "Firebase initialized: $app")\n        val apps = com.google.firebase.FirebaseApp.getApps(this)\n        android.util.Log.d("Firebase", "Firebase apps: $apps")/g' app/src/main/java/com/example/MyApplication.kt

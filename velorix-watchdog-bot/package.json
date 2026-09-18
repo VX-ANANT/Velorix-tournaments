@@ -1,0 +1,22 @@
+{
+  "name": "velorix-watchdog-bot",
+  "version": "1.0.0",
+  "description": "24/7 Autonomous AI Moderator, Health Watchdog & Management Assistant for VeloRix Free Fire Tournaments",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js",
+    "dev": "node --watch bot.js"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.0",
+    "dotenv": "^16.4.7",
+    "firebase-admin": "^12.7.0",
+    "node-cron": "^3.0.3",
+    "node-telegram-bot-api": "^0.66.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "author": "VeloRix Platform",
+  "license": "MIT"
+}

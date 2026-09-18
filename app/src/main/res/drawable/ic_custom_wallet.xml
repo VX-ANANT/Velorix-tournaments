@@ -1,0 +1,15 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+  <!-- Main wallet body with card insert slot and clasp notch -->
+  <path
+      android:fillColor="#FFFFFF"
+      android:fillType="evenOdd"
+      android:pathData="M 132,82 L 344,82 C 390,82 428,120 428,166 L 428,180 C 375,182 334,208 318,245 C 314,254 314,266 318,275 C 334,312 375,338 428,340 L 428,346 C 428,392 390,430 344,430 L 132,430 C 82,430 42,390 42,340 L 42,172 C 42,122 82,82 132,82 Z M 143,179 C 134.7,179 128,185.7 128,194 C 128,202.3 134.7,209 143,209 L 266,209 C 274.3,209 281,202.3 281,194 C 281,185.7 274.3,179 266,179 Z" />
+  <!-- Clasp tab -->
+  <path
+      android:fillColor="#FFFFFF"
+      android:pathData="M 380,214 L 410,214 C 432,214 450,234.6 450,260 C 450,285.4 432,306 410,306 L 380,306 C 358,306 346,288 346,260 C 346,232 358,214 380,214 Z" />
+</vector>

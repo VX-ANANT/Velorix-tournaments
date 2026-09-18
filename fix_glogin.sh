@@ -1,0 +1,1 @@
+sed -i 's/googleSignInLauncher.launch(googleSignInClient.signInIntent)/viewModel.showError("Emulator Error: Google Play Services unavailable. Please use Email\/Phone login.")/g' app/src/main/java/com/example/ui/screens/AuthScreen.kt

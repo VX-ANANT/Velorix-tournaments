@@ -1,0 +1,262 @@
+{
+  "name": "VeloRix FamPay & UPI Auto-Verification Engine",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "fampay-notification-webhook",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "name": "1. Phone Notification Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        200,
+        300
+      ],
+      "id": "node-webhook-trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract payload from MacroDroid / SMS Forwarder / Webhook\nconst body = $input.item.json.body || $input.item.json;\nconst rawTitle = (body.title || body.sender || \"\").toString().trim();\nconst rawText = (body.text || body.message || body.body || \"\").toString().trim();\nconst fullContent = `${rawTitle} ${rawText}`.toLowerCase();\n\n// 1. FILTER: Must be a credit/received notification, NOT promo/debit\nconst isCredit = (fullContent.includes(\"received\") || fullContent.includes(\"credited\") || fullContent.includes(\"deposited\") || fullContent.includes(\"sent you\"));\nconst isPromo = (fullContent.includes(\"cashback\") || fullContent.includes(\"spin\") || fullContent.includes(\"offer\") || fullContent.includes(\"order\") || fullContent.includes(\"debited\") || fullContent.includes(\"paid to\"));\n\nif (!isCredit || isPromo) {\n  return []; // Silently ignore promotional or debit notifications\n}\n\n// 2. PARSE AMOUNT: handles ₹50, Rs. 50, INR 50.00, etc.\nconst amountMatch = rawText.match(/(?:Rs\\.?|INR|₹)\\s*([0-9]+(?:\\.[0-9]{1,2})?)/i) || rawText.match(/([0-9]+(?:\\.[0-9]{1,2})?)\\s*(?:Rs|INR|₹)/i);\nif (!amountMatch) {\n  return []; // No valid amount found\n}\nconst parsedAmount = parseFloat(amountMatch[1]);\nif (isNaN(parsedAmount) || parsedAmount <= 0) {\n  return [];\n}\n\n// 3. PARSE 12-DIGIT UTR / UPI REF NUMBER\n// Looks for Ref, UTR, Txn ID, or any 12-digit number sequence\nlet parsedUtr = \"\";\nconst utrLabeledMatch = rawText.match(/(?:Ref(?:\\s*No\\.?)?|UTR(?:\\s*No\\.?)?|Txn(?:\\s*ID)?)[^0-9]*([0-9]{12})/i);\nif (utrLabeledMatch) {\n  parsedUtr = utrLabeledMatch[1];\n} else {\n  const standaloneMatch = rawText.match(/\\b([0-9]{12})\\b/);\n  if (standaloneMatch) {\n    parsedUtr = standaloneMatch[1];\n  }\n}\n\n// Anti-fraud: UTR must be exactly 12 digits and not dummy sequence (e.g. 111111111111)\nif (!parsedUtr || parsedUtr.length !== 12 || new Set(parsedUtr.split(\"\")).size <= 1) {\n  return []; // Reject fishy/invalid sequences\n}\n\nreturn {\n  json: {\n    amount: parsedAmount,\n    utr: parsedUtr,\n    rawMessage: rawText,\n    source: rawTitle || \"FamPay\",\n    receivedAt: Date.now()\n  }\n};"
+      },
+      "name": "2. Gatekeeper & UTR Parser",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        300
+      ],
+      "id": "node-gatekeeper-parser"
+    },
+    {
+      "parameters": {
+        "url": "=https://velorix-tournaments-default-rtdb.asia-southeast1.firebasedatabase.app/processed_utrs/{{ $json.utr }}.json",
+        "options": {}
+      },
+      "name": "3. Check Anti-Duplicate (Processed UTRs)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        300
+      ],
+      "id": "node-check-duplicate"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json }}",
+              "operation": "isEmpty"
+            }
+          ]
+        }
+      },
+      "name": "4. Is UTR Unused?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        920,
+        300
+      ],
+      "id": "node-if-unused"
+    },
+    {
+      "parameters": {
+        "url": "=https://velorix-tournaments-default-rtdb.asia-southeast1.firebasedatabase.app/deposit_requests.json?orderBy=\"utrNumber\"&equalTo=\"{{ $('2. Gatekeeper & UTR Parser').item.json.utr }}\"",
+        "options": {}
+      },
+      "name": "5. Query Pending Deposit Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1160,
+        220
+      ],
+      "id": "node-query-deposit"
+    },
+    {
+      "parameters": {
+        "jsCode": "const queryResult = $input.item.json;\nconst alertData = $('2. Gatekeeper & UTR Parser').item.json;\n\n// Check if any matching request exists\nif (!queryResult || Object.keys(queryResult).length === 0) {\n  // User has not clicked submit in app yet, store in verified feed\n  return {\n    json: {\n      matched: false,\n      utr: alertData.utr,\n      amount: alertData.amount,\n      receivedAt: alertData.receivedAt\n    }\n  };\n}\n\n// Grab the request\nconst requestId = Object.keys(queryResult)[0];\nconst request = queryResult[requestId];\n\n// Anti-fraud check: status must still be PENDING and amount must match\nconst isPending = (request.status === \"PENDING\");\nconst amountMatches = (Math.abs(parseFloat(request.amount) - parseFloat(alertData.amount)) < 0.01);\n\nif (!isPending) {\n  return {\n    json: { matched: false, reason: \"Request already processed or rejected\" }\n  };\n}\n\nif (!amountMatches) {\n  return {\n    json: { matched: false, reason: `Amount mismatch: expected ${request.amount}, got ${alertData.amount}` }\n  };\n}\n\nreturn {\n  json: {\n    matched: true,\n    requestId: requestId,\n    userId: request.userId,\n    amount: alertData.amount,\n    utr: alertData.utr,\n    detail: request.detail || \"\"\n  }\n};"
+      },
+      "name": "6. Match & Verify Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1400,
+        220
+      ],
+      "id": "node-match-request"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.matched }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "7. Matched Successfully?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1640,
+        220
+      ],
+      "id": "node-if-matched"
+    },
+    {
+      "parameters": {
+        "url": "=https://velorix-tournaments-default-rtdb.asia-southeast1.firebasedatabase.app/users/{{ $json.userId }}/balance.json",
+        "options": {}
+      },
+      "name": "8. Fetch User Current Balance",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1880,
+        140
+      ],
+      "id": "node-fetch-balance"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "https://velorix-tournaments-default-rtdb.asia-southeast1.firebasedatabase.app/.json",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"deposit_requests/{{ $('6. Match & Verify Request').item.json.requestId }}/status\": \"APPROVED\",\n  \"deposit_requests/{{ $('6. Match & Verify Request').item.json.requestId }}/approvedAt\": {{ Date.now() }},\n  \"deposit_requests/{{ $('6. Match & Verify Request').item.json.requestId }}/autoVerified\": true,\n  \"users/{{ $('6. Match & Verify Request').item.json.userId }}/balance\": {{ (parseFloat($json) || 0) + parseFloat($('6. Match & Verify Request').item.json.amount) }},\n  \"processed_utrs/{{ $('6. Match & Verify Request').item.json.utr }}\": {\n    \"userId\": \"{{ $('6. Match & Verify Request').item.json.userId }}\",\n    \"amount\": {{ $('6. Match & Verify Request').item.json.amount }},\n    \"verifiedAt\": {{ Date.now() }},\n    \"requestId\": \"{{ $('6. Match & Verify Request').item.json.requestId }}\"\n  },\n  \"transactions/{{ $('6. Match & Verify Request').item.json.requestId }}/status\": \"SUCCESS\",\n  \"audit_logs/LOG-{{ Date.now() }}\": {\n    \"event\": \"AUTO_DEPOSIT_VERIFIED\",\n    \"userId\": \"{{ $('6. Match & Verify Request').item.json.userId }}\",\n    \"amount\": {{ $('6. Match & Verify Request').item.json.amount }},\n    \"utr\": \"{{ $('6. Match & Verify Request').item.json.utr }}\",\n    \"timestamp\": {{ Date.now() }}\n  }\n}",
+        "options": {}
+      },
+      "name": "9. Atomic Token Credit & Status Update",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2120,
+        140
+      ],
+      "id": "node-atomic-credit"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://velorix-tournaments-default-rtdb.asia-southeast1.firebasedatabase.app/verified_bank_deposits/{{ $json.utr }}.json",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"utr\": \"{{ $json.utr }}\",\n  \"amount\": {{ $json.amount }},\n  \"receivedAt\": {{ $json.receivedAt }},\n  \"claimed\": false\n}",
+        "options": {}
+      },
+      "name": "10. Store in Pre-Verified Deposit Pool",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1880,
+        340
+      ],
+      "id": "node-store-preverified"
+    }
+  ],
+  "connections": {
+    "1. Phone Notification Webhook": {
+      "main": [
+        [
+          {
+            "node": "2. Gatekeeper & UTR Parser",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2. Gatekeeper & UTR Parser": {
+      "main": [
+        [
+          {
+            "node": "3. Check Anti-Duplicate (Processed UTRs)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. Check Anti-Duplicate (Processed UTRs)": {
+      "main": [
+        [
+          {
+            "node": "4. Is UTR Unused?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4. Is UTR Unused?": {
+      "main": [
+        [
+          {
+            "node": "5. Query Pending Deposit Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5. Query Pending Deposit Request": {
+      "main": [
+        [
+          {
+            "node": "6. Match & Verify Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "6. Match & Verify Request": {
+      "main": [
+        [
+          {
+            "node": "7. Matched Successfully?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "7. Matched Successfully?": {
+      "main": [
+        [
+          {
+            "node": "8. Fetch User Current Balance",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "10. Store in Pre-Verified Deposit Pool",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "8. Fetch User Current Balance": {
+      "main": [
+        [
+          {
+            "node": "9. Atomic Token Credit & Status Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

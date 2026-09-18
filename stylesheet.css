@@ -1,0 +1,39 @@
+@font-face {
+    font-family: 'GFF Devanagari';
+    src: url('GFF-Devanagari-Bold.eot');
+    src: local('GFF Devanagari Bold'), local('GFF-Devanagari-Bold'),
+        url('GFF-Devanagari-Bold.eot?#iefix') format('embedded-opentype'),
+        url('GFF-Devanagari-Bold.woff2') format('woff2'),
+        url('GFF-Devanagari-Bold.woff') format('woff'),
+        url('GFF-Devanagari-Bold.ttf') format('truetype');
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'GFF Devanagari';
+    src: url('GFF-Devanagari-Medium.eot');
+    src: local('GFF Devanagari Medium'), local('GFF-Devanagari-Medium'),
+        url('GFF-Devanagari-Medium.eot?#iefix') format('embedded-opentype'),
+        url('GFF-Devanagari-Medium.woff2') format('woff2'),
+        url('GFF-Devanagari-Medium.woff') format('woff'),
+        url('GFF-Devanagari-Medium.ttf') format('truetype');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'GFF Devanagari';
+    src: url('GFFDevanagari.eot');
+    src: local('GFF Devanagari'), local('GFFDevanagari'),
+        url('GFFDevanagari.eot?#iefix') format('embedded-opentype'),
+        url('GFFDevanagari.woff2') format('woff2'),
+        url('GFFDevanagari.woff') format('woff'),
+        url('GFFDevanagari.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+

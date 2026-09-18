@@ -1,0 +1,101 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        request.auth.token.admin == true ||
+        request.auth.token.super_admin == true ||
+        request.auth.token.email == 'anantisback47@gmail.com'
+      );
+    }
+
+    // USERS COLLECTION
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated();
+      allow delete: if isAdmin();
+
+      match /transactions/{txId} {
+        allow read, write: if isAuthenticated();
+      }
+    }
+
+    // TOURNAMENTS & MATCHES COLLECTION
+    match /tournaments/{tournamentId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+
+      match /{allChildren=**} {
+        allow read: if true;
+        allow write: if isAuthenticated();
+      }
+    }
+
+    match /matches/{matchId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+
+      match /{allChildren=**} {
+        allow read: if true;
+        allow write: if isAuthenticated();
+      }
+    }
+
+    match /banners/{bannerId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    // TRANSACTIONS & WALLET
+    match /transactions/{txId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /wallet_transactions/{txId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /wallet_requests/{reqId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /deposit_requests/{reqId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /withdraw_requests/{reqId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /payout_requests/{reqId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // USER MISSIONS
+    match /user_missions/{userId} {
+      allow read, write: if isAuthenticated();
+      match /missions/{missionId} {
+        allow read, write: if isAuthenticated();
+      }
+    }
+
+    // ADMINS
+    match /admins/{adminId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+  }
+}

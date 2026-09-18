@@ -1,0 +1,17 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+  <!-- Main wallet body -->
+  <path
+      android:fillColor="#FFFFFF"
+      android:pathData="M 400,80 L 112,80 C 50,80 0,130 0,192 L 0,320 C 0,382 50,432 112,432 L 400,432 C 462,432 512,382 512,320 L 512,192 C 512,130 462,80 400,80 Z M 448,300 C 448,332 420,360 384,360 C 348,360 320,332 320,300 C 320,268 348,240 384,240 C 420,240 448,268 448,300 Z" />
+  <!-- Card insert slot (cutout) -->
+  <path
+      android:fillColor="#00000000"
+      android:strokeColor="#141924"
+      android:strokeWidth="32"
+      android:strokeLineCap="round"
+      android:pathData="M 120,180 L 260,180" />
+</vector>

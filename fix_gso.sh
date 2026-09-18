@@ -1,0 +1,2 @@
+sed -i 's/val googleSignInClient = GoogleSignIn.getClient(activityContext, gso)/try { val googleSignInClient = GoogleSignIn.getClient(activityContext, gso); googleSignInLauncher.launch(googleSignInClient.signInIntent) } catch (e: Exception) { viewModel.showError("Emulator Error: Google Play Services unavailable. Please use Email\/Phone login.") }/g' app/src/main/java/com/example/ui/screens/AuthScreen.kt
+sed -i 's/googleSignInLauncher.launch(googleSignInClient.signInIntent)//g' app/src/main/java/com/example/ui/screens/AuthScreen.kt

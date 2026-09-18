@@ -1,11 +1,14 @@
-<div align="center">
+# Velorix Tournaments
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+This repository contains the latest Android source code and freshly compiled APK files.
 
-  <h1>Built with AI Studio</h2>
+## Latest Build Information
+- **Build Timestamp**: September 15, 2026 (Updated with the new homepage wallet popup & modern wallet emblem).
+- **Available APKs**:
+  - `app-debug.apk` (Root)
+  - `app-release.apk` (Root)
+  - `APK_DOWNLOAD/app-debug.apk`
+  - `APK_DOWNLOAD/app-release.apk`
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+All APK files have been compiled directly from the latest source tree containing the interactive balance popup, winnings breakdown, and vector assets.
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
-
-</div>

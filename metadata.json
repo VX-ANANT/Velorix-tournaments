@@ -1,0 +1,6 @@
+{
+  "name": "VeloRix Tournaments",
+  "description": "An esports and gaming tournament platform for Free Fire and BGMI featuring matches, leaderboard, dynamic wallet and gaming profiles.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

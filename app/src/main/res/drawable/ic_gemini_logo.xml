@@ -1,0 +1,42 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Primary Gemini Star -->
+    <path
+        android:pathData="M12,2 C12,7.523 7.523,12 2,12 C7.523,12 12,16.477 12,22 C12,16.477 16.477,12 22,12 C16.477,12 12,7.523 12,2 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="2"
+                android:startY="2"
+                android:endX="22"
+                android:endY="22"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FF1A73E8" />
+                <item android:offset="0.3" android:color="#FF6C5CE7" />
+                <item android:offset="0.7" android:color="#FF9B72CB" />
+                <item android:offset="1.0" android:color="#FFFF7675" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Secondary Sparkle Star -->
+    <path
+        android:pathData="M19,3 C19,4.657 17.657,6 16,6 C17.657,6 19,7.343 19,9 C19,7.343 20.343,6 22,6 C20.343,6 19,4.657 19,3 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="16"
+                android:startY="3"
+                android:endX="22"
+                android:endY="9"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FF9B72CB" />
+                <item android:offset="1.0" android:color="#FFFF8E72" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+</vector>

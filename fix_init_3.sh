@@ -1,0 +1,1 @@
+sed -i 's/import com.entrig.sdk.models.EntrigConfig/import com.entrig.sdk.models.EntrigConfig\nimport com.google.firebase.Firebase\nimport com.google.firebase.initialize/g' app/src/main/java/com/example/MyApplication.kt

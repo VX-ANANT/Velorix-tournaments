@@ -1,0 +1,25 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24.0"
+    android:viewportHeight="24.0">
+    <!-- Untitled UI Coins / Stacks Icon -->
+    <path
+        android:pathData="M12 2C6.48 2 2 3.79 2 6C2 8.21 6.48 10 12 10C17.52 10 22 8.21 22 6C22 3.79 17.52 2 12 2Z"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M2 6V12C2 14.21 6.48 16 12 16C17.52 16 22 14.21 22 12V6"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M2 12V18C2 20.21 6.48 22 12 22C17.52 22 22 20.21 22 18V12"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

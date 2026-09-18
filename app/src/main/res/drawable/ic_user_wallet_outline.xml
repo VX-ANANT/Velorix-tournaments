@@ -1,0 +1,26 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+  <!-- Top fold and outer frame matching wallet-passes-app -->
+  <path
+      android:fillColor="#00000000"
+      android:strokeColor="#FFFFFF"
+      android:strokeWidth="42"
+      android:strokeLineCap="round"
+      android:strokeLineJoin="round"
+      android:pathData="M 470,140 C 470,78 422,32 360,32 L 120,32 C 60,32 16,78 16,140 L 16,372 C 16,434 60,480 120,480 L 392,480 C 452,480 496,434 496,372 L 496,200 C 496,160 460,130 420,130" />
+  <!-- Inner top flap fold line -->
+  <path
+      android:fillColor="#00000000"
+      android:strokeColor="#FFFFFF"
+      android:strokeWidth="42"
+      android:strokeLineCap="round"
+      android:strokeLineJoin="round"
+      android:pathData="M 80,140 L 420,140" />
+  <!-- Button snap dot -->
+  <path
+      android:fillColor="#FFFFFF"
+      android:pathData="M 400,340 A 24,24 0 1,1 352,340 A 24,24 0 1,1 400,340 Z" />
+</vector>

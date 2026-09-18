@@ -1,0 +1,26 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <!-- Outer wallet pouch and top-rolled flap (stroke width 40) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="40"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M 480,140 C 480,70 430,22 360,22 L 130,22 C 60,22 20,68 20,138 L 20,374 C 20,444 64,490 134,490 L 378,490 C 448,490 492,444 492,374 L 492,208 C 492,162 458,162 430,162" />
+    <!-- Flap fold edge -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="40"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M 80,162 L 430,162" />
+    <!-- Button fastener dot -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 406,336 A 25,25 0 1,1 356,336 A 25,25 0 1,1 406,336 Z" />
+</vector>

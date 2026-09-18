@@ -1,0 +1,1 @@
+sed -i 's/try { com.google.firebase.FirebaseApp.initializeApp(this) } catch (e: Exception) { android.util.Log.e("Firebase", "Failed to init FIREBASE APP", e) }/com.google.firebase.Firebase.initialize(this)/g' app/src/main/java/com/example/MyApplication.kt
