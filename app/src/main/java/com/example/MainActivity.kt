@@ -298,15 +298,25 @@ class MainActivity : ComponentActivity() {
                     }
                 }
                 val navController = rememberNavController()
+                val navBackStackEntry by navController.currentBackStackEntryAsState()
+                val currentRoute = navBackStackEntry?.destination?.route
+                val isLoggedIn by viewModel.isLoggedIn.collectAsStateWithLifecycle()
                 val isBanned by viewModel.isVpnBanned.collectAsStateWithLifecycle()
                 val isVpnActive by viewModel.isVpnActive.collectAsStateWithLifecycle()
                 val systemConfig by viewModel.systemConfig.collectAsStateWithLifecycle()
                 val situationPreview by viewModel.situationPreview.collectAsStateWithLifecycle()
                 val isVpnDetected by viewModel.isVpnDetected.collectAsStateWithLifecycle()
+                val showDailyDeveloperPopup by viewModel.showDailyDeveloperPopup.collectAsStateWithLifecycle()
                 var showAdminSituationSheet by remember { mutableStateOf(false) }
 
                 LaunchedEffect(Unit) {
                     viewModel.checkVpnStatus()
+                }
+
+                LaunchedEffect(isLoggedIn, user) {
+                    if (isLoggedIn && user != null) {
+                        viewModel.checkAndTriggerDailyDeveloperPopup()
+                    }
                 }
 
                 val isAdmin = user?.role?.contains("admin", ignoreCase = true) == true ||
@@ -445,6 +455,12 @@ class MainActivity : ComponentActivity() {
                                         popUpTo("auth") { inclusive = true }
                                     }
                                 }
+                            },
+                            onRegisterSuccess = {
+                                // Newly created account ALWAYS goes directly to registration setup pages
+                                navController.navigate("onboarding") {
+                                    popUpTo("auth") { inclusive = true }
+                                }
                             }
                         )
                     }
@@ -552,6 +568,12 @@ class MainActivity : ComponentActivity() {
                                                 onNavigateToNotifications = {
                                                     navController.navigate("notifications")
                                                 },
+                                                onNavigateToSettings = {
+                                                    navController.navigate("settings")
+                                                },
+                                                onNavigateToAbout = {
+                                                    navController.navigate("about")
+                                                },
                                                 onOpenAdminSituations = {
                                                     showAdminSituationSheet = true
                                                 }
@@ -595,8 +617,48 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     }
+
+                    // 6. DEDICATED SETTINGS SCREEN
+                    composable("settings") {
+                        com.example.ui.screens.SettingsScreen(
+                            viewModel = viewModel,
+                            onNavigateBack = {
+                                navController.navigateUp()
+                            },
+                            onNavigateToSupport = {
+                                navController.navigate("main")
+                                currentTabState = "support"
+                            },
+                            onOpenAdminSituations = {
+                                showAdminSituationSheet = true
+                            }
+                        )
+                    }
+
+                    // 7. DEDICATED ABOUT SCREEN (EXACT REFERENCE FORMAT)
+                    composable("about") {
+                        com.example.ui.screens.AboutScreen(
+                            onNavigateBack = {
+                                navController.navigateUp()
+                            }
+                        )
+                    }
                     } // End of NavHost
                         } // End of activeSituation == NONE check
+
+                        // Once-per-day developer highlight & support popup (ONLY shown after login, NEVER over auth/splash/onboarding)
+                        val isUserReadyForPopup = isLoggedIn && user != null && currentRoute != "auth" && currentRoute != "splash" && currentRoute != "onboarding"
+                        if (showDailyDeveloperPopup && isUserReadyForPopup) {
+                            com.example.ui.components.DeveloperPopupDialog(
+                                onDismissRequest = {
+                                    viewModel.dismissDailyDeveloperPopup()
+                                },
+                                onOpenSettings = {
+                                    viewModel.dismissDailyDeveloperPopup()
+                                    navController.navigate("about")
+                                }
+                            )
+                        }
 
                         InAppNotificationOverlay(
                             onNotificationClick = {

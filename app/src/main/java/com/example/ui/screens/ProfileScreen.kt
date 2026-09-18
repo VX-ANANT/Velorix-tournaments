@@ -42,6 +42,8 @@ fun ProfileScreen(
     onLogout: () -> Unit,
     onNavigateToSupport: () -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
+    onNavigateToAbout: () -> Unit = {},
     onOpenAdminSituations: () -> Unit = {}
 ) {
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
@@ -73,8 +75,9 @@ fun ProfileScreen(
     var tokensToConvertInput by remember { mutableStateOf("") }
     var showReportDialog by remember { mutableStateOf(false) }
     var showMyReportsDialog by remember { mutableStateOf(false) }
+    var showAboutDeveloperModal by remember { mutableStateOf(false) }
 
-    val isAnyPopupOpen = showAvatarDialog || showDeleteDialog || showConvertDialog || showReportDialog || showMyReportsDialog
+    val isAnyPopupOpen = showAvatarDialog || showDeleteDialog || showConvertDialog || showReportDialog || showMyReportsDialog || showAboutDeveloperModal
     val bgBlurRadius by animateDpAsState(
         targetValue = if (isAnyPopupOpen) 22.dp else 0.dp,
         animationSpec = tween(durationMillis = 280, easing = LinearOutSlowInEasing),
@@ -106,6 +109,31 @@ fun ProfileScreen(
                         containerColor = MaterialTheme.colorScheme.surface,
                     ),
                     actions = {
+                        IconButton(
+                            onClick = {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                onNavigateToAbout()
+                            }
+                        ) {
+                            Icon(
+                                painter = androidx.compose.ui.res.painterResource(com.example.R.drawable.ic_user_question),
+                                contentDescription = "About",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                        IconButton(
+                            onClick = {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                onNavigateToSettings()
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = "Settings",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                         TextButton(
                             enabled = if (isEditing) profileCooldown == 0 else true,
                             onClick = { haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove); 
@@ -1159,6 +1187,55 @@ fun ProfileScreen(
                     }
                 }
 
+                // About Section Card (Format from Reference Screenshot 1)
+                Surface(
+                    onClick = {
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                        onNavigateToAbout()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(22.dp),
+                    color = Color(0xFF1E1718),
+                    border = BorderStroke(1.dp, Color(0xFF2C2426))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 20.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF282022)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                painter = androidx.compose.ui.res.painterResource(com.example.R.drawable.ic_user_question),
+                                contentDescription = "About",
+                                tint = Color(0xFFE5E0E1),
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(18.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "About",
+                                fontSize = 17.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFF0ECEC)
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "App info and licenses",
+                                fontSize = 13.sp,
+                                color = Color(0xFFA69E9F)
+                            )
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // Danger Zone Card
@@ -1281,6 +1358,16 @@ fun ProfileScreen(
                 platformViewModel = viewModel,
                 onOpenNewReport = { showReportDialog = true },
                 onDismiss = { showMyReportsDialog = false }
+            )
+        }
+
+        if (showAboutDeveloperModal) {
+            com.example.ui.components.DeveloperPopupDialog(
+                onDismissRequest = { showAboutDeveloperModal = false },
+                onOpenSettings = {
+                    showAboutDeveloperModal = false
+                    onNavigateToSettings()
+                }
             )
         }
 

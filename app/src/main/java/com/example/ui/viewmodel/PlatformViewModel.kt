@@ -388,15 +388,36 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
     private val _hasCompletedOnboarding = MutableStateFlow(prefs.getBoolean("has_completed_onboarding", false))
     val hasCompletedOnboarding: StateFlow<Boolean> = _hasCompletedOnboarding.asStateFlow()
 
+    // Daily Developer Popup tracking (shows once per calendar day on first app launch)
+    private val _showDailyDeveloperPopup = MutableStateFlow(false)
+    val showDailyDeveloperPopup: StateFlow<Boolean> = _showDailyDeveloperPopup.asStateFlow()
+
+    fun checkAndTriggerDailyDeveloperPopup() {
+        if (!_isLoggedIn.value || userState.value == null) {
+            // Only trigger for authenticated users
+            return
+        }
+        val todayStr = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date())
+        val lastShownDate = prefs.getString("last_dev_popup_date", "") ?: ""
+        if (lastShownDate != todayStr) {
+            _showDailyDeveloperPopup.value = true
+        }
+    }
+
+    fun dismissDailyDeveloperPopup() {
+        val todayStr = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date())
+        prefs.edit().putString("last_dev_popup_date", todayStr).apply()
+        _showDailyDeveloperPopup.value = false
+    }
+
+    fun openDeveloperPopupManually() {
+        _showDailyDeveloperPopup.value = true
+    }
+
     fun checkAndSetOnboardingStatus(userItem: User?): Boolean {
-        val isCompleted = userItem != null && (
-            userItem.fullName.isNotBlank() || 
-            userItem.mobileNo.isNotBlank() || 
-            userItem.inGameName.isNotBlank() || 
-            userItem.dob.isNotBlank() || 
-            userItem.freeFireId.isNotBlank() || 
-            (userItem.username.isNotBlank() && !userItem.username.startsWith("Player_") && userItem.username != "Player")
-        )
+        val hasCompletedFlag = prefs.getBoolean("has_completed_onboarding", false)
+        val hasGamingDetails = userItem != null && (userItem.freeFireId.isNotBlank() || userItem.inGameName.isNotBlank())
+        val isCompleted = hasCompletedFlag && hasGamingDetails
         _hasCompletedOnboarding.value = isCompleted
         prefs.edit().putBoolean("has_completed_onboarding", isCompleted).apply()
         return isCompleted
@@ -785,9 +806,13 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
                         )
                     }
                 }
-                prefs.edit().putBoolean("is_logged_in", true).apply()
+                prefs.edit()
+                    .putBoolean("is_logged_in", true)
+                    .putBoolean("has_completed_onboarding", false)
+                    .apply()
+                _hasCompletedOnboarding.value = false
                 _isLoggedIn.value = true
-                _toastMessage.emit("Account created! Let the games begin.")
+                _toastMessage.emit("Account created! Complete your gaming profile.")
                 onComplete(true)
             } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
                 _dbErrorDialog.value = "Registration Timeout: Please check your internet connection."

@@ -50,6 +50,23 @@ fun OnboardingScreen(
     var inGameName by remember { mutableStateOf("") }
     var freeFireId by remember { mutableStateOf("") }
 
+    LaunchedEffect(user) {
+        user?.let { u ->
+            if (name.isBlank()) {
+                val candidateName = u.fullName.ifBlank { u.username }
+                if (candidateName.isNotBlank() && !candidateName.startsWith("Player_")) {
+                    name = candidateName
+                }
+            }
+            if (phone.isBlank()) {
+                val candidatePhone = u.mobileNo.ifBlank { u.phoneOrEmail }
+                if (candidatePhone.isNotBlank() && !candidatePhone.contains("@")) {
+                    phone = candidatePhone
+                }
+            }
+        }
+    }
+
     val totalSteps = 4
 
     val isIdValid = freeFireId.isBlank() || com.example.ui.components.GameIdValidator.isValid(freeFireId)

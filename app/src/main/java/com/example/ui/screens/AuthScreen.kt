@@ -48,7 +48,8 @@ import com.example.ui.viewmodel.PlatformViewModel
 @Composable
 fun AuthScreen(
     viewModel: PlatformViewModel,
-    onAuthSuccess: () -> Unit
+    onAuthSuccess: () -> Unit,
+    onRegisterSuccess: (() -> Unit)? = null
 ) {
     var isSignUpMode by remember { mutableStateOf(false) }
 
@@ -102,7 +103,13 @@ fun AuthScreen(
                 if (isSignUpMode) {
                     RegistrationScreen(
                         viewModel = viewModel,
-                        onAuthSuccess = onAuthSuccess,
+                        onAuthSuccess = {
+                            if (onRegisterSuccess != null) {
+                                onRegisterSuccess()
+                            } else {
+                                onAuthSuccess()
+                            }
+                        },
                         onSwitchToLogin = { isSignUpMode = false }
                     )
                 } else {
