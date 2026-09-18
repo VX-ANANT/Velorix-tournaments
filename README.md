@@ -1,6 +1,6 @@
 <div align="center">
 
-# ⚡ VELORIX TOURNAMENTS
+#  VELORIX TOURNAMENTS
 ### *Next-Generation Esports Engine & Competitive Gaming Platform for Android*
 
 <p align="center">
@@ -19,13 +19,13 @@
 
 </div>
 
-## 📌 Executive Summary
+##  Executive Summary
 
 **VeloRix Tournaments** is a high-performance native Android esports platform engineered for mobile gamers across titles like **Free Fire** and **BGMI**. Built with strict adherence to **Material Design 3 (M3)**, modern **Clean Architecture**, and **reactive state streaming (Coroutines + Flow)**, VeloRix provides sub-second tournament slot booking, automated room credential reveals, live leaderboard tracking, and continuous 24/7 backend operations powered by an autonomous **Gemini AI Watchdog Bot**.
 
 ---
 
-## 🏛️ System Architecture
+##  System Architecture
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -52,24 +52,24 @@
 
 ---
 
-## ✨ Core Pillars & Capabilities
+##  Core Pillars & Capabilities
 
-### 🎮 1. Real-Time Tournament Matchmaking
+###  1. Real-Time Tournament Matchmaking
 - **Multiple Game Modes:** Battle Royale (Solo, Duo, Squad) & Clash Squad (4v4, 6v6).
 - **Concurrency-Safe Slot Booking:** Atomic reservation prevents race conditions when hundreds of players join the same lobby simultaneously.
 - **Dynamic Credentials Vault:** Room ID & Password stay securely locked until T-15 minutes before match kickoff, unlocking only for verified registered players.
 
-### 🏆 2. Live Competitive Leaderboards & Ranks
+###  2. Live Competitive Leaderboards & Ranks
 - **Sub-Second Socket Updates:** Real-time point calculations across K/D ratios, match placements, and tournament streaks.
 - **Dynamic Tiering:** Progression engine from *Bronze* to *Esports Elite* with custom vector badge assets.
 
-### 🛡️ 3. Fair-Play & Automated AI Watchdog
+###  3. Fair-Play & Automated AI Watchdog
 - **In-App Dispute Reporting:** Players can report malicious behavior, suspected emulator abuse, or cheating with contextual match logs.
 - **24/7 Telegram Operations Bot:** Powered by **Google Gemini 3.6 Flash**, continuously monitoring lobby health, unassigned room IDs, and live player disputes.
 
 ---
 
-## 🛠️ Engineering Stack
+##  Engineering Stack
 
 | Component | Technical Selection | Rationale |
 |---|---|---|
@@ -83,7 +83,7 @@
 
 ---
 
-## 📁 Repository Structure
+##  Repository Structure
 
 ```text
 velorix-tournaments/
@@ -104,7 +104,7 @@ velorix-tournaments/
 
 ---
 
-## 🚀 Development & Build Instructions
+##  Development & Build Instructions
 
 ### Prerequisites
 - **Android Studio** Ladybug (2024.2.1+) or Meerkat
@@ -138,7 +138,7 @@ velorix-tournaments/
 
 ---
 
-## 🔒 Security & Fair-Play Protocols
+##  Security & Fair-Play Protocols
 
 - **Row-Level RTDB Rules:** Users can only modify their own profile data; tournament slots and match points require authorized service writes.
 - **Client-Side Anti-Spam:** Action cooldowns and request mutexes prevent double-submission during network spikes.
