@@ -1,4 +1,4 @@
-<div align="center">
+w<div align="center">
 
 #  VELORIX TOURNAMENTS
 ### *Next-Generation Esports Engine & Competitive Gaming Platform for Android*
@@ -11,7 +11,7 @@
 <br><br>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Platform-Android%2012%2B-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Android" />
+  <img src="https://img.shields.io/badge/Platform-Android%2014%2B-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Android" />
   <img src="https://img.shields.io/badge/Language-Kotlin%202.0-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white" alt="Kotlin" />
   <img src="https://img.shields.io/badge/UI-Jetpack%20Compose%20M3-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white" alt="Jetpack Compose" />
   <img src="https://img.shields.io/badge/Realtime-Firebase%20RTDB-FFCA28?style=for-the-badge&logo=firebase&logoColor=black" alt="Firebase" />
