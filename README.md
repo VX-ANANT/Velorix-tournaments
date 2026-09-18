@@ -1,4 +1,4 @@
-w<div align="center">
+<div align="center">
 
 #  VELORIX TOURNAMENTS
 ### *Next-Generation Esports Engine & Competitive Gaming Platform for Android*
@@ -157,16 +157,19 @@ velorix-tournaments/
 
 <div align="center">
 
-| **Developer** | **GitHub** | **Patreon** | **Direct Support (UPI)** |
-| :---: | :---: | :---: | :---: |
-| **VX-ANANT** | [VX-ANANT](https://github.com/VX-ANANT) | [@anantisback47](https://patreon.com/anantisback47) | `veloxyra.anant@fam` |
+| **Developer** | **GitHub** | **Patreon** | **Discord** | **Direct Support (UPI)** |
+| :---: | :---: | :---: | :---: | :---: |
+| **VX-ANANT** | [VX-ANANT](https://github.com/VX-ANANT/Velorix-tournaments) | [@Anant_sgh](https://patreon.com/Anant_sgh) | [VeloRix Esports](https://discord.gg/ghxrpQAAC2) | `veloxyra.anant@fam` |
 
 <br>
 
-<a href="https://patreon.com/anantisback47">
+<a href="https://patreon.com/Anant_sgh">
   <img src="https://img.shields.io/badge/Support_on_Patreon-FF424D?style=for-the-badge&logo=patreon&logoColor=white" alt="Support on Patreon" />
 </a>
-<a href="https://github.com/VX-ANANT/velorix-tournaments">
+<a href="https://discord.gg/ghxrpQAAC2">
+  <img src="https://img.shields.io/badge/Join_Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Join Discord" />
+</a>
+<a href="https://github.com/VX-ANANT/Velorix-tournaments">
   <img src="https://img.shields.io/badge/Star_on_GitHub-181717?style=for-the-badge&logo=github&logoColor=white" alt="Star on GitHub" />
 </a>
 

@@ -18,7 +18,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.outlined.Coffee
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -36,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.BuildConfig
 import com.example.R
 import com.example.util.UpiPaymentManager
 
@@ -43,16 +43,15 @@ import com.example.util.UpiPaymentManager
  * DeveloperPopupDialog.kt
  *
  * Pixel-perfect subtle UI matching the user's reference screenshots,
- * with VX-ANANT's genuine developer credentials and links:
- * - App: VeloRix (v2.1.0)
- * - Instagram: @vx_anant
- * - X (Twitter): @vx_anant
- * - GitHub: VX-ANANT
- * - Buy Me a Coffee: buymeacoffee.com/anantisback47
- * - Patreon: patreon.com/anantisback47
+ * with Anant's genuine developer credentials and links:
+ * - App: VeloRix (Dynamic BuildConfig.VERSION_NAME)
+ * - Instagram: @anant_sgh (https://instagram.com/anant_sgh)
+ * - X (Twitter): @Anant__sgh (https://x.com/Anant__sgh)
+ * - GitHub: VX-ANANT/Velorix-tournaments (https://github.com/VX-ANANT/Velorix-tournaments)
+ * - Patreon: patreon.com/Anant_sgh (https://patreon.com/Anant_sgh)
  * - UPI: veloxyra.anant@fam
- * - Discord: discord.gg/velorix
- * - Star Repo: github.com/VX-ANANT/velorix-tournaments
+ * - Discord: discord.gg/ghxrpQAAC2 (https://discord.gg/ghxrpQAAC2)
+ * - Star Repo: https://github.com/VX-ANANT/Velorix-tournaments
  */
 @Composable
 fun DeveloperPopupDialog(
@@ -64,19 +63,18 @@ fun DeveloperPopupDialog(
     val scrollState = rememberScrollState()
 
     val appName = "VeloRix"
-    val appVersion = "2.1.0"
+    val appVersion = BuildConfig.VERSION_NAME
 
-    val devHandle = "@vx_anant"
-    val githubUser = "VX-ANANT"
-    val patreonUser = "anantisback47"
+    val instagramHandle = "@anant_sgh"
+    val xHandle = "@Anant__sgh"
+    val githubRepo = "VX-ANANT/Velorix-tournaments"
     val upiId = UpiPaymentManager.PRIMARY_UPI_ID // veloxyra.anant@fam
 
-    val instagramUrl = "https://instagram.com/vx_anant"
-    val twitterUrl = "https://x.com/vx_anant"
-    val githubUrl = "https://github.com/VX-ANANT/velorix-tournaments"
-    val buyMeCoffeeUrl = "https://buymeacoffee.com/anantisback47"
-    val patreonUrl = "https://patreon.com/anantisback47"
-    val discordUrl = "https://discord.gg/velorix"
+    val instagramUrl = "https://instagram.com/anant_sgh"
+    val twitterUrl = "https://x.com/Anant__sgh"
+    val githubUrl = "https://github.com/VX-ANANT/Velorix-tournaments"
+    val patreonUrl = "https://patreon.com/Anant_sgh"
+    val discordUrl = "https://discord.gg/ghxrpQAAC2"
 
     fun openUrl(url: String) {
         try {
@@ -217,7 +215,7 @@ fun DeveloperPopupDialog(
                         SubtlePopupRow(
                             drawableRes = R.drawable.ic_instagram,
                             title = "Instagram",
-                            subtitle = devHandle,
+                            subtitle = instagramHandle,
                             iconBg = iconSquareBg,
                             primaryTextColor = primaryTextColor,
                             secondaryTextColor = secondaryTextColor,
@@ -233,7 +231,7 @@ fun DeveloperPopupDialog(
                         SubtlePopupRow(
                             drawableRes = R.drawable.ic_x_twitter,
                             title = "X (Twitter)",
-                            subtitle = devHandle,
+                            subtitle = xHandle,
                             iconBg = iconSquareBg,
                             primaryTextColor = primaryTextColor,
                             secondaryTextColor = secondaryTextColor,
@@ -249,7 +247,7 @@ fun DeveloperPopupDialog(
                         SubtlePopupRow(
                             drawableRes = R.drawable.ic_github,
                             title = "GitHub",
-                            subtitle = githubUser,
+                            subtitle = githubRepo,
                             iconBg = iconSquareBg,
                             primaryTextColor = primaryTextColor,
                             secondaryTextColor = secondaryTextColor,
@@ -281,25 +279,9 @@ fun DeveloperPopupDialog(
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         SubtlePopupRow(
-                            vectorIcon = Icons.Outlined.Coffee,
-                            title = "Buy Me a Coffee",
-                            subtitle = "buymeacoffee.com/$patreonUser",
-                            iconBg = iconSquareBg,
-                            primaryTextColor = primaryTextColor,
-                            secondaryTextColor = secondaryTextColor,
-                            arrowColor = arrowColor,
-                            onClick = {
-                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                openUrl(buyMeCoffeeUrl)
-                            }
-                        )
-
-                        HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
-
-                        SubtlePopupRow(
                             drawableRes = R.drawable.ic_patreon,
                             title = "Patreon",
-                            subtitle = "patreon.com/$patreonUser",
+                            subtitle = "patreon.com/Anant_sgh",
                             iconBg = iconSquareBg,
                             primaryTextColor = primaryTextColor,
                             secondaryTextColor = secondaryTextColor,
@@ -323,7 +305,7 @@ fun DeveloperPopupDialog(
                             onClick = {
                                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                                 copyToClipboard(upiId, "UPI ID")
-                                val upiUri = Uri.parse("upi://pay?pa=$upiId&pn=${Uri.encode("VX-ANANT (VeloRix Dev)")}&cu=INR")
+                                val upiUri = Uri.parse("upi://pay?pa=$upiId&pn=${Uri.encode("Anant (VeloRix Dev)")}&cu=INR")
                                 val intent = Intent(Intent.ACTION_VIEW, upiUri).apply {
                                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                 }
@@ -356,7 +338,7 @@ fun DeveloperPopupDialog(
                         SubtlePopupRow(
                             drawableRes = R.drawable.ic_discord,
                             title = "Discord",
-                            subtitle = "discord.gg/velorix",
+                            subtitle = "discord.gg/ghxrpQAAC2",
                             iconBg = iconSquareBg,
                             primaryTextColor = primaryTextColor,
                             secondaryTextColor = secondaryTextColor,

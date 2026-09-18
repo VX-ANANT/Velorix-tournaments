@@ -62,16 +62,15 @@ fun AboutScreen(
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
 
-    // Developer & Links for VX-ANANT
-    val websiteUrl = "https://github.com/VX-ANANT/velorix-tournaments"
-    val instagramUrl = "https://instagram.com/vx_anant"
-    val twitterUrl = "https://x.com/vx_anant"
-    val githubUrl = "https://github.com/VX-ANANT"
-    val buyMeCoffeeUrl = "https://buymeacoffee.com/anantisback47"
-    val patreonUrl = "https://patreon.com/anantisback47"
+    // Developer & Links for Anant
+    val websiteUrl = "https://github.com/VX-ANANT/Velorix-tournaments"
+    val instagramUrl = "https://instagram.com/anant_sgh"
+    val twitterUrl = "https://x.com/Anant__sgh"
+    val githubUrl = "https://github.com/VX-ANANT/Velorix-tournaments"
+    val patreonUrl = "https://patreon.com/Anant_sgh"
     val upiId = UpiPaymentManager.PRIMARY_UPI_ID // veloxyra.anant@fam
     val fallbackUpiId = UpiPaymentManager.PRIMARY_UPI_ID
-    val discordUrl = "https://discord.gg/velorix"
+    val discordUrl = "https://discord.gg/ghxrpQAAC2"
 
     var showUpiQrDialog by remember { mutableStateOf(false) }
 
@@ -194,7 +193,7 @@ fun AboutScreen(
                                 .padding(horizontal = 10.dp, vertical = 4.dp)
                         ) {
                             Text(
-                                text = "1.2.7",
+                                text = com.example.BuildConfig.VERSION_NAME,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = pillTextColor
@@ -289,16 +288,16 @@ fun AboutScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        // Website
+                        // GitHub / Repo
                         AboutRowItem(
                             vectorIcon = Icons.Outlined.Language,
                             title = "GitHub / Website",
-                            subtitle = "github.com/VX-ANANT",
+                            subtitle = "github.com/VX-ANANT/Velorix-tournaments",
                             titleColor = primaryTextColor,
                             subtitleColor = secondaryTextColor,
                             onClick = {
                                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                openUrl(websiteUrl)
+                                openUrl(githubUrl)
                             }
                         )
 
@@ -308,7 +307,7 @@ fun AboutScreen(
                         AboutRowItem(
                             drawableRes = R.drawable.ic_instagram,
                             title = "Instagram",
-                            subtitle = "@vx_anant",
+                            subtitle = "@anant_sgh",
                             titleColor = primaryTextColor,
                             subtitleColor = secondaryTextColor,
                             onClick = {
@@ -323,7 +322,7 @@ fun AboutScreen(
                         AboutRowItem(
                             drawableRes = R.drawable.ic_x_twitter,
                             title = "X (Twitter)",
-                            subtitle = "@vx_anant",
+                            subtitle = "@Anant__sgh",
                             titleColor = primaryTextColor,
                             subtitleColor = secondaryTextColor,
                             onClick = {
@@ -355,26 +354,11 @@ fun AboutScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        // Buy Me a Coffee
-                        AboutRowItem(
-                            vectorIcon = Icons.Outlined.Coffee,
-                            title = "Buy Me a Coffee",
-                            subtitle = "buymeacoffee.com/anantisback47",
-                            titleColor = primaryTextColor,
-                            subtitleColor = secondaryTextColor,
-                            onClick = {
-                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                openUrl(buyMeCoffeeUrl)
-                            }
-                        )
-
-                        HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
-
                         // Patreon
                         AboutRowItem(
                             drawableRes = R.drawable.ic_patreon,
                             title = "Patreon",
-                            subtitle = "patreon.com/anantisback47",
+                            subtitle = "patreon.com/Anant_sgh",
                             titleColor = primaryTextColor,
                             subtitleColor = secondaryTextColor,
                             onClick = {
@@ -426,7 +410,7 @@ fun AboutScreen(
                         AboutRowItem(
                             drawableRes = R.drawable.ic_discord,
                             title = "Discord",
-                            subtitle = "discord.gg/velorix",
+                            subtitle = "discord.gg/ghxrpQAAC2",
                             titleColor = primaryTextColor,
                             subtitleColor = secondaryTextColor,
                             onClick = {
