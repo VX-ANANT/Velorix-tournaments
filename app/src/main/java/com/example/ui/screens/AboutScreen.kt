@@ -20,14 +20,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.outlined.Coffee
-import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -35,17 +34,14 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
-import com.example.ui.components.CyberScanlineOverlay
-import com.example.ui.components.LegalComplianceModal
 import com.example.ui.components.LegalTab
-import com.example.ui.components.TacticalReticleFrame
-import com.example.ui.components.TacticalTelemetryRibbon
 import com.example.ui.components.stretchOverscroll
 import com.example.util.UpiPaymentManager
 import kotlinx.coroutines.Dispatchers
@@ -54,36 +50,30 @@ import kotlinx.coroutines.withContext
 /**
  * AboutScreen.kt
  *
- * Implements the exact layout, card groupings, and styling as provided in the reference screenshots:
- * - Top back navigation with "About" title
- * - Large circular App Logo with concentric rings
- * - App Name ("VeloRix") with "2.1.0" and "RELEASE" badges
- * - CONTRIBUTORS: Horizontal row of circular profile avatars
- * - DEVELOPER: Grouped card with Website, Instagram, X (Twitter)
- * - SUPPORT: Grouped card with Buy Me a Coffee, Patreon, UPI
- * - COMMUNITY: Grouped card with Discord
+ * Professional, top-to-bottom minimalist design matching Xiaomi HyperOS & Vercel aesthetics:
+ * - Pure AMOLED Black background (#000000) with subtle obsidian cards (#0A0A0A)
+ * - Restrained, clean typography and smooth micro-interactions
+ * - Professional Contributor & Lead Developer card (no cheesy/cluttered frames)
+ * - Dedicated navigation to Legal & Compliance page
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AboutScreen(
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onNavigateToLegal: (LegalTab) -> Unit = {}
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
 
-    // Developer & Links for Anant
-    val websiteUrl = "https://github.com/VX-ANANT/Velorix-tournaments"
+    // Developer & Social Links
+    val githubUrl = "https://github.com/VX-ANANT/Velorix-tournaments"
     val instagramUrl = "https://instagram.com/anant_sgh"
     val twitterUrl = "https://x.com/Anant__sgh"
-    val githubUrl = "https://github.com/VX-ANANT/Velorix-tournaments"
     val patreonUrl = "https://patreon.com/Anant_sgh"
-    val upiId = UpiPaymentManager.PRIMARY_UPI_ID // veloxyra.anant@fam
-    val fallbackUpiId = UpiPaymentManager.PRIMARY_UPI_ID
     val discordUrl = "https://discord.gg/ghxrpQAAC2"
+    val upiId = UpiPaymentManager.PRIMARY_UPI_ID
 
     var showUpiQrDialog by remember { mutableStateOf(false) }
-    var showLegalModal by remember { mutableStateOf(false) }
-    var selectedLegalTab by remember { mutableStateOf(LegalTab.TERMS) }
 
     fun openUrl(url: String) {
         try {
@@ -100,19 +90,17 @@ fun AboutScreen(
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val clip = ClipData.newPlainText(label, text)
         clipboard.setPrimaryClip(clip)
-        Toast.makeText(context, "Saved successfully", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
     }
 
-    // Pure AMOLED Black Palette (0% Red/Warm Tint, Pure Obsidian Neutral Charcoal Surfaces)
+    // Xiaomi & Vercel Minimalist Theme Tokens
     val screenBg = Color(0xFF000000)
-    val cardBg = Color(0xFF0E0E11)
-    val cardBorder = Color(0xFF1C1C22)
-    val dividerColor = Color(0xFF18181D)
-    val sectionHeaderColor = Color(0xFF8E8E93)
-    val primaryTextColor = Color(0xFFFFFFFF)
-    val secondaryTextColor = Color(0xFFA1A1A6)
-    val pillBg = Color(0xFF151518)
-    val pillTextColor = Color(0xFFE5E5EA)
+    val cardBg = Color(0xFF0A0A0A)
+    val cardBorder = Color(0xFF1B1B1B)
+    val dividerColor = Color(0xFF161616)
+    val sectionHeaderColor = Color(0xFF737373)
+    val primaryTextColor = Color(0xFFEDEDED)
+    val secondaryTextColor = Color(0xFF8A8A8A)
 
     var isVisible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
@@ -126,16 +114,19 @@ fun AboutScreen(
                 title = {
                     Text(
                         text = "About",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = primaryTextColor
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = primaryTextColor,
+                        letterSpacing = (-0.3).sp
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = {
-                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                        onNavigateBack()
-                    }) {
+                    IconButton(
+                        onClick = {
+                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                            onNavigateBack()
+                        }
+                    ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
@@ -155,14 +146,14 @@ fun AboutScreen(
                 .padding(innerPadding)
                 .stretchOverscroll()
                 .padding(horizontal = 20.dp),
-            contentPadding = PaddingValues(top = 16.dp, bottom = 48.dp)
+            contentPadding = PaddingValues(top = 12.dp, bottom = 48.dp)
         ) {
-            // 1. APP LOGO, TITLE, & VERSION/RELEASE BADGES
+            // 1. TOP-TO-BOTTOM HERO: LOGO, APP TITLE, VERSION PILL
             item {
                 AnimatedVisibility(
                     visible = isVisible,
-                    enter = fadeIn(animationSpec = tween(400)) +
-                        slideInVertically(animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow), initialOffsetY = { -30 })
+                    enter = fadeIn(animationSpec = tween(350)) +
+                        slideInVertically(animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow), initialOffsetY = { -20 })
                 ) {
                     Column(
                         modifier = Modifier
@@ -170,214 +161,182 @@ fun AboutScreen(
                             .padding(vertical = 16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Big Circular App Logo with Cybernetic Radiant Aura
-                        val infiniteTransition = rememberInfiniteTransition(label = "about_logo_pulse")
-                        val logoGlowAlpha by infiniteTransition.animateFloat(
-                            initialValue = 0.5f,
-                            targetValue = 1.0f,
-                            animationSpec = infiniteRepeatable(
-                                animation = tween(durationMillis = 2000, easing = FastOutSlowInEasing),
-                                repeatMode = RepeatMode.Reverse
-                            ),
-                            label = "logo_glow"
-                        )
-
+                        // Clean Xiaomi/Vercel Minimal Icon
                         Box(
                             modifier = Modifier
-                                .size(104.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    Brush.sweepGradient(
-                                        listOf(
-                                            Color(0xFF38BDF8).copy(alpha = logoGlowAlpha),
-                                            Color(0xFF818CF8).copy(alpha = logoGlowAlpha * 0.7f),
-                                            Color(0xFF00E5FF).copy(alpha = logoGlowAlpha),
-                                            Color(0xFF38BDF8).copy(alpha = logoGlowAlpha)
-                                        )
-                                    )
-                                )
-                                .padding(3.dp),
+                                .size(88.dp)
+                                .clip(RoundedCornerShape(22.dp))
+                                .background(Color(0xFF0F0F0F))
+                                .border(1.dp, Color(0xFF262626), RoundedCornerShape(22.dp)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Box(
+                            Image(
+                                painter = painterResource(R.drawable.velorix_logo_image),
+                                contentDescription = "VeloRix App Logo",
                                 modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(CircleShape)
-                                    .background(Color(0xFF08090C))
-                                    .border(1.5.dp, Color(0xFF1E2433), CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Image(
-                                    painter = painterResource(R.drawable.velorix_logo_image),
-                                    contentDescription = "App Logo",
-                                    modifier = Modifier
-                                        .size(68.dp)
-                                        .clip(CircleShape)
-                                )
-                            }
+                                    .size(56.dp)
+                                    .clip(RoundedCornerShape(14.dp))
+                            )
                         }
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(14.dp))
 
                         Text(
                             text = "VELORIX",
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Black,
-                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                            letterSpacing = 2.sp,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.5.sp,
                             color = primaryTextColor
                         )
 
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.height(3.dp))
 
                         Text(
-                            text = "APEX ESPORTS ENGINE // HIGH-VELOCITY COMBAT INFRASTRUCTURE",
-                            fontSize = 10.sp,
-                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF38BDF8),
-                            letterSpacing = 0.8.sp,
-                            textAlign = TextAlign.Center
+                            text = "Esports Infrastructure & Tournament Engine",
+                            fontSize = 12.sp,
+                            color = secondaryTextColor,
+                            letterSpacing = (-0.1).sp
                         )
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // Version & Release Pills with Monospace Tactical Badges
+                        // Clean Minimal Badges
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(Color(0xFF11141D))
-                                    .border(1.dp, Color(0xFF1E2638), RoundedCornerShape(8.dp))
-                                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(Color(0xFF141414))
+                                    .border(1.dp, Color(0xFF262626), RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 8.dp, vertical = 3.dp)
                             ) {
                                 Text(
-                                    text = "v${com.example.BuildConfig.VERSION_NAME}-SENTINEL",
+                                    text = "v${com.example.BuildConfig.VERSION_NAME}",
                                     fontSize = 11.sp,
-                                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF38BDF8)
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color(0xFFD4D4D8)
                                 )
                             }
 
                             Box(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(Color(0xFF064E3B).copy(alpha = 0.4f))
-                                    .border(1.dp, Color(0xFF059669), RoundedCornerShape(8.dp))
-                                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(Color(0xFF101814))
+                                    .border(1.dp, Color(0xFF1E3A2B), RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 8.dp, vertical = 3.dp)
                             ) {
                                 Text(
-                                    text = "PRODUCTION KERNEL",
+                                    text = "PROD RELEASE",
                                     fontSize = 10.sp,
-                                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                                    fontWeight = FontWeight.Black,
-                                    color = Color(0xFF34D399),
-                                    letterSpacing = 0.8.sp
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // Telemetry Ribbon
-                        TacticalTelemetryRibbon(
-                            systemTag = "KERNEL-AUDIT",
-                            protocolCode = "HARDWARE-VERIFIED",
-                            statusText = "ZERO-COMPROMISE SENTRY",
-                            accentColor = Color(0xFF00E5FF)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            // 2. CONTRIBUTORS SECTION
-            item {
-                AnimatedVisibility(
-                    visible = isVisible,
-                    enter = fadeIn(animationSpec = tween(400, delayMillis = 80)) +
-                        slideInVertically(animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow), initialOffsetY = { 30 })
-                ) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            text = "CONTRIBUTORS",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = sectionHeaderColor,
-                            letterSpacing = 0.8.sp,
-                            modifier = Modifier.padding(bottom = 12.dp)
-                        )
-
-                        // Centered Circular Frame for Developer / Contributor Profile Picture
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(54.dp)
-                                    .clip(CircleShape)
-                                    .border(2.dp, Color(0xFFE5E5EA).copy(alpha = 0.45f), CircleShape)
-                                    .clickable {
-                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                        Toast.makeText(context, "Anant (Lead Developer)", Toast.LENGTH_SHORT).show()
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Image(
-                                    painter = painterResource(R.drawable.developer_pfp),
-                                    contentDescription = "Developer Profile Picture",
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .clip(CircleShape)
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFF4ADE80)
                                 )
                             }
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(28.dp))
+                Spacer(modifier = Modifier.height(20.dp))
             }
 
-            // 3. DEVELOPER SECTION
+            // 2. LEAD DEVELOPER & CONTRIBUTOR SECTION (PROFESSIONAL TOP-TO-BOTTOM CARD)
             item {
                 AnimatedVisibility(
                     visible = isVisible,
-                    enter = fadeIn(animationSpec = tween(450, delayMillis = 140)) +
-                        slideInVertically(animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow), initialOffsetY = { 40 })
+                    enter = fadeIn(animationSpec = tween(350, delayMillis = 60)) +
+                        slideInVertically(animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow), initialOffsetY = { 20 })
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            text = "DEVELOPER",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = sectionHeaderColor,
-                            letterSpacing = 0.8.sp,
-                            modifier = Modifier.padding(bottom = 10.dp)
-                        )
+                        SectionHeader(text = "AUTHOR & CREATOR")
 
                         Surface(
-                            shape = RoundedCornerShape(20.dp),
+                            shape = RoundedCornerShape(16.dp),
                             color = cardBg,
                             border = BorderStroke(1.dp, cardBorder),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.fillMaxWidth()) {
-                                // GitHub / Repo
-                                AboutRowItem(
+                                // Author Profile Header
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    // Professional circular avatar with clean border
+                                    Box(
+                                        modifier = Modifier
+                                            .size(52.dp)
+                                            .clip(CircleShape)
+                                            .border(1.dp, Color(0xFF333333), CircleShape)
+                                            .clickable {
+                                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                                Toast.makeText(context, "Anant — Creator & Lead Architect", Toast.LENGTH_SHORT).show()
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Image(
+                                            painter = painterResource(R.drawable.developer_pfp),
+                                            contentDescription = "Anant Profile Picture",
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .clip(CircleShape)
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.width(14.dp))
+
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Text(
+                                                text = "Anant Singh",
+                                                fontSize = 15.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = primaryTextColor,
+                                                letterSpacing = (-0.2).sp
+                                            )
+                                            Box(
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(4.dp))
+                                                    .background(Color(0xFF1F1F1F))
+                                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                                            ) {
+                                                Text(
+                                                    text = "CREATOR",
+                                                    fontSize = 9.sp,
+                                                    fontFamily = FontFamily.Monospace,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color(0xFFA1A1A6)
+                                                )
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.height(2.dp))
+
+                                        Text(
+                                            text = "Lead Architect & Engine Developer",
+                                            fontSize = 12.sp,
+                                            color = secondaryTextColor,
+                                            lineHeight = 16.sp
+                                        )
+                                    }
+                                }
+
+                                HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
+
+                                // GitHub / Source Repository
+                                MinimalRowItem(
                                     drawableRes = R.drawable.ic_github,
-                                    title = "GitHub / Website",
-                                    subtitle = "github.com/VX-ANANT/Velorix-tournaments",
-                                    titleColor = primaryTextColor,
-                                    subtitleColor = secondaryTextColor,
+                                    title = "GitHub Repository",
+                                    subtitle = "VX-ANANT / Velorix-tournaments",
                                     onClick = {
                                         haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                                         openUrl(githubUrl)
@@ -387,12 +346,10 @@ fun AboutScreen(
                                 HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
 
                                 // Instagram
-                                AboutRowItem(
+                                MinimalRowItem(
                                     drawableRes = R.drawable.ic_instagram,
                                     title = "Instagram",
                                     subtitle = "@anant_sgh",
-                                    titleColor = primaryTextColor,
-                                    subtitleColor = secondaryTextColor,
                                     onClick = {
                                         haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                                         openUrl(instagramUrl)
@@ -402,12 +359,10 @@ fun AboutScreen(
                                 HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
 
                                 // X (Twitter)
-                                AboutRowItem(
+                                MinimalRowItem(
                                     drawableRes = R.drawable.ic_x_twitter,
                                     title = "X (Twitter)",
                                     subtitle = "@Anant__sgh",
-                                    titleColor = primaryTextColor,
-                                    subtitleColor = secondaryTextColor,
                                     onClick = {
                                         haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                                         openUrl(twitterUrl)
@@ -418,40 +373,130 @@ fun AboutScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(28.dp))
+                Spacer(modifier = Modifier.height(24.dp))
             }
 
-            // 4. SUPPORT SECTION
+            // 3. STATUTORY COMPLIANCE & LEGAL JURISPRUDENCE (CLEAN FULL-PAGE ACCESS)
             item {
                 AnimatedVisibility(
                     visible = isVisible,
-                    enter = fadeIn(animationSpec = tween(450, delayMillis = 200)) +
-                        slideInVertically(animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow), initialOffsetY = { 50 })
+                    enter = fadeIn(animationSpec = tween(350, delayMillis = 120)) +
+                        slideInVertically(animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow), initialOffsetY = { 25 })
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            text = "SUPPORT",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = sectionHeaderColor,
-                            letterSpacing = 0.8.sp,
-                            modifier = Modifier.padding(bottom = 10.dp)
-                        )
+                        SectionHeader(text = "LEGAL & COMPLIANCE")
 
                         Surface(
-                            shape = RoundedCornerShape(20.dp),
+                            shape = RoundedCornerShape(16.dp),
                             color = cardBg,
                             border = BorderStroke(1.dp, cardBorder),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.fillMaxWidth()) {
-                                // Patreon
-                                AboutRowItem(
+                                MinimalRowItem(
+                                    drawableRes = R.drawable.ic_legal_gavel,
+                                    title = "Terms of Service",
+                                    subtitle = "Game of Skill Covenant & Participation Rules",
+                                    hasArrow = true,
+                                    onClick = {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                        onNavigateToLegal(LegalTab.TERMS)
+                                    }
+                                )
+
+                                HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
+
+                                MinimalRowItem(
+                                    drawableRes = R.drawable.ic_untitledui_shield_tick,
+                                    title = "Data Sovereignty & Privacy",
+                                    subtitle = "DPDP Act 2023 Compliance & Zero Telemetry Sharing",
+                                    hasArrow = true,
+                                    onClick = {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                        onNavigateToLegal(LegalTab.PRIVACY)
+                                    }
+                                )
+
+                                HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
+
+                                MinimalRowItem(
+                                    drawableRes = R.drawable.ic_fair_play_swords,
+                                    title = "Sentinel Anti-Cheat Protocol",
+                                    subtitle = "Competitive Parity, Emulators & Zero-Tolerance Policy",
+                                    hasArrow = true,
+                                    onClick = {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                        onNavigateToLegal(LegalTab.FAIR_PLAY)
+                                    }
+                                )
+
+                                HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
+
+                                MinimalRowItem(
+                                    drawableRes = R.drawable.ic_refund_receipt,
+                                    title = "Escrow & Payout Arbitration",
+                                    subtitle = "Wallet Escrow, Instant UPI Liquidation & Tax Deductions",
+                                    hasArrow = true,
+                                    onClick = {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                        onNavigateToLegal(LegalTab.REFUNDS)
+                                    }
+                                )
+
+                                HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
+
+                                MinimalRowItem(
+                                    drawableRes = R.drawable.ic_age_18_badge,
+                                    title = "Operative Welfare & 18+ Gate",
+                                    subtitle = "Mandatory 18+ Age Gating & National Helplines",
+                                    hasArrow = true,
+                                    onClick = {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                        onNavigateToLegal(LegalTab.RESPONSIBLE)
+                                    }
+                                )
+
+                                HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
+
+                                MinimalRowItem(
+                                    drawableRes = R.drawable.ic_untitledui_shield,
+                                    title = "Statutory Jurisprudence",
+                                    subtitle = "PROG Act 2025, MeitY PROG Rules 2026 & OGAI",
+                                    hasArrow = true,
+                                    onClick = {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                        onNavigateToLegal(LegalTab.LEGAL_STATUS)
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+
+            // 4. SUPPORT & APPRECIATION
+            item {
+                AnimatedVisibility(
+                    visible = isVisible,
+                    enter = fadeIn(animationSpec = tween(350, delayMillis = 180)) +
+                        slideInVertically(animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow), initialOffsetY = { 30 })
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        SectionHeader(text = "SUPPORT & DONATE")
+
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = cardBg,
+                            border = BorderStroke(1.dp, cardBorder),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                MinimalRowItem(
                                     drawableRes = R.drawable.ic_patreon,
                                     title = "Patreon",
                                     subtitle = "patreon.com/Anant_sgh",
-                                    titleColor = primaryTextColor,
-                                    subtitleColor = secondaryTextColor,
                                     onClick = {
                                         haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                                         openUrl(patreonUrl)
@@ -460,13 +505,10 @@ fun AboutScreen(
 
                                 HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
 
-                                // UPI
-                                AboutRowItem(
+                                MinimalRowItem(
                                     drawableRes = R.drawable.ic_upi_logo,
-                                    title = "UPI",
-                                    subtitle = "veloxyra.anant@fam",
-                                    titleColor = primaryTextColor,
-                                    subtitleColor = secondaryTextColor,
+                                    title = "UPI Direct",
+                                    subtitle = upiId,
                                     iconTint = null,
                                     onClick = {
                                         haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
@@ -479,153 +521,33 @@ fun AboutScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(28.dp))
+                Spacer(modifier = Modifier.height(24.dp))
             }
 
-            // 5. COMMUNITY SECTION
+            // 5. COMMUNITY
             item {
                 AnimatedVisibility(
                     visible = isVisible,
-                    enter = fadeIn(animationSpec = tween(450, delayMillis = 260)) +
-                        slideInVertically(animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow), initialOffsetY = { 60 })
+                    enter = fadeIn(animationSpec = tween(350, delayMillis = 240)) +
+                        slideInVertically(animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow), initialOffsetY = { 35 })
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            text = "COMMUNITY",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = sectionHeaderColor,
-                            letterSpacing = 0.8.sp,
-                            modifier = Modifier.padding(bottom = 10.dp)
-                        )
+                        SectionHeader(text = "COMMUNITY")
 
                         Surface(
-                            shape = RoundedCornerShape(20.dp),
+                            shape = RoundedCornerShape(16.dp),
                             color = cardBg,
                             border = BorderStroke(1.dp, cardBorder),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.fillMaxWidth()) {
-                                // Discord
-                                AboutRowItem(
+                                MinimalRowItem(
                                     drawableRes = R.drawable.ic_discord,
-                                    title = "Discord",
+                                    title = "Discord Community",
                                     subtitle = "discord.gg/ghxrpQAAC2",
-                                    titleColor = primaryTextColor,
-                                    subtitleColor = secondaryTextColor,
                                     onClick = {
                                         haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                                         openUrl(discordUrl)
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(28.dp))
-            }
-
-            // 6. SOVEREIGN LEGAL FORTRESS & STATUTORY CITADEL
-            item {
-                AnimatedVisibility(
-                    visible = isVisible,
-                    enter = fadeIn(animationSpec = tween(450, delayMillis = 300)) +
-                        slideInVertically(animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow), initialOffsetY = { 60 })
-                ) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            text = "SOVEREIGN LEGAL FORTRESS & STATUTORY CITADEL",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Black,
-                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                            color = Color(0xFF38BDF8),
-                            letterSpacing = 1.sp,
-                            modifier = Modifier.padding(bottom = 10.dp)
-                        )
-
-                        Surface(
-                            shape = RoundedCornerShape(20.dp),
-                            color = cardBg,
-                            border = BorderStroke(1.dp, Color(0xFF1E2638)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(modifier = Modifier.fillMaxWidth()) {
-                                // Terms of Service
-                                AboutRowItem(
-                                    drawableRes = R.drawable.ic_legal_gavel,
-                                    title = "Terms of Service",
-                                    subtitle = "Constitutional Game of Skill Covenant (Art. 19(1)(g))",
-                                    titleColor = primaryTextColor,
-                                    subtitleColor = secondaryTextColor,
-                                    onClick = {
-                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                        selectedLegalTab = LegalTab.TERMS
-                                        showLegalModal = true
-                                    }
-                                )
-
-                                HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
-
-                                // Privacy Policy
-                                AboutRowItem(
-                                    drawableRes = R.drawable.ic_untitledui_shield_tick,
-                                    title = "Data Sovereignty & Privacy",
-                                    subtitle = "DPDP Act 2023 & Zero-Telemetry Commercialization",
-                                    titleColor = primaryTextColor,
-                                    subtitleColor = secondaryTextColor,
-                                    onClick = {
-                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                        selectedLegalTab = LegalTab.PRIVACY
-                                        showLegalModal = true
-                                    }
-                                )
-
-                                HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
-
-                                // Fair Play Policy
-                                AboutRowItem(
-                                    drawableRes = R.drawable.ic_fair_play_swords,
-                                    title = "Sentinel Anti-Cheat Protocol",
-                                    subtitle = "Autonomous Forensic Bot & Zero-Tolerance Hardware Purge",
-                                    titleColor = primaryTextColor,
-                                    subtitleColor = secondaryTextColor,
-                                    onClick = {
-                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                        selectedLegalTab = LegalTab.FAIR_PLAY
-                                        showLegalModal = true
-                                    }
-                                )
-
-                                HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
-
-                                // Escrow & Liquidation
-                                AboutRowItem(
-                                    drawableRes = R.drawable.ic_refund_receipt,
-                                    title = "Escrow & Liquidation Arbitration",
-                                    subtitle = "Deterministic Smart Escrow & Instant UPI Liquidation",
-                                    titleColor = primaryTextColor,
-                                    subtitleColor = secondaryTextColor,
-                                    onClick = {
-                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                        selectedLegalTab = LegalTab.REFUNDS
-                                        showLegalModal = true
-                                    }
-                                )
-
-                                HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
-
-                                // Responsible Gaming
-                                AboutRowItem(
-                                    drawableRes = R.drawable.ic_age_18_badge,
-                                    title = "Operative Welfare & 18+ Gate",
-                                    subtitle = "Circuit-Breaker Limits & National Helpline Protocols",
-                                    titleColor = primaryTextColor,
-                                    subtitleColor = secondaryTextColor,
-                                    onClick = {
-                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                        selectedLegalTab = LegalTab.RESPONSIBLE
-                                        showLegalModal = true
                                     }
                                 )
                             }
@@ -638,14 +560,7 @@ fun AboutScreen(
         }
     }
 
-    if (showLegalModal) {
-        LegalComplianceModal(
-            initialTab = selectedLegalTab,
-            onDismissRequest = { showLegalModal = false }
-        )
-    }
-
-    // UPI QR & Pay Dialog when tapping UPI row
+    // UPI QR Dialog
     if (showUpiQrDialog) {
         UpiSupportModal(
             upiId = upiId,
@@ -666,69 +581,87 @@ fun AboutScreen(
     }
 }
 
+// ---------------- REUSABLE MINIMALIST COMPONENTS ----------------
+
 @Composable
-private fun AboutRowItem(
+private fun SectionHeader(text: String) {
+    Text(
+        text = text,
+        fontSize = 11.sp,
+        fontWeight = FontWeight.Bold,
+        fontFamily = FontFamily.Monospace,
+        color = Color(0xFF737373),
+        letterSpacing = 0.8.sp,
+        modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
+    )
+}
+
+@Composable
+private fun MinimalRowItem(
     title: String,
     subtitle: String,
-    titleColor: Color,
-    subtitleColor: Color,
     onClick: () -> Unit,
-    vectorIcon: ImageVector? = null,
     drawableRes: Int? = null,
-    iconTint: Color? = titleColor
+    iconTint: Color? = Color(0xFFEDEDED),
+    hasArrow: Boolean = false
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 18.dp, vertical = 16.dp),
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier.size(28.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            if (vectorIcon != null) {
-                Icon(
-                    imageVector = vectorIcon,
-                    contentDescription = title,
-                    tint = titleColor,
-                    modifier = Modifier.size(22.dp)
-                )
-            } else if (drawableRes != null) {
+        if (drawableRes != null) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFF141414)),
+                contentAlignment = Alignment.Center
+            ) {
                 if (iconTint != null) {
                     Icon(
                         painter = painterResource(drawableRes),
                         contentDescription = title,
                         tint = iconTint,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(18.dp)
                     )
                 } else {
                     Image(
                         painter = painterResource(drawableRes),
                         contentDescription = title,
-                        modifier = Modifier.size(26.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
+            Spacer(modifier = Modifier.width(14.dp))
         }
-
-        Spacer(modifier = Modifier.width(18.dp))
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                fontSize = 15.sp,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = titleColor
+                color = Color(0xFFEDEDED),
+                letterSpacing = (-0.2).sp
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = subtitle,
-                fontSize = 13.sp,
-                color = subtitleColor,
+                fontSize = 12.sp,
+                color = Color(0xFF8A8A8A),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        if (hasArrow) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                contentDescription = null,
+                tint = Color(0xFF444444),
+                modifier = Modifier.size(12.dp)
             )
         }
     }
@@ -743,7 +676,6 @@ private fun UpiSupportModal(
 ) {
     val context = LocalContext.current
     var qrBitmap by remember { mutableStateOf<Bitmap?>(null) }
-
     val upiUriString = "upi://pay?pa=$upiId&pn=${Uri.encode("VX-ANANT (VeloRix)")}&tn=${Uri.encode("Support VeloRix Dev")}&cu=INR"
 
     LaunchedEffect(upiUriString) {
@@ -764,21 +696,21 @@ private fun UpiSupportModal(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF0E0E12),
-        shape = RoundedCornerShape(24.dp),
+        containerColor = Color(0xFF0A0A0A),
+        shape = RoundedCornerShape(20.dp),
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Image(
                     painter = painterResource(R.drawable.ic_upi_logo),
                     contentDescription = "UPI",
-                    modifier = Modifier.size(28.dp)
+                    modifier = Modifier.size(24.dp)
                 )
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(10.dp))
                 Text(
                     text = "UPI Support",
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFFFFFFFF),
-                    fontSize = 18.sp
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFFEDEDED),
+                    fontSize = 17.sp
                 )
             }
         },
@@ -789,20 +721,21 @@ private fun UpiSupportModal(
             ) {
                 Text(
                     text = upiId,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    color = Color(0xFFE5E5EA)
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 15.sp,
+                    fontFamily = FontFamily.Monospace,
+                    color = Color(0xFFFFFFFF)
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 qrBitmap?.let { bmp ->
                     Box(
                         modifier = Modifier
-                            .size(190.dp)
-                            .clip(RoundedCornerShape(16.dp))
+                            .size(180.dp)
+                            .clip(RoundedCornerShape(12.dp))
                             .background(Color.White)
-                            .padding(10.dp),
+                            .padding(8.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Image(
@@ -814,21 +747,21 @@ private fun UpiSupportModal(
                 } ?: run {
                     Box(
                         modifier = Modifier
-                            .size(190.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Color(0xFF16161A)),
+                            .size(180.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFF141414)),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(32.dp))
+                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(28.dp))
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = "Scan with any UPI app (GPay, PhonePe, Paytm)",
+                    text = "Scan with any UPI application",
                     fontSize = 12.sp,
-                    color = Color(0xFFA1A1A6),
+                    color = Color(0xFF737373),
                     textAlign = TextAlign.Center
                 )
             }
@@ -837,17 +770,17 @@ private fun UpiSupportModal(
             Button(
                 onClick = onPayViaApp,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFFFFFFF),
+                    containerColor = Color(0xFFEDEDED),
                     contentColor = Color(0xFF000000)
                 ),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(8.dp)
             ) {
-                Text("Open UPI App", fontWeight = FontWeight.Bold)
+                Text("Open UPI App", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
             }
         },
         dismissButton = {
             TextButton(onClick = onCopy) {
-                Text("Copy UPI", color = Color(0xFFFFFFFF), fontWeight = FontWeight.SemiBold)
+                Text("Copy UPI ID", color = Color(0xFFEDEDED), fontWeight = FontWeight.Medium, fontSize = 13.sp)
             }
         }
     )

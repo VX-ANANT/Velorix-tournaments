@@ -698,11 +698,14 @@ class MainActivity : ComponentActivity() {
                             },
                             onOpenAdminSituations = {
                                 showAdminSituationSheet = true
+                            },
+                            onNavigateToLegal = { tab ->
+                                navController.navigate("legal_compliance/${tab.name}")
                             }
                         )
                     }
 
-                    // 7. DEDICATED ABOUT SCREEN (EXACT REFERENCE FORMAT)
+                    // 7. DEDICATED ABOUT SCREEN (MINIMAL XIAOMI & VERCEL STYLE)
                     composable(
                         "about",
                         enterTransition = {
@@ -731,6 +734,51 @@ class MainActivity : ComponentActivity() {
                         }
                     ) {
                         com.example.ui.screens.AboutScreen(
+                            onNavigateBack = {
+                                navController.navigateUp()
+                            },
+                            onNavigateToLegal = { tab ->
+                                navController.navigate("legal_compliance/${tab.name}")
+                            }
+                        )
+                    }
+
+                    // 8. DEDICATED LEGAL & COMPLIANCE PAGE (FULL-PAGE MINIMALIST ARCHITECTURE)
+                    composable(
+                        "legal_compliance/{tabName}",
+                        enterTransition = {
+                            slideIntoContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                                animationSpec = tween(350, easing = FastOutSlowInEasing)
+                            ) + fadeIn(tween(300))
+                        },
+                        exitTransition = {
+                            slideOutOfContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                                animationSpec = tween(300, easing = FastOutSlowInEasing)
+                            ) + fadeOut(tween(250))
+                        },
+                        popEnterTransition = {
+                            slideIntoContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                                animationSpec = tween(350, easing = FastOutSlowInEasing)
+                            ) + fadeIn(tween(300))
+                        },
+                        popExitTransition = {
+                            slideOutOfContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                                animationSpec = tween(300, easing = FastOutSlowInEasing)
+                            ) + fadeOut(tween(250))
+                        }
+                    ) { backStackEntry ->
+                        val tabName = backStackEntry.arguments?.getString("tabName") ?: "TERMS"
+                        val initialTab = try {
+                            com.example.ui.components.LegalTab.valueOf(tabName)
+                        } catch (_: Exception) {
+                            com.example.ui.components.LegalTab.TERMS
+                        }
+                        com.example.ui.screens.LegalComplianceScreen(
+                            initialTab = initialTab,
                             onNavigateBack = {
                                 navController.navigateUp()
                             }

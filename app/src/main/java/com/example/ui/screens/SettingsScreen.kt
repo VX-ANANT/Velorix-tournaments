@@ -73,7 +73,8 @@ fun SettingsScreen(
     viewModel: PlatformViewModel,
     onNavigateBack: () -> Unit,
     onNavigateToSupport: () -> Unit,
-    onOpenAdminSituations: () -> Unit
+    onOpenAdminSituations: () -> Unit,
+    onNavigateToLegal: (LegalTab) -> Unit = {}
 ) {
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
@@ -93,8 +94,6 @@ fun SettingsScreen(
 
     var showDeveloperModal by remember { mutableStateOf(false) }
     var showQrCode by remember { mutableStateOf(false) }
-    var showLegalModal by remember { mutableStateOf(false) }
-    var selectedLegalTab by remember { mutableStateOf(LegalTab.TERMS) }
 
     // Dynamic QR generation for UPI support
     val qrBgColor = (if (isDarkTheme) Color(0xFF0D1117) else Color(0xFFF6F8FA)).toArgb()
@@ -776,8 +775,7 @@ fun SettingsScreen(
                             subtitle = "Constitutional Game of Skill Covenant & Art. 19(1)(g) safe harbor",
                             iconTint = Color(0xFF38BDF8),
                             onClick = {
-                                selectedLegalTab = LegalTab.TERMS
-                                showLegalModal = true
+                                onNavigateToLegal(LegalTab.TERMS)
                             }
                         )
 
@@ -789,8 +787,7 @@ fun SettingsScreen(
                             subtitle = "DPDP Act 2023, IT Act 2000 & zero marketing telemetry guarantee",
                             iconTint = Color(0xFF10B981),
                             onClick = {
-                                selectedLegalTab = LegalTab.PRIVACY
-                                showLegalModal = true
+                                onNavigateToLegal(LegalTab.PRIVACY)
                             }
                         )
 
@@ -802,8 +799,7 @@ fun SettingsScreen(
                             subtitle = "Autonomous Forensic Bot & Zero-Tolerance Hardware Blacklisting",
                             iconTint = Color(0xFFEF4444),
                             onClick = {
-                                selectedLegalTab = LegalTab.FAIR_PLAY
-                                showLegalModal = true
+                                onNavigateToLegal(LegalTab.FAIR_PLAY)
                             }
                         )
 
@@ -815,8 +811,7 @@ fun SettingsScreen(
                             subtitle = "Deterministic wallet escrow & instant UPI rail reconciliation",
                             iconTint = Color(0xFFF59E0B),
                             onClick = {
-                                selectedLegalTab = LegalTab.REFUNDS
-                                showLegalModal = true
+                                onNavigateToLegal(LegalTab.REFUNDS)
                             }
                         )
 
@@ -828,8 +823,7 @@ fun SettingsScreen(
                             subtitle = "Player welfare, circuit-breaker freeze & national helpline resources",
                             iconTint = Color(0xFFA855F7),
                             onClick = {
-                                selectedLegalTab = LegalTab.RESPONSIBLE
-                                showLegalModal = true
+                                onNavigateToLegal(LegalTab.RESPONSIBLE)
                             }
                         )
 
@@ -841,8 +835,7 @@ fun SettingsScreen(
                             subtitle = "PROG Act 2025, MeitY PROG Rules 2026 & Esports Skill Classification",
                             iconTint = Color(0xFF06B6D4),
                             onClick = {
-                                selectedLegalTab = LegalTab.LEGAL_STATUS
-                                showLegalModal = true
+                                onNavigateToLegal(LegalTab.LEGAL_STATUS)
                             }
                         )
                     }
@@ -851,13 +844,6 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(32.dp))
             }
         }
-    }
-
-    if (showLegalModal) {
-        LegalComplianceModal(
-            initialTab = selectedLegalTab,
-            onDismissRequest = { showLegalModal = false }
-        )
     }
 
     if (showDeveloperModal) {

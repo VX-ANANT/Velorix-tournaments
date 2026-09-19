@@ -1,7 +1,6 @@
 package com.example.ui.components
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -13,24 +12,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Gavel
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -46,6 +38,14 @@ enum class LegalTab(val title: String, val tag: String, val iconRes: Int) {
     LEGAL_STATUS("Skill Jurisprudence", "SUPREME COURT", R.drawable.ic_untitledui_shield)
 }
 
+/**
+ * LegalComplianceModal.kt
+ *
+ * Refined modal design with clean minimalist Vercel & Xiaomi aesthetic:
+ * - Obsidian black palette (#000000 / #0A0A0A)
+ * - Minimalist pill navigation tabs
+ * - Clean typographic hierarchy, generous negative space, no cheesy/cluttered borders
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LegalComplianceModal(
@@ -63,250 +63,172 @@ fun LegalComplianceModal(
         Surface(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 8.dp, vertical = 16.dp),
-            shape = RoundedCornerShape(26.dp),
-            color = Color(0xFF08090C),
-            border = BorderStroke(1.5.dp, Color(0xFF1E2433)),
-            tonalElevation = 16.dp
+                .padding(horizontal = 12.dp, vertical = 20.dp),
+            shape = RoundedCornerShape(24.dp),
+            color = Color(0xFF000000),
+            border = BorderStroke(1.dp, Color(0xFF1E1E1E)),
+            tonalElevation = 12.dp
         ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                // Background Cyber Scanline Laser Overlay
-                CyberScanlineOverlay(
-                    modifier = Modifier.fillMaxSize(),
-                    lineColor = Color(0xFF38BDF8).copy(alpha = 0.04f),
-                    glowColor = Color(0xFF00E5FF).copy(alpha = 0.08f)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = 16.dp)
+            ) {
+                // Header Bar - Clean & Professional
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "Legal & Compliance",
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFFEDEDED),
+                            letterSpacing = (-0.3).sp
+                        )
+                        Text(
+                            text = "PROG Act 2025 • MeitY 2026 • DPDP 2023",
+                            fontSize = 11.sp,
+                            color = Color(0xFF888888)
+                        )
+                    }
+
+                    IconButton(
+                        onClick = {
+                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                            onDismissRequest()
+                        },
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF141414))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close",
+                            tint = Color(0xFFEDEDED),
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Interactive Horizontal Tabs - Clean Vercel / Xiaomi style
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(tabScrollState)
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    LegalTab.values().forEach { tab ->
+                        val isSelected = tab == selectedTab
+                        val pillBg = if (isSelected) Color(0xFFFFFFFF) else Color(0xFF0D0D0D)
+                        val pillTextColor = if (isSelected) Color(0xFF000000) else Color(0xFF888888)
+                        val pillBorder = if (isSelected) Color(0xFFFFFFFF) else Color(0xFF1F1F1F)
+
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = pillBg,
+                            border = BorderStroke(1.dp, pillBorder),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .clickable {
+                                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                    selectedTab = tab
+                                }
+                        ) {
+                            Text(
+                                text = tab.title,
+                                fontSize = 12.sp,
+                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                color = pillTextColor,
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
+                            )
+                        }
+                    }
+                }
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(top = 12.dp),
+                    color = Color(0xFF1A1A1A),
+                    thickness = 0.8.dp
                 )
 
-                // Corner Reticle Targeting Brackets
-                TacticalReticleFrame(
+                // Tab Content Body
+                Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(4.dp),
-                    cornerLength = 18.dp,
-                    strokeWidth = 2.dp,
-                    accentColor = Color(0xFF00E5FF).copy(alpha = 0.6f)
+                        .weight(1f)
+                        .fillMaxWidth()
                 ) {
+                    val contentScrollState = rememberScrollState()
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(top = 16.dp)
+                            .verticalScroll(contentScrollState)
+                            .padding(20.dp)
                     ) {
-                        // Header Bar
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(44.dp)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(
-                                            Brush.linearGradient(
-                                                listOf(Color(0xFF1E293B), Color(0xFF0F172A))
-                                            )
-                                        )
-                                        .border(1.dp, Color(0xFF38BDF8).copy(alpha = 0.4f), RoundedCornerShape(12.dp)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        painter = painterResource(id = R.drawable.ic_untitledui_shield_tick),
-                                        contentDescription = "Verified Sentry",
-                                        tint = Color(0xFF38BDF8),
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column {
-                                    Text(
-                                        text = "VELORIX CITADEL JURISDICTION",
-                                        fontSize = 15.sp,
-                                        fontWeight = FontWeight.Black,
-                                        fontFamily = FontFamily.Monospace,
-                                        color = Color.White,
-                                        letterSpacing = 1.sp
-                                    )
-                                    Text(
-                                        text = "SOVEREIGN ESPORTS KERNEL // DPDP & STATUTORY SENTRY",
-                                        fontSize = 9.sp,
-                                        fontFamily = FontFamily.Monospace,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF38BDF8)
-                                    )
-                                }
-                            }
+                        when (selectedTab) {
+                            LegalTab.TERMS -> TermsContent()
+                            LegalTab.PRIVACY -> PrivacyContent()
+                            LegalTab.FAIR_PLAY -> FairPlayContent()
+                            LegalTab.REFUNDS -> RefundsContent()
+                            LegalTab.RESPONSIBLE -> ResponsibleContent()
+                            LegalTab.LEGAL_STATUS -> LegalStatusContent()
+                        }
+                    }
+                }
 
-                            IconButton(
-                                onClick = {
-                                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                    onDismissRequest()
-                                },
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFF161A24))
-                                    .border(1.dp, Color(0xFF262D3D), CircleShape)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "Close",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
+                // Bottom Affirmation Footer - Minimalist
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color(0xFF070707),
+                    border = BorderStroke(1.dp, Color(0xFF1A1A1A))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "JURISDICTION: REPUBLIC OF INDIA",
+                                fontSize = 10.sp,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF737373)
+                            )
+                            Text(
+                                text = "Grievance: anantisback47@gmail.com",
+                                fontSize = 11.sp,
+                                color = Color(0xFF999999)
+                            )
                         }
 
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        // Telemetry Ribbon
-                        TacticalTelemetryRibbon(
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                            systemTag = "STATUTORY-LOCK",
-                            protocolCode = "ARTICLE-19-1-G",
-                            statusText = "CRYPTOGRAPHIC QUORUM",
-                            accentColor = Color(0xFF10B981)
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // Interactive Horizontal Tabs with Tactical Cyber Badges
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(tabScrollState)
-                                .padding(horizontal = 14.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        Button(
+                            onClick = {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                onDismissRequest()
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFEDEDED),
+                                contentColor = Color(0xFF000000)
+                            ),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                         ) {
-                            LegalTab.values().forEach { tab ->
-                                val isSelected = tab == selectedTab
-                                Surface(
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = if (isSelected) Color(0xFF1E293B) else Color(0xFF0F121A),
-                                    border = BorderStroke(
-                                        1.dp,
-                                        if (isSelected) Color(0xFF38BDF8) else Color(0xFF1E2433)
-                                    ),
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .clickable {
-                                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                            selectedTab = tab
-                                        }
-                                ) {
-                                    Column(
-                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
-                                    ) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(
-                                                painter = painterResource(id = tab.iconRes),
-                                                contentDescription = tab.title,
-                                                tint = if (isSelected) Color(0xFF38BDF8) else Color(0xFF64748B),
-                                                modifier = Modifier.size(15.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                            Text(
-                                                text = tab.title,
-                                                fontSize = 11.sp,
-                                                fontWeight = if (isSelected) FontWeight.Black else FontWeight.SemiBold,
-                                                color = if (isSelected) Color.White else Color(0xFF94A3B8)
-                                            )
-                                        }
-                                        Text(
-                                            text = tab.tag,
-                                            fontSize = 8.sp,
-                                            fontFamily = FontFamily.Monospace,
-                                            fontWeight = FontWeight.Bold,
-                                            color = if (isSelected) Color(0xFF00E5FF) else Color(0xFF475569),
-                                            modifier = Modifier.padding(start = 21.dp, top = 2.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        HorizontalDivider(
-                            modifier = Modifier.padding(top = 12.dp),
-                            color = Color(0xFF1E2433),
-                            thickness = 1.dp
-                        )
-
-                        // Tab Content Body
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth()
-                        ) {
-                            val contentScrollState = rememberScrollState()
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .verticalScroll(contentScrollState)
-                                    .padding(16.dp)
-                            ) {
-                                when (selectedTab) {
-                                    LegalTab.TERMS -> TermsContent()
-                                    LegalTab.PRIVACY -> PrivacyContent()
-                                    LegalTab.FAIR_PLAY -> FairPlayContent()
-                                    LegalTab.REFUNDS -> RefundsContent()
-                                    LegalTab.RESPONSIBLE -> ResponsibleContent()
-                                    LegalTab.LEGAL_STATUS -> LegalStatusContent()
-                                }
-                            }
-                        }
-
-                        // Bottom Tactical Affirmation Footer
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            color = Color(0xFF0B0D13),
-                            tonalElevation = 8.dp,
-                            border = BorderStroke(1.dp, Color(0xFF1E2433))
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "SOVEREIGN REALM: REPUBLIC OF INDIA",
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Black,
-                                        fontFamily = FontFamily.Monospace,
-                                        color = Color(0xFF38BDF8)
-                                    )
-                                    Text(
-                                        text = "GRIEVANCE ARBITER: anantisback47@gmail.com",
-                                        fontSize = 9.sp,
-                                        fontFamily = FontFamily.Monospace,
-                                        color = Color(0xFF64748B)
-                                    )
-                                }
-
-                                Button(
-                                    onClick = {
-                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                        onDismissRequest()
-                                    },
-                                    shape = RoundedCornerShape(10.dp),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color(0xFF0284C7),
-                                        contentColor = Color.White
-                                    ),
-                                    contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp)
-                                ) {
-                                    Text(
-                                        text = "RATIFY & PROCEED",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Black,
-                                        letterSpacing = 0.8.sp
-                                    )
-                                }
-                            }
+                            Text(
+                                text = "Dismiss",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
                         }
                     }
                 }
@@ -319,16 +241,16 @@ fun LegalComplianceModal(
 private fun TermsContent() {
     Column {
         LegalHighlightBadge(
-            title = "INDOMITABLE SKILL CITADEL & BINDING JURISPRUDENCE",
-            desc = "By securing tournament telemetry or accessing VeloRix custom rooms, you enter into an unalterable, legally binding covenant ratified under the Indian Contract Act 1872 and Article 19(1)(g) of the Constitution of India."
+            title = "COVENANT OF SKILL & PARTICIPATION",
+            desc = "By participating in VeloRix custom rooms, you enter into a legally binding covenant under the Indian Contract Act 1872 and Article 19(1)(g) of the Constitution of India."
         )
 
         Spacer(modifier = Modifier.height(14.dp))
-        LegalSectionTitle("1. ARCHITECTURAL SCOPE & NEUTRAL ARBITRATION")
-        LegalParagraph("VeloRix functions as an independent, high-velocity electronic sports infrastructure facilitating pure skill competitions for mobile combat games including Garena Free Fire. VeloRix operates under statutory safe harbor and is not affiliated with or endorsed by Garena International.")
+        LegalSectionTitle("1. ARCHITECTURAL SCOPE & SAFE HARBOR")
+        LegalParagraph("VeloRix functions strictly as an electronic sports contest organizer and intermediary infrastructure under Section 79 of the Information Technology Act, 2000. VeloRix provides competitive matchmaking for mobile gaming titles including Garena Free Fire and is not affiliated with or endorsed by Garena International.")
 
         LegalSectionTitle("2. STRICT 18+ AGE GATING & TERRITORIAL CITADEL")
-        LegalParagraph("• Mandatory 18+ Majority under PROG Act 2025 & MeitY Rules 2026: Operatives must certify attainment of 18+ legal majority to engage in entry-fee combat rooms. Minors are restricted to Free Practice Scrims.\n• Geofenced Enactments: In absolute adherence to respective state statutes, cash competitions are strictly prohibited to residents within the state boundaries of Assam, Odisha, Telangana, Nagaland, Andhra Pradesh, and Sikkim. VPN or geolocation spoofing triggers autonomous hardware invalidation.")
+        LegalParagraph("• Mandatory 18+ Majority under PROG Act 2025 & MeitY Rules 2026: Operatives must certify attainment of 18+ legal majority to engage in entry-fee combat rooms. Minors are restricted solely to Free Practice Scrims.\n• Geofenced Enactments: In absolute adherence to respective state statutes, cash competitions are strictly prohibited to residents within Assam, Odisha, Telangana, Nagaland, Andhra Pradesh, and Sikkim. VPN or geolocation spoofing triggers autonomous hardware invalidation.")
 
         LegalSectionTitle("3. ESCROW DISCIPLINE, GST 2025 & PRIZE LIQUIDATION")
         LegalParagraph("• Virtual wallet balances serve exclusively as tournament entry escrow.\n• Prize winnings liquidate solely into verified UPI VPA handles following automated match audit validation.\n• Statutory Tax Withholding (TDS) under Section 194BA of the Indian Income Tax Act (30%) is deducted automatically upon net winnings liquidation in alignment with 2025 GST face-value directives.")
@@ -342,7 +264,7 @@ private fun TermsContent() {
 private fun PrivacyContent() {
     Column {
         LegalHighlightBadge(
-            title = "DEFENSE-GRADE CIPHER SOVEREIGNTY (DPDP ACT 2023)",
+            title = "DATA SOVEREIGNTY (DPDP ACT 2023)",
             desc = "Zero marketing telemetry brokers. Zero external data commercialization. Telemetry acquisition is restricted strictly to competitive integrity audit trails."
         )
 
@@ -362,8 +284,8 @@ private fun PrivacyContent() {
 private fun FairPlayContent() {
     Column {
         LegalHighlightBadge(
-            title = "AUTONOMOUS SENTINEL ENGINE: ZERO-TOLERANCE EXECUTIONS",
-            desc = "Powered by the VeloRix Sentinel Daemon v4.2 and Google Gemini 3.6 Flash neural forensics, match telemetries and scoreboard matrices undergo autonomous sub-atomic verification."
+            title = "SENTINEL ANTI-CHEAT: ZERO-TOLERANCE POLICY",
+            desc = "Powered by automated match telemetries and scoreboard audits, match telemetries undergo autonomous verification."
         )
 
         Spacer(modifier = Modifier.height(14.dp))
@@ -382,7 +304,7 @@ private fun FairPlayContent() {
 private fun RefundsContent() {
     Column {
         LegalHighlightBadge(
-            title = "DETERMINISTIC ESCROW & INSTANT RECONCILIATION",
+            title = "DETERMINISTIC ESCROW & RECONCILIATION",
             desc = "100% automated refund liquidation upon room cancellation. Non-repudiation and transparent fiscal settlement across UPI rails."
         )
 
@@ -402,7 +324,7 @@ private fun RefundsContent() {
 private fun ResponsibleContent() {
     Column {
         LegalHighlightBadge(
-            title = "OPERATIVE COGNITIVE EQUILIBRIUM PROTOCOL",
+            title = "OPERATIVE WELFARE & RESPONSIBLE GAMING",
             desc = "Esports is a high-intensity kinetic and tactical discipline. It is strictly not a primary livelihood, financial derivative, or speculative instrument."
         )
 
@@ -422,7 +344,7 @@ private fun ResponsibleContent() {
 private fun LegalStatusContent() {
     Column {
         LegalHighlightBadge(
-            title = "PROG ACT 2025 & MEITY RULES 2026 COMPLIANCE CITADEL",
+            title = "PROG ACT 2025 & MEITY RULES 2026",
             desc = "VeloRix operates under the Promotion and Regulation of Online Gaming Act, 2025 and PROG Rules, 2026 (MeitY) as a Permissible Skill-Based Electronic Sports Platform, distinct from prohibited online wagering."
         )
 
@@ -437,48 +359,34 @@ private fun LegalStatusContent() {
         LegalParagraph("The Supreme Court of India in State of Bombay v. R.M.D. Chamarbaugwala (1957) and Dr. K.R. Lakshmanan (1996) established that pure skill competitions are constitutionally protected under Article 19(1)(g). Section 12 of the Public Gambling Act, 1867 definitively excludes games of mere skill.")
 
         LegalSectionTitle("4. INTERMEDIARY SAFE HARBOR CITADEL (SECTION 79)")
-        LegalParagraph("VeloRix functions strictly as an electronic sports intermediary under Section 79 of the Information Technology Act 2000, adhering fully to MeitY Intermediary Rules, DPDP 2023/2025 rules, and CBDT Section 194BA TDS statutory deductions.")
+        LegalParagraph("VeloRix functions strictly as an electronic sports intermediary under Section 79 of the Information Technology Act 2000, adhering fully to MeitY Intermediary Rules, DPDP 2023 rules, and CBDT Section 194BA TDS statutory deductions.")
     }
 }
 
 @Composable
 private fun LegalHighlightBadge(title: String, desc: String) {
     Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = Color(0xFF0F172A),
-        border = BorderStroke(1.dp, Color(0xFF0284C7).copy(alpha = 0.5f)),
+        shape = RoundedCornerShape(10.dp),
+        color = Color(0xFF0F0F0F),
+        border = BorderStroke(1.dp, Color(0xFF222222)),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
-            modifier = Modifier.padding(14.dp),
-            verticalAlignment = Alignment.Top
-        ) {
-            Icon(
-                imageVector = Icons.Default.CheckCircle,
-                contentDescription = null,
-                tint = Color(0xFF38BDF8),
-                modifier = Modifier
-                    .size(20.dp)
-                    .padding(top = 2.dp)
+        Column(modifier = Modifier.padding(14.dp)) {
+            Text(
+                text = title,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace,
+                letterSpacing = 0.5.sp,
+                color = Color(0xFFEDEDED)
             )
-            Spacer(modifier = Modifier.width(12.dp))
-            Column {
-                Text(
-                    text = title,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Black,
-                    fontFamily = FontFamily.Monospace,
-                    letterSpacing = 0.6.sp,
-                    color = Color.White
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = desc,
-                    fontSize = 11.sp,
-                    color = Color(0xFFCBD5E1),
-                    lineHeight = 16.sp
-                )
-            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = desc,
+                fontSize = 12.sp,
+                color = Color(0xFF888888),
+                lineHeight = 17.sp
+            )
         }
     }
 }
@@ -489,10 +397,10 @@ private fun LegalSectionTitle(title: String) {
     Text(
         text = title,
         fontSize = 12.sp,
-        fontWeight = FontWeight.Black,
+        fontWeight = FontWeight.SemiBold,
         fontFamily = FontFamily.Monospace,
-        color = Color(0xFF38BDF8),
-        letterSpacing = 0.8.sp
+        color = Color(0xFFEDEDED),
+        letterSpacing = 0.5.sp
     )
     Spacer(modifier = Modifier.height(4.dp))
 }
@@ -501,9 +409,9 @@ private fun LegalSectionTitle(title: String) {
 private fun LegalParagraph(text: String) {
     Text(
         text = text,
-        fontSize = 11.sp,
+        fontSize = 12.sp,
         fontWeight = FontWeight.Normal,
-        color = Color(0xFFE2E8F0),
-        lineHeight = 17.sp
+        color = Color(0xFFA1A1A6),
+        lineHeight = 18.sp
     )
 }
