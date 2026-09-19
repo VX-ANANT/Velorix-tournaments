@@ -371,11 +371,12 @@ fun AboutScreen(
 
                         // UPI
                         AboutRowItem(
-                            drawableRes = R.drawable.ic_bhim_upi,
+                            drawableRes = R.drawable.ic_upi_logo,
                             title = "UPI",
                             subtitle = "veloxyra.anant@fam",
                             titleColor = primaryTextColor,
                             subtitleColor = secondaryTextColor,
+                            iconTint = null,
                             onClick = {
                                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                                 copyToClipboard(upiId, "UPI ID")
@@ -459,7 +460,8 @@ private fun AboutRowItem(
     subtitleColor: Color,
     onClick: () -> Unit,
     vectorIcon: ImageVector? = null,
-    drawableRes: Int? = null
+    drawableRes: Int? = null,
+    iconTint: Color? = titleColor
 ) {
     Row(
         modifier = Modifier
@@ -480,12 +482,20 @@ private fun AboutRowItem(
                     modifier = Modifier.size(22.dp)
                 )
             } else if (drawableRes != null) {
-                Icon(
-                    painter = painterResource(drawableRes),
-                    contentDescription = title,
-                    tint = titleColor,
-                    modifier = Modifier.size(22.dp)
-                )
+                if (iconTint != null) {
+                    Icon(
+                        painter = painterResource(drawableRes),
+                        contentDescription = title,
+                        tint = iconTint,
+                        modifier = Modifier.size(22.dp)
+                    )
+                } else {
+                    Image(
+                        painter = painterResource(drawableRes),
+                        contentDescription = title,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
             }
         }
 
@@ -544,11 +554,10 @@ private fun UpiSupportModal(
         shape = RoundedCornerShape(24.dp),
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_bhim_upi),
+                Image(
+                    painter = painterResource(R.drawable.ic_upi_logo),
                     contentDescription = "UPI",
-                    tint = Color(0xFFF0ECEC),
-                    modifier = Modifier.size(26.dp)
+                    modifier = Modifier.size(28.dp)
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(

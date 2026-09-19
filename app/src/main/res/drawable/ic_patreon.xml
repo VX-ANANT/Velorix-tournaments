@@ -1,13 +1,9 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="24.0"
-    android:viewportHeight="24.0">
-    <!-- Patreon vector (vertical bar and circle) -->
+    android:viewportWidth="32"
+    android:viewportHeight="32">
     <path
-        android:pathData="M4.5,3.5h3.2v17H4.5z"
-        android:fillColor="#FFFFFFFF" />
-    <path
-        android:pathData="M15,3.5a6,6 0 1,0 0,12 6,6 0 0,0 0,-12z"
+        android:pathData="M20.23,1.604c-0.008,-0 -0.017,-0 -0.027,-0 -5.961,0 -10.793,4.832 -10.793,10.793s4.832,10.793 10.793,10.793c5.955,0 10.783,-4.822 10.793,-10.775v-0.001c-0.004,-5.953 -4.816,-10.781 -10.763,-10.809h-0.003zM1.004,1.604v28.792h5.274v-28.792z"
         android:fillColor="#FFFFFFFF" />
 </vector>

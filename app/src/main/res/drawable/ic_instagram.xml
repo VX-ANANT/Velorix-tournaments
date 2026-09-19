@@ -1,25 +1,15 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="24.0"
-    android:viewportHeight="24.0">
-    <!-- Instagram outline vector -->
+    android:viewportWidth="32"
+    android:viewportHeight="32">
     <path
-        android:pathData="M7,2h10a5,5 0 0,1 5,5v10a5,5 0 0,1 -5,5H7a5,5 0 0,1 -5,-5V7a5,5 0 0,1 5,-5z"
-        android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="1.8"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
+        android:pathData="M22.3,8.4c-0.8,0 -1.4,0.6 -1.4,1.4c0,0.8 0.6,1.4 1.4,1.4c0.8,0 1.4,-0.6 1.4,-1.4C23.7,9 23.1,8.4 22.3,8.4z"
+        android:fillColor="#FFFFFFFF" />
     <path
-        android:pathData="M12,16a4,4 0 1,0 0,-8 4,4 0 0,0 0,8z"
-        android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="1.8"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
+        android:pathData="M16,10.2c-3.3,0 -5.9,2.7 -5.9,5.9s2.7,5.9 5.9,5.9s5.9,-2.7 5.9,-5.9S19.3,10.2 16,10.2z M16,19.9c-2.1,0 -3.8,-1.7 -3.8,-3.8 c0,-2.1 1.7,-3.8 3.8,-3.8c2.1,0 3.8,1.7 3.8,3.8C19.8,18.2 18.1,19.9 16,19.9z"
+        android:fillColor="#FFFFFFFF" />
     <path
-        android:pathData="M17.5,6.5h0.01"
-        android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="2.2"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
+        android:pathData="M20.8,4h-9.5C7.2,4 4,7.2 4,11.2v9.5c0,4 3.2,7.2 7.2,7.2h9.5c4,0 7.2,-3.2 7.2,-7.2v-9.5C28,7.2 24.8,4 20.8,4z M25.7,20.8 c0,2.7 -2.2,5 -5,5h-9.5c-2.7,0 -5,-2.2 -5,-5v-9.5c0,-2.7 2.2,-5 5,-5h9.5c2.7,0 5,2.2 5,5V20.8z"
+        android:fillColor="#FFFFFFFF" />
 </vector>

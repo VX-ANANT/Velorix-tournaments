@@ -217,7 +217,7 @@ fun DeveloperPopupDialog(
                             // Concentric Deep Navy Blue Emblem Frame
                             Box(
                                 modifier = Modifier
-                                    .size(76.dp)
+                                    .size(90.dp)
                                     .clip(CircleShape)
                                     .background(navyLogoOuterRing)
                                     .border(1.5.dp, navyLogoBorder, CircleShape)
@@ -230,7 +230,7 @@ fun DeveloperPopupDialog(
                                     painter = painterResource(R.drawable.velorix_logo_image),
                                     contentDescription = "VeloRix Emblem",
                                     modifier = Modifier
-                                        .size(46.dp)
+                                        .size(62.dp)
                                         .clip(CircleShape)
                                 )
                             }
@@ -381,13 +381,14 @@ fun DeveloperPopupDialog(
                                 HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
 
                                 ProfessionalDialogRow(
-                                    drawableRes = R.drawable.ic_bhim_upi,
+                                    drawableRes = R.drawable.ic_upi_logo,
                                     title = "Direct UPI (India)",
                                     subtitle = upiId,
                                     iconBg = iconSquareBg,
                                     primaryTextColor = primaryTextColor,
                                     secondaryTextColor = secondaryTextColor,
                                     arrowColor = arrowColor,
+                                    iconTint = null,
                                     onClick = {
                                         haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                                         copyToClipboard(upiId, "UPI ID")
@@ -485,7 +486,8 @@ private fun ProfessionalDialogRow(
     arrowColor: Color,
     onClick: () -> Unit,
     vectorIcon: ImageVector? = null,
-    drawableRes: Int? = null
+    drawableRes: Int? = null,
+    iconTint: Color? = primaryTextColor
 ) {
     Row(
         modifier = Modifier
@@ -509,12 +511,20 @@ private fun ProfessionalDialogRow(
                     modifier = Modifier.size(20.dp)
                 )
             } else if (drawableRes != null) {
-                Icon(
-                    painter = painterResource(drawableRes),
-                    contentDescription = title,
-                    tint = primaryTextColor,
-                    modifier = Modifier.size(20.dp)
-                )
+                if (iconTint != null) {
+                    Icon(
+                        painter = painterResource(drawableRes),
+                        contentDescription = title,
+                        tint = iconTint,
+                        modifier = Modifier.size(20.dp)
+                    )
+                } else {
+                    Image(
+                        painter = painterResource(drawableRes),
+                        contentDescription = title,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
         }
 
