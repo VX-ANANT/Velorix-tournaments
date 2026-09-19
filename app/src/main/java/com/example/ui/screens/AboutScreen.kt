@@ -290,7 +290,7 @@ fun AboutScreen(
                     Column(modifier = Modifier.fillMaxWidth()) {
                         // GitHub / Repo
                         AboutRowItem(
-                            vectorIcon = Icons.Outlined.Language,
+                            drawableRes = R.drawable.ic_github,
                             title = "GitHub / Website",
                             subtitle = "github.com/VX-ANANT/Velorix-tournaments",
                             titleColor = primaryTextColor,

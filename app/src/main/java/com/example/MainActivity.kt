@@ -446,14 +446,9 @@ class MainActivity : ComponentActivity() {
                         AuthScreen(
                             viewModel = viewModel,
                             onAuthSuccess = {
-                                if (viewModel.hasCompletedOnboarding.value) {
-                                    navController.navigate("main") {
-                                        popUpTo("auth") { inclusive = true }
-                                    }
-                                } else {
-                                    navController.navigate("onboarding") {
-                                        popUpTo("auth") { inclusive = true }
-                                    }
+                                // Existing account login always proceeds directly to main dashboard
+                                navController.navigate("main") {
+                                    popUpTo("auth") { inclusive = true }
                                 }
                             },
                             onRegisterSuccess = {

@@ -416,8 +416,13 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
 
     fun checkAndSetOnboardingStatus(userItem: User?): Boolean {
         val hasCompletedFlag = prefs.getBoolean("has_completed_onboarding", false)
-        val hasGamingDetails = userItem != null && (userItem.freeFireId.isNotBlank() || userItem.inGameName.isNotBlank())
-        val isCompleted = hasCompletedFlag && hasGamingDetails
+        val hasExistingAccount = userItem != null && (
+            userItem.username.isNotBlank() ||
+            userItem.fullName.isNotBlank() ||
+            userItem.freeFireId.isNotBlank() ||
+            userItem.inGameName.isNotBlank()
+        )
+        val isCompleted = hasCompletedFlag || hasExistingAccount
         _hasCompletedOnboarding.value = isCompleted
         prefs.edit().putBoolean("has_completed_onboarding", isCompleted).apply()
         return isCompleted
@@ -762,8 +767,11 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
                     userItem = newUser
                 }
                 val username = userItem.username
-                checkAndSetOnboardingStatus(userItem)
-                prefs.edit().putBoolean("is_logged_in", true).apply()
+                prefs.edit()
+                    .putBoolean("is_logged_in", true)
+                    .putBoolean("has_completed_onboarding", true)
+                    .apply()
+                _hasCompletedOnboarding.value = true
                 _isLoggedIn.value = true
                 _toastMessage.emit("Welcome back, ${username}!")
                 onComplete()
@@ -971,8 +979,11 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
                     }
                     val username = userItem.username
                     android.util.Log.i("FirebaseAuth", "[loginWithGoogle] Google Sign-In pipeline COMPLETE. Mapped User ID: ${userItem.id}, Username: $username")
-                    checkAndSetOnboardingStatus(userItem)
-                    prefs.edit().putBoolean("is_logged_in", true).apply()
+                    prefs.edit()
+                        .putBoolean("is_logged_in", true)
+                        .putBoolean("has_completed_onboarding", true)
+                        .apply()
+                    _hasCompletedOnboarding.value = true
                     _isLoggedIn.value = true
                     _toastMessage.emit("Welcome back, ${username}!")
                     onComplete()
@@ -1235,8 +1246,11 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
                     userItem = newUser
                 }
                 val username = userItem.username
-                checkAndSetOnboardingStatus(userItem)
-                prefs.edit().putBoolean("is_logged_in", true).apply()
+                prefs.edit()
+                    .putBoolean("is_logged_in", true)
+                    .putBoolean("has_completed_onboarding", true)
+                    .apply()
+                _hasCompletedOnboarding.value = true
                 _isLoggedIn.value = true
                 _toastMessage.emit("Welcome back, ${username}!")
                 onComplete()
