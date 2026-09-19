@@ -832,6 +832,19 @@ fun SettingsScreen(
                                 showLegalModal = true
                             }
                         )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        SettingsActionTile(
+                            icon = Icons.Default.AccountBalance,
+                            title = "Statutory Jurisprudence & OGAI",
+                            subtitle = "PROG Act 2025, MeitY PROG Rules 2026 & Esports Skill Classification",
+                            iconTint = Color(0xFF06B6D4),
+                            onClick = {
+                                selectedLegalTab = LegalTab.LEGAL_STATUS
+                                showLegalModal = true
+                            }
+                        )
                     }
                 }
 

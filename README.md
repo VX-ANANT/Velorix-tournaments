@@ -23,8 +23,11 @@
 
 <!-- Execution & Network CTA Badges -->
 <p align="center">
-  <a href="./APK_DOWNLOAD/app-debug.apk">
+  <a href="./release/velorix-v0.0.2-debug.apk">
     <img src="https://img.shields.io/badge/COMPILED_BINARY-DEPLOY_APK_v0.0.2-FF0055?style=for-the-badge&logo=android&logoColor=white" alt="Deploy Binary" />
+  </a>
+  <a href="./bin/velorix-latest.apk">
+    <img src="https://img.shields.io/badge/BINARY_MIRROR-DIRECT_APK_BIN-00E676?style=for-the-badge&logo=googleplay&logoColor=black" alt="Binary Mirror" />
   </a>
   <a href="https://discord.gg/ghxrpQAAC2">
     <img src="https://img.shields.io/badge/NETWORK_HUB-DISCORD_INFRASTRUCTURE-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord Network" />

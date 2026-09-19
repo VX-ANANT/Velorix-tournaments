@@ -149,14 +149,17 @@ afterEvaluate {
     val srcFile = layout.buildDirectory.file("outputs/apk/debug/app-debug.apk").get().asFile
     val destFile1 = layout.projectDirectory.file("../.build-outputs/app-debug.apk").asFile
     val destFile2 = layout.projectDirectory.file("../APK_DOWNLOAD/app-debug.apk").asFile
+    val destFile3 = layout.projectDirectory.file("../app-debug.apk").asFile
 
     tasks.named("assembleDebug") {
         doLast {
             if (srcFile.exists()) {
                 destFile1.parentFile.mkdirs()
                 destFile2.parentFile.mkdirs()
+                destFile3.parentFile.mkdirs()
                 srcFile.copyTo(destFile1, overwrite = true)
                 srcFile.copyTo(destFile2, overwrite = true)
+                srcFile.copyTo(destFile3, overwrite = true)
             }
         }
     }
