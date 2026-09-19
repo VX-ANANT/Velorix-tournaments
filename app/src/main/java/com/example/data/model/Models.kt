@@ -110,7 +110,12 @@ data class User(
     @JsonNames("isSuspended", "is_suspended", "suspended") var isSuspended: Boolean = false,
     @JsonNames("suspendReason", "suspend_reason") var suspendReason: String = "",
     @JsonNames("suspensionExpiresAt", "suspension_expires_at") var suspensionExpiresAt: Long = 0L,
-    @JsonNames("role", "adminRole") var role: String = "user"
+    @JsonNames("role", "adminRole") var role: String = "user",
+    var state: String = "Delhi",
+    var isAgeVerified: Boolean = false,
+    var legalConsentAccepted: Boolean = true,
+    var legalConsentTimestamp: Long = 0L,
+    var coolingOffUntil: Long = 0L
 )
 
 @OptIn(ExperimentalSerializationApi::class)

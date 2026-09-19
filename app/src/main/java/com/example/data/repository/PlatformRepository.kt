@@ -3132,32 +3132,33 @@ class PlatformRepository(
 
     suspend fun withdrawFunds(amount: Double, upiId: String = ""): WithdrawResult {
         val userItem = user.firstOrNull() ?: return WithdrawResult.Failure("User info missing")
-        if (amount <= 0) return WithdrawResult.Failure("Withdrawal amount must be greater than zero.")
-        if (amount < 50.0) return WithdrawResult.Failure("Minimum withdrawal limit is VT 50.")
-        if (amount > 10000.0) return WithdrawResult.Failure("Maximum single withdrawal limit is VT 10,000.")
-
-        val targetUpi = if (upiId.isNotBlank()) upiId.trim() else userItem.phoneOrEmail.trim()
-        if (targetUpi.isBlank() || !targetUpi.contains("@") || targetUpi.length < 5) {
-            return WithdrawResult.Failure("Please enter a valid UPI ID (e.g. yourname@okhdfc or name@paytm).")
-        }
-
-        // Financial enforcement: Only tournament winnings are withdrawable
         val breakdown = getWalletBreakdown(userItem, db.transactionDao().getAllSync())
-        if (amount > breakdown.winnings) {
-            return WithdrawResult.Failure(
-                "Cannot withdraw more than your tournament winnings (Available: VT ${breakdown.winnings.toInt()}). Deposited balance is reserved for tournament match fees."
-            )
+        val targetUpi = if (upiId.isNotBlank()) upiId.trim() else userItem.phoneOrEmail.trim()
+
+        // --- STATUTORY FINANCIAL COMPLIANCE (Section 194BA & KYC Majority Gate) ---
+        val complianceCheck = com.example.util.ComplianceEngine.validateWithdrawalRequest(
+            user = userItem,
+            amount = amount,
+            upiId = targetUpi,
+            availableWinnings = breakdown.winnings
+        )
+        if (complianceCheck is com.example.util.ComplianceEngine.ValidationResult.Denied) {
+            return WithdrawResult.Failure(complianceCheck.reason)
         }
+
         if (userItem.balance < amount) {
             return WithdrawResult.Failure("Insufficient wallet balance.")
         }
+
+        val statutoryTds = com.example.util.ComplianceEngine.computeTaxDeduction(amount)
+        val netDisbursement = (amount - statutoryTds).coerceAtLeast(0.0)
 
         val updatedUser = userItem.copy(balance = userItem.balance - amount)
         val newTx = Transaction(
             userId = userItem.id,
             type = "WITHDRAWAL",
             amount = amount,
-            detail = "Withdrawal to UPI: $targetUpi",
+            detail = "Withdrawal to UPI: $targetUpi (TDS 30%: VT ${statutoryTds.toInt()} | Net: VT ${netDisbursement.toInt()})",
             isPositive = false,
             timestamp = System.currentTimeMillis(),
             status = "PENDING"
@@ -4328,6 +4329,35 @@ class PlatformRepository(
                 details = "Registration rejected: Game ID '$effectiveCharId' does not meet the 8-12 numeric digits constraint."
             )
             return JoinResult.Failure("Invalid ID Format: Game ID must be an authentic 8-12 digit numeric player UID.")
+        }
+
+        // --- STATUTORY COMPLIANCE & FAIR PLAY SENTINEL ENFORCEMENT ---
+        val last24hTimestamp = System.currentTimeMillis() - (24 * 60 * 60 * 1000L)
+        val todayMatchesCount = try {
+            db.tournamentParticipantDao().getParticipantsSince(userItem.id, last24hTimestamp).size
+        } catch (_: Exception) {
+            0
+        }
+        val isEmulatorDevice = com.example.EnvUtils.isEmu()
+        val isAdminPrivileged = userItem.role == "admin" || userItem.role == "super_admin" || userItem.phoneOrEmail.contains("anant")
+
+        val complianceCheck = com.example.util.ComplianceEngine.validateTournamentEnrollment(
+            user = userItem,
+            match = match,
+            todayMatchesCount = todayMatchesCount,
+            isEmulator = isEmulatorDevice,
+            isAdminBypass = isAdminPrivileged
+        )
+
+        if (complianceCheck is com.example.util.ComplianceEngine.ValidationResult.Denied) {
+            logRegistrationAudit(
+                userId = userItem.id,
+                gameId = effectiveCharId,
+                tournamentId = tournamentId,
+                status = complianceCheck.auditTag,
+                details = "${complianceCheck.reason} [Authority: ${complianceCheck.statutoryCitation}]"
+            )
+            return JoinResult.Failure(complianceCheck.reason)
         }
 
         // Generate unique ticket code

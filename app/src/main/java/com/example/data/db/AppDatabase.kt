@@ -28,7 +28,7 @@ import com.example.data.model.UserReport
 
 @Database(
     entities = [Tournament::class, User::class, Transaction::class, LeaderboardPlayer::class, SearchHistory::class, MatchStat::class, Mission::class, AppNotification::class, TournamentParticipant::class, Banner::class, UserReport::class],
-    version = 25,
+    version = 26,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

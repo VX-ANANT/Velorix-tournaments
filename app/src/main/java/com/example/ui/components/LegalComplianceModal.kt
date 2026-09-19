@@ -328,10 +328,10 @@ private fun TermsContent() {
         LegalParagraph("VeloRix functions as an independent, high-velocity electronic sports infrastructure facilitating pure skill competitions for mobile combat games including Garena Free Fire. VeloRix operates under statutory safe harbor and is not affiliated with or endorsed by Garena International.")
 
         LegalSectionTitle("2. STRICT 18+ AGE GATING & TERRITORIAL CITADEL")
-        LegalParagraph("• Operatives must certify attainment of 18+ legal majority to engage in entry-fee combat rooms.\n• Geofenced Enactments: In absolute adherence to respective state statutes, cash competitions are strictly prohibited to residents within the state boundaries of Assam, Odisha, Telangana, Nagaland, Andhra Pradesh, and Sikkim. VPN or geolocation spoofing triggers autonomous hardware invalidation.")
+        LegalParagraph("• Mandatory 18+ Majority under PROG Act 2025 & MeitY Rules 2026: Operatives must certify attainment of 18+ legal majority to engage in entry-fee combat rooms. Minors are restricted to Free Practice Scrims.\n• Geofenced Enactments: In absolute adherence to respective state statutes, cash competitions are strictly prohibited to residents within the state boundaries of Assam, Odisha, Telangana, Nagaland, Andhra Pradesh, and Sikkim. VPN or geolocation spoofing triggers autonomous hardware invalidation.")
 
-        LegalSectionTitle("3. ESCROW DISCIPLINE & PRIZE LIQUIDATION")
-        LegalParagraph("• Virtual wallet balances serve exclusively as tournament entry escrow.\n• Prize winnings liquidate solely into verified UPI VPA handles following automated match audit validation.\n• Statutory Tax Withholding (TDS) under Section 194BA of the Indian Income Tax Act is deducted automatically upon net winnings threshold fulfillment.")
+        LegalSectionTitle("3. ESCROW DISCIPLINE, GST 2025 & PRIZE LIQUIDATION")
+        LegalParagraph("• Virtual wallet balances serve exclusively as tournament entry escrow.\n• Prize winnings liquidate solely into verified UPI VPA handles following automated match audit validation.\n• Statutory Tax Withholding (TDS) under Section 194BA of the Indian Income Tax Act (30%) is deducted automatically upon net winnings liquidation in alignment with 2025 GST face-value directives.")
 
         LegalSectionTitle("4. IDENTITY INVARIANTS & ANTI-SYBIL MANDATE")
         LegalParagraph("Each combatant is permitted exactly one verified terminal identity. Tampering with in-game Free Fire UIDs, credentials spoofing, or unauthorized room vector leakage executes immediate room ejection with total escrow forfeiture.")
@@ -422,19 +422,22 @@ private fun ResponsibleContent() {
 private fun LegalStatusContent() {
     Column {
         LegalHighlightBadge(
-            title = "CONSTITUTIONAL PRECEDENT: ABSOLUTE DOCTRINE OF SKILL",
-            desc = "Competitive esports tournaments constitute protected trade liberties under Article 19(1)(g) of the Constitution of India, definitively segregated from betting or gambling."
+            title = "PROG ACT 2025 & MEITY RULES 2026 COMPLIANCE CITADEL",
+            desc = "VeloRix operates under the Promotion and Regulation of Online Gaming Act, 2025 and PROG Rules, 2026 (MeitY) as a Permissible Skill-Based Electronic Sports Platform, distinct from prohibited online wagering."
         )
 
         Spacer(modifier = Modifier.height(14.dp))
-        LegalSectionTitle("1. APEX BENCH LANDMARK JURISPRUDENCE")
-        LegalParagraph("The Supreme Court of India in State of Bombay v. R.M.D. Chamarbaugwala (1957) and Dr. K.R. Lakshmanan v. State of Tamil Nadu (1996) cemented that activities where victory is governed predominantly by superior strategic mastery, hand-eye adroitness, and mental acumen constitute Games of Skill protected under fundamental rights.")
+        LegalSectionTitle("1. STATUTORY ESPORTS CLASSIFICATION (PROG RULES 2026)")
+        LegalParagraph("Under Section 4 & 5 of the Promotion and Regulation of Online Gaming Rules, 2026 notified by MeitY, competitive battle royale matches (Free Fire) with predetermined deterministic rules, motor dexterity requirements, and verified match credentials qualify as permissible skill-based e-sports contests.")
 
-        LegalSectionTitle("2. PUBLIC GAMBLING ACT 1867 EXCLUSION")
-        LegalParagraph("Section 12 of the Public Gambling Act explicitly and unequivocally exempts games of mere skill from all penal provisions associated with games of chance.")
+        LegalSectionTitle("2. ONLINE GAMING AUTHORITY OF INDIA (OGAI) SENTINEL")
+        LegalParagraph("Adheres to the regulatory directives issued by the Online Gaming Authority of India (OGAI), established in April 2026: strict zero algorithmic tampering, mobile hardware parity (anti-emulator enforcement), auditable tournament ledger, and prompt institutional grievance redressal.")
 
-        LegalSectionTitle("3. INTERMEDIARY SAFE HARBOR CITADEL")
-        LegalParagraph("VeloRix functions strictly as an electronic sports intermediary under Section 79 of the Information Technology Act 2000, adhering fully to MeitY Online Gaming guidelines and statutory directives.")
+        LegalSectionTitle("3. CONSTITUTIONAL PRECEDENT & SECTION 12 EXCLUSION")
+        LegalParagraph("The Supreme Court of India in State of Bombay v. R.M.D. Chamarbaugwala (1957) and Dr. K.R. Lakshmanan (1996) established that pure skill competitions are constitutionally protected under Article 19(1)(g). Section 12 of the Public Gambling Act, 1867 definitively excludes games of mere skill.")
+
+        LegalSectionTitle("4. INTERMEDIARY SAFE HARBOR CITADEL (SECTION 79)")
+        LegalParagraph("VeloRix functions strictly as an electronic sports intermediary under Section 79 of the Information Technology Act 2000, adhering fully to MeitY Intermediary Rules, DPDP 2023/2025 rules, and CBDT Section 194BA TDS statutory deductions.")
     }
 }
 

@@ -220,6 +220,9 @@ interface TournamentParticipantDao {
     @Query("SELECT * FROM tournament_participants WHERE userId = :userId ORDER BY registeredAt DESC")
     fun getMyTickets(userId: String): Flow<List<com.example.data.model.TournamentParticipant>>
 
+    @Query("SELECT * FROM tournament_participants WHERE userId = :userId AND registeredAt >= :sinceTimestamp")
+    suspend fun getParticipantsSince(userId: String, sinceTimestamp: Long): List<com.example.data.model.TournamentParticipant>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(participant: com.example.data.model.TournamentParticipant)
 

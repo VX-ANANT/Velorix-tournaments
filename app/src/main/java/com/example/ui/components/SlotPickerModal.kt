@@ -410,7 +410,7 @@ fun SlotPickerModal(
                             )
                         )
                         Text(
-                            text = "I agree to fair play rules, no hacks/emulators, and room schedule.",
+                            text = "I affirm compliance with 18+ MeitY statutory norms, authentic mobile hardware, and fair play protocol.",
                             fontSize = 11.sp,
                             color = Color(0xFF94A3B8)
                         )
@@ -435,9 +435,28 @@ fun SlotPickerModal(
                                 return@Button
                             }
                             if (!agreeToRules) {
-                                errorMessage = "You must accept the tournament fair-play rules"
+                                errorMessage = "You must accept the tournament fair-play & statutory rules"
                                 return@Button
                             }
+
+                            // Pre-Flight Statutory Compliance Verification
+                            val calculatedAge = com.example.util.ComplianceEngine.calculateAge(currentUser?.dob ?: "")
+                            val isRestricted = com.example.util.ComplianceEngine.isRestrictedTerritory(currentUser?.state)
+                            if (tournament.entryFee > 0.0) {
+                                if (currentUser?.dob.isNullOrBlank() || calculatedAge < 18) {
+                                    errorMessage = "Statutory Age Gate: Entry to cash prize tournaments is restricted to operatives aged 18+ under MeitY 2023 Rules. Free scrims remain unlocked."
+                                    return@Button
+                                }
+                                if (isRestricted) {
+                                    errorMessage = "Jurisdictional Exclusion: Cash prize tournaments are statutorily restricted in ${currentUser?.state}."
+                                    return@Button
+                                }
+                            }
+                            if (com.example.EnvUtils.isEmu() && currentUser?.role != "admin" && currentUser?.role != "super_admin") {
+                                errorMessage = "Sentinel Hardware Alert: Desktop emulators are strictly prohibited in competitive mobile brackets."
+                                return@Button
+                            }
+
                             isSubmitting = true
                             onConfirmSlot(selectedSlot, ign.trim(), characterId.trim(), teamName.trim()) { success ->
                                 if (!success) {

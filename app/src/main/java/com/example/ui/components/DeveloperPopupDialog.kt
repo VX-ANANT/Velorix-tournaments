@@ -76,6 +76,7 @@ fun DeveloperPopupDialog(
     val instagramUrl = "https://instagram.com/anant_sgh"
     val twitterUrl = "https://x.com/Anant__sgh"
     val githubUrl = "https://github.com/VX-ANANT/Velorix-tournaments"
+    val gitDiagramUrl = "https://gitdiagram.com/VX-ANANT/Velorix-tournaments"
     val patreonUrl = "https://patreon.com/Anant_sgh"
     val discordUrl = "https://discord.gg/ghxrpQAAC2"
 
@@ -293,6 +294,22 @@ fun DeveloperPopupDialog(
                                     onClick = {
                                         haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                                         openUrl(githubUrl)
+                                    }
+                                )
+
+                                HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
+
+                                ProfessionalDialogRow(
+                                    drawableRes = R.drawable.ic_iconsax_cursor,
+                                    title = "Interactive Architecture",
+                                    subtitle = "gitdiagram.com/VX-ANANT/...",
+                                    iconBg = iconSquareBg,
+                                    primaryTextColor = primaryTextColor,
+                                    secondaryTextColor = secondaryTextColor,
+                                    arrowColor = arrowColor,
+                                    onClick = {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                        openUrl(gitDiagramUrl)
                                     }
                                 )
 

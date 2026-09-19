@@ -48,6 +48,7 @@ fun OnboardingScreen(
     var name by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
     var dob by remember { mutableStateOf("") }
+    var selectedState by remember { mutableStateOf("Delhi") }
     var isAgeAccepted by remember { mutableStateOf(true) }
     var showLegalModal by remember { mutableStateOf(false) }
     var selectedLegalTab by remember { mutableStateOf(LegalTab.TERMS) }
@@ -101,10 +102,16 @@ fun OnboardingScreen(
                             // Save
                             val currentUser = user
                             if (currentUser != null) {
+                                val calculatedAge = com.example.util.ComplianceEngine.calculateAge(dob)
+                                val is18Plus = calculatedAge >= 18
                                 val updatedUser = currentUser.copy(
                                     username = name.ifEmpty { currentUser.username },
                                     phoneOrEmail = phone.ifEmpty { currentUser.phoneOrEmail },
                                     dob = dob.ifEmpty { currentUser.dob },
+                                    state = selectedState.ifEmpty { currentUser.state },
+                                    isAgeVerified = is18Plus,
+                                    legalConsentAccepted = true,
+                                    legalConsentTimestamp = System.currentTimeMillis(),
                                     fullName = name.ifEmpty { currentUser.fullName },
                                     mobileNo = phone.ifEmpty { currentUser.mobileNo },
                                     inGameName = inGameName.ifEmpty { currentUser.inGameName },
@@ -180,6 +187,8 @@ fun OnboardingScreen(
                         name = name,
                         phone = phone,
                         dob = dob,
+                        selectedState = selectedState,
+                        onStateChange = { selectedState = it },
                         isAgeAccepted = isAgeAccepted,
                         onAgeAcceptedChange = { isAgeAccepted = it },
                         onNameChange = { name = it },
@@ -211,6 +220,8 @@ fun BasicProfileStep(
     name: String,
     phone: String,
     dob: String,
+    selectedState: String,
+    onStateChange: (String) -> Unit,
     isAgeAccepted: Boolean,
     onAgeAcceptedChange: (Boolean) -> Unit,
     onNameChange: (String) -> Unit,
@@ -218,6 +229,10 @@ fun BasicProfileStep(
     onDobChange: (String) -> Unit,
     onOpenLegal: (LegalTab) -> Unit
 ) {
+    val calculatedAge = remember(dob) { com.example.util.ComplianceEngine.calculateAge(dob) }
+    val is18Plus = remember(dob) { com.example.util.ComplianceEngine.is18Plus(dob) }
+    val isRestrictedState = remember(selectedState) { com.example.util.ComplianceEngine.isRestrictedTerritory(selectedState) }
+
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -235,7 +250,7 @@ fun BasicProfileStep(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
-        Spacer(modifier = Modifier.height(48.dp))
+        Spacer(modifier = Modifier.height(32.dp))
         
         OutlinedTextField(
             value = name,
@@ -250,7 +265,7 @@ fun BasicProfileStep(
                 unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
             )
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(14.dp))
         OutlinedTextField(
             value = phone,
             onValueChange = onPhoneChange,
@@ -265,7 +280,7 @@ fun BasicProfileStep(
                 unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
             )
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(14.dp))
         OutlinedTextField(
             value = dob,
             onValueChange = onDobChange,
@@ -279,6 +294,132 @@ fun BasicProfileStep(
                 unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
             )
         )
+
+        // Dynamic Statutory Age Verification Feedback
+        if (dob.isNotBlank()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            if (is18Plus) {
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = Color(0xFF10B981).copy(alpha = 0.12f),
+                    border = BorderStroke(1.dp, Color(0xFF10B981).copy(alpha = 0.4f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Shield,
+                            contentDescription = null,
+                            tint = Color(0xFF10B981),
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column {
+                            Text(
+                                text = "STATUTORY MAJORITY CONFIRMED (AGE: $calculatedAge)",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF10B981)
+                            )
+                            Text(
+                                text = "Eligible for real-money competitive tournament brackets and token prize liquidation under PROG Act 2025 & MeitY PROG Rules 2026.",
+                                fontSize = 10.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            } else if (calculatedAge in 1..17) {
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = Color(0xFFF59E0B).copy(alpha = 0.12f),
+                    border = BorderStroke(1.dp, Color(0xFFF59E0B).copy(alpha = 0.4f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Warning,
+                            contentDescription = null,
+                            tint = Color(0xFFF59E0B),
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column {
+                            Text(
+                                text = "JUNIOR CADET CLASSIFICATION (AGE: $calculatedAge)",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFF59E0B)
+                            )
+                            Text(
+                                text = "Under PROG Act 2025 § 5, monetary stake gaming is barred to minors under 18. Operative account is limited to Free Practice Scrims.",
+                                fontSize = 10.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        OutlinedTextField(
+            value = selectedState,
+            onValueChange = onStateChange,
+            label = { Text("State of Residence (India)") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            shape = RoundedCornerShape(12.dp),
+            leadingIcon = {
+                Icon(Icons.Default.LocationOn, contentDescription = null, modifier = Modifier.size(20.dp))
+            },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = if (isRestrictedState) Color(0xFFEF4444) else MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = if (isRestrictedState) Color(0xFFEF4444).copy(alpha = 0.6f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+            )
+        )
+
+        if (isRestrictedState) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = Color(0xFFEF4444).copy(alpha = 0.12f),
+                border = BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.4f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Warning,
+                        contentDescription = null,
+                        tint = Color(0xFFEF4444),
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text(
+                            text = "STATE STATUTORY RESTRICTION (${selectedState.uppercase()})",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFEF4444)
+                        )
+                        Text(
+                            text = "${com.example.util.ComplianceEngine.getStatutoryCitation(selectedState)} bars real-money tournament entry. Free practice scrims remain open.",
+                            fontSize = 10.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
         
         Spacer(modifier = Modifier.height(16.dp))
         
@@ -321,13 +462,13 @@ fun BasicProfileStep(
                 Spacer(modifier = Modifier.width(8.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "18+ Age & Skill Gaming Declaration",
+                        text = "18+ Age & PROG Act 2025/2026 Declaration",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "I certify I am 18+ and agree to VeloRix Terms & Fair Play Rules.",
+                        text = "I certify I am 18+ and adhere to PROG Rules 2026 and VeloRix Fair Play Codex.",
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

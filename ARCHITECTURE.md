@@ -6,7 +6,8 @@
 > **Architecture Pattern:** Clean Architecture + Unidirectional Data Flow (MVI / Reactive MVVM)  
 > **Persistence & Sync:** Room SQLite (Compile-Time Verified) + Firebase Realtime Database  
 > **Autonomous Sentinel:** Node.js Heuristic Watchdog Bot powered by Google Gemini 3.6 Flash  
-> **Engineering Principal:** [VX-ANANT](https://github.com/VX-ANANT/Velorix-tournaments)
+> **Engineering Principal:** [VX-ANANT](https://github.com/VX-ANANT/Velorix-tournaments)  
+> **Interactive Live Topology:** [gitdiagram.com/VX-ANANT/Velorix-tournaments](https://gitdiagram.com/VX-ANANT/Velorix-tournaments)
 
 ---
 
