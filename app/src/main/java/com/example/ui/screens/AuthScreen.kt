@@ -43,6 +43,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ui.components.LegalComplianceModal
+import com.example.ui.components.LegalTab
 import com.example.ui.viewmodel.PlatformViewModel
 
 @Composable
@@ -52,6 +54,8 @@ fun AuthScreen(
     onRegisterSuccess: (() -> Unit)? = null
 ) {
     var isSignUpMode by remember { mutableStateOf(false) }
+    var showLegalModal by remember { mutableStateOf(false) }
+    var selectedLegalTab by remember { mutableStateOf(LegalTab.TERMS) }
 
     val scrollState = rememberScrollState()
 
@@ -110,17 +114,32 @@ fun AuthScreen(
                                 onAuthSuccess()
                             }
                         },
-                        onSwitchToLogin = { isSignUpMode = false }
+                        onSwitchToLogin = { isSignUpMode = false },
+                        onOpenLegal = { tab ->
+                            selectedLegalTab = tab
+                            showLegalModal = true
+                        }
                     )
                 } else {
                     LoginScreen(
                         viewModel = viewModel,
                         onAuthSuccess = onAuthSuccess,
-                        onSwitchToSignUp = { isSignUpMode = true }
+                        onSwitchToSignUp = { isSignUpMode = true },
+                        onOpenLegal = { tab ->
+                            selectedLegalTab = tab
+                            showLegalModal = true
+                        }
                     )
                 }
             }
         }
+    }
+
+    if (showLegalModal) {
+        LegalComplianceModal(
+            initialTab = selectedLegalTab,
+            onDismissRequest = { showLegalModal = false }
+        )
     }
 }
 
@@ -128,7 +147,8 @@ fun AuthScreen(
 fun LoginScreen(
     viewModel: PlatformViewModel,
     onAuthSuccess: () -> Unit,
-    onSwitchToSignUp: () -> Unit
+    onSwitchToSignUp: () -> Unit,
+    onOpenLegal: (LegalTab) -> Unit = {}
 ) {
     val isAuthLoading by viewModel.isAuthLoading.collectAsState(initial = false)
 
@@ -321,7 +341,9 @@ fun LoginScreen(
             }
         }
         
-        Spacer(modifier = Modifier.height(32.dp))
+        AuthLegalConsentFootnote(onOpenLegal = onOpenLegal)
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         Text(
             text = "Don't have an account? Sign Up",
@@ -335,7 +357,8 @@ fun LoginScreen(
 fun RegistrationScreen(
     viewModel: PlatformViewModel,
     onAuthSuccess: () -> Unit,
-    onSwitchToLogin: () -> Unit
+    onSwitchToLogin: () -> Unit,
+    onOpenLegal: (LegalTab) -> Unit = {}
 ) {
     val isAuthLoading by viewModel.isAuthLoading.collectAsState(initial = false)
 
@@ -513,13 +536,89 @@ fun RegistrationScreen(
             }
         }
         
-        Spacer(modifier = Modifier.height(32.dp))
+        AuthLegalConsentFootnote(onOpenLegal = onOpenLegal)
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         Text(
             text = "Already have an account? Login",
             style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold),
             modifier = Modifier.clickable { onSwitchToLogin() }.padding(8.dp).align(Alignment.CenterHorizontally).testTag("toggle_auth_mode")
         )
+    }
+}
+
+@Composable
+fun AuthLegalConsentFootnote(
+    onOpenLegal: (LegalTab) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 18.dp, bottom = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                painter = androidx.compose.ui.res.painterResource(id = com.example.R.drawable.ic_untitledui_shield_tick),
+                contentDescription = null,
+                tint = Color(0xFF38BDF8),
+                modifier = Modifier.size(13.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "Skill Gaming • 18+ Only • DPDP Compliant",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF94A3B8)
+            )
+        }
+        Spacer(modifier = Modifier.height(5.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "By continuing, you accept ",
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f)
+            )
+            Text(
+                text = "Terms",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.clickable { onOpenLegal(LegalTab.TERMS) }
+            )
+            Text(
+                text = " • ",
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f)
+            )
+            Text(
+                text = "Privacy",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.clickable { onOpenLegal(LegalTab.PRIVACY) }
+            )
+            Text(
+                text = " • ",
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f)
+            )
+            Text(
+                text = "Fair Play",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.clickable { onOpenLegal(LegalTab.FAIR_PLAY) }
+            )
+        }
     }
 }
 

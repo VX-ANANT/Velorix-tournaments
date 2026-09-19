@@ -1,4 +1,4 @@
-#  VeloRix Architecture & Engineering Specification
+# VELORIX KERNEL TOPOLOGY & CYBERNETIC ESPORTS ARCHITECTURE
 
 > **Platform:** Native Android 14 / 15 (API 34–35)  
 > **Core Language:** Kotlin 2.0  

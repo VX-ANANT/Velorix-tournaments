@@ -1187,7 +1187,7 @@ fun ProfileScreen(
                     }
                 }
 
-                // About Section Card (Format from Reference Screenshot 1)
+                // About Section Card (Pure Obsidian AMOLED)
                 Surface(
                     onClick = {
                         haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
@@ -1195,8 +1195,8 @@ fun ProfileScreen(
                     },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(22.dp),
-                    color = Color(0xFF1E1718),
-                    border = BorderStroke(1.dp, Color(0xFF2C2426))
+                    color = Color(0xFF111318),
+                    border = BorderStroke(1.dp, Color(0xFF222632))
                 ) {
                     Row(
                         modifier = Modifier
@@ -1208,7 +1208,7 @@ fun ProfileScreen(
                             modifier = Modifier
                                 .size(44.dp)
                                 .clip(CircleShape)
-                                .background(Color(0xFF282022)),
+                                .background(Color(0xFF1E212B)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
@@ -1272,6 +1272,46 @@ fun ProfileScreen(
                     }
                 }
                 
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Tactical Legal & Regulatory Protection Footnote
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            painter = androidx.compose.ui.res.painterResource(id = com.example.R.drawable.ic_untitledui_shield_tick),
+                            contentDescription = null,
+                            tint = Color(0xFF38BDF8),
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "SOVEREIGN SKILL CITADEL // INDIA DPDP ACT 2023",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                            color = Color(0xFF38BDF8),
+                            letterSpacing = 0.8.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "18+ CRYPTOGRAPHIC GATING // ZERO-TOLERANCE SENTINEL ACTIVE",
+                        fontSize = 9.sp,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF64748B),
+                        letterSpacing = 0.5.sp
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(40.dp))
             }
         }

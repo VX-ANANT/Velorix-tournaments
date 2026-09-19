@@ -177,6 +177,12 @@ velorix-tournaments/
 ├── velorix-watchdog-bot/      # Standalone Node.js + Gemini 3.6 Flash Realtime Telemetry Daemon
 ├── database.rules.json       # Strict Edge Data Access Control and Invariant Rules
 ├── ARCHITECTURE.md           # Deep-Dive Architectural & System Invariant Specification
+├── PRIVACY_POLICY.md         # DPDP Act 2023, IT Act 2000 & Google Play Privacy Policy
+├── TERMS_OF_SERVICE.md       # Game of Skill Legal Agreement & Jurisdiction Protections
+├── FAIR_PLAY_POLICY.md       # Anti-Cheat, Emulators & Neural Sentry Code of Conduct
+├── REFUND_AND_CANCELLATION.md# Financial Protocol, Room Crashes & Wallet Reversals
+├── RESPONSIBLE_GAMING.md     # 18+ Age Gating, Player Welfare & Self-Exclusion Protocol
+├── GOVERNMENT_COMPLIANCE.md  # MeitY 2023 Online Gaming Rules, TDS Sec 194BA & Intermediary Safe Harbor
 └── README.md                 # Primary Architectural and Engineering Documentation
 ```
 

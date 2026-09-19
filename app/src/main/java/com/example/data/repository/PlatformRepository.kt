@@ -3426,8 +3426,8 @@ class PlatformRepository(
 
                     val refNotif = AppNotification(
                         id = UUID.randomUUID().toString(),
-                        title = "Referral Bonus Received! 🎉",
-                        message = "${currentUser.username} joined using your code! +50 Tokens added to your wallet.",
+                        title = "Referral Bonus Dispatched",
+                        message = "${currentUser.username} initialized protocol via your referral code. +50 Combat Tokens credited to operational vault.",
                         type = "REFERRAL",
                         timestamp = System.currentTimeMillis()
                     )

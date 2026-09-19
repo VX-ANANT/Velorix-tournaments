@@ -46,6 +46,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
 import com.example.ui.components.DeveloperPopupDialog
+import com.example.ui.components.LegalComplianceModal
+import com.example.ui.components.LegalTab
 import com.example.ui.components.stretchOverscroll
 import com.example.ui.viewmodel.PlatformViewModel
 import com.example.util.UpiPaymentManager
@@ -91,6 +93,8 @@ fun SettingsScreen(
 
     var showDeveloperModal by remember { mutableStateOf(false) }
     var showQrCode by remember { mutableStateOf(false) }
+    var showLegalModal by remember { mutableStateOf(false) }
+    var selectedLegalTab by remember { mutableStateOf(LegalTab.TERMS) }
 
     // Dynamic QR generation for UPI support
     val qrBgColor = (if (isDarkTheme) Color(0xFF0D1117) else Color(0xFFF6F8FA)).toArgb()
@@ -740,8 +744,107 @@ fun SettingsScreen(
                         }
                     }
                 }
+
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+
+            // Section 5: Legal & Regulatory Compliance
+            item {
+                Text(
+                    text = "LEGAL, COMPLIANCE & POLICIES",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.primary,
+                    letterSpacing = 1.2.sp
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        SettingsActionTile(
+                            icon = Icons.Default.Gavel,
+                            title = "Terms of Service",
+                            subtitle = "Constitutional Game of Skill Covenant & Art. 19(1)(g) safe harbor",
+                            iconTint = Color(0xFF38BDF8),
+                            onClick = {
+                                selectedLegalTab = LegalTab.TERMS
+                                showLegalModal = true
+                            }
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        SettingsActionTile(
+                            icon = Icons.Default.Security,
+                            title = "Data Sovereignty & Privacy",
+                            subtitle = "DPDP Act 2023, IT Act 2000 & zero marketing telemetry guarantee",
+                            iconTint = Color(0xFF10B981),
+                            onClick = {
+                                selectedLegalTab = LegalTab.PRIVACY
+                                showLegalModal = true
+                            }
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        SettingsActionTile(
+                            icon = Icons.Default.Shield,
+                            title = "Sentinel Anti-Cheat Protocol",
+                            subtitle = "Autonomous Forensic Bot & Zero-Tolerance Hardware Blacklisting",
+                            iconTint = Color(0xFFEF4444),
+                            onClick = {
+                                selectedLegalTab = LegalTab.FAIR_PLAY
+                                showLegalModal = true
+                            }
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        SettingsActionTile(
+                            icon = Icons.Outlined.ReceiptLong,
+                            title = "Escrow & Liquidation Arbitration",
+                            subtitle = "Deterministic wallet escrow & instant UPI rail reconciliation",
+                            iconTint = Color(0xFFF59E0B),
+                            onClick = {
+                                selectedLegalTab = LegalTab.REFUNDS
+                                showLegalModal = true
+                            }
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        SettingsActionTile(
+                            icon = Icons.Outlined.HealthAndSafety,
+                            title = "Operative Welfare & 18+ Safeguards",
+                            subtitle = "Player welfare, circuit-breaker freeze & national helpline resources",
+                            iconTint = Color(0xFFA855F7),
+                            onClick = {
+                                selectedLegalTab = LegalTab.RESPONSIBLE
+                                showLegalModal = true
+                            }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
             }
         }
+    }
+
+    if (showLegalModal) {
+        LegalComplianceModal(
+            initialTab = selectedLegalTab,
+            onDismissRequest = { showLegalModal = false }
+        )
     }
 
     if (showDeveloperModal) {

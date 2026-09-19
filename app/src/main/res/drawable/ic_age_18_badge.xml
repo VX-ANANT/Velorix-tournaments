@@ -1,0 +1,18 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24.0"
+    android:viewportHeight="24.0">
+    <!-- Circle Boundary -->
+    <path
+        android:pathData="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.8" />
+    <!-- 18+ Symbol text path representation -->
+    <path
+        android:pathData="M8 9V15M7 10L8 9M11.5 10.5C11.5 9.67 12.17 9 13 9C13.83 9 14.5 9.67 14.5 10.5C14.5 11.33 13.83 12 13 12M13 12C12.17 12 11.5 12.67 11.5 13.5C11.5 14.33 12.17 15 13 15C13.83 15 14.5 14.33 14.5 13.5C14.5 12.67 13.83 12 13 12M16.5 10.5V13.5M15 12H18"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

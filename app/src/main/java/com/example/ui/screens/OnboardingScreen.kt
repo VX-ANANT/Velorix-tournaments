@@ -2,6 +2,7 @@ package com.example.ui.screens
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -27,6 +28,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.ui.components.LegalComplianceModal
+import com.example.ui.components.LegalTab
 import com.example.ui.viewmodel.PlatformViewModel
 
 @OptIn(ExperimentalAnimationApi::class)
@@ -45,6 +48,9 @@ fun OnboardingScreen(
     var name by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
     var dob by remember { mutableStateOf("") }
+    var isAgeAccepted by remember { mutableStateOf(true) }
+    var showLegalModal by remember { mutableStateOf(false) }
+    var selectedLegalTab by remember { mutableStateOf(LegalTab.TERMS) }
 
     // Step 1 Fields
     var inGameName by remember { mutableStateOf("") }
@@ -71,7 +77,7 @@ fun OnboardingScreen(
 
     val isIdValid = freeFireId.isBlank() || com.example.ui.components.GameIdValidator.isValid(freeFireId)
     val canProceed = when(currentStep) {
-        0 -> name.isNotBlank() && phone.isNotBlank() && dob.isNotBlank()
+        0 -> name.isNotBlank() && phone.isNotBlank() && dob.isNotBlank() && isAgeAccepted
         1 -> inGameName.isNotBlank() && freeFireId.isNotBlank() && com.example.ui.components.GameIdValidator.isValid(freeFireId)
         else -> true
     }
@@ -170,7 +176,20 @@ fun OnboardingScreen(
                 }, label = "onboarding_step"
             ) { step ->
                 when (step) {
-                    0 -> BasicProfileStep(name, phone, dob, { name = it }, { phone = it }, { dob = it })
+                    0 -> BasicProfileStep(
+                        name = name,
+                        phone = phone,
+                        dob = dob,
+                        isAgeAccepted = isAgeAccepted,
+                        onAgeAcceptedChange = { isAgeAccepted = it },
+                        onNameChange = { name = it },
+                        onPhoneChange = { phone = it },
+                        onDobChange = { dob = it },
+                        onOpenLegal = { tab ->
+                            selectedLegalTab = tab
+                            showLegalModal = true
+                        }
+                    )
                     1 -> ProfileSetupStep(inGameName, freeFireId, { inGameName = it }, { freeFireId = it })
                     2 -> ThemeSelectionStep(selectedTheme) { selectedTheme = it }
                     3 -> WelcomeBonusStep()
@@ -178,10 +197,27 @@ fun OnboardingScreen(
             }
         }
     }
+
+    if (showLegalModal) {
+        LegalComplianceModal(
+            initialTab = selectedLegalTab,
+            onDismissRequest = { showLegalModal = false }
+        )
+    }
 }
 
 @Composable
-fun BasicProfileStep(name: String, phone: String, dob: String, onNameChange: (String) -> Unit, onPhoneChange: (String) -> Unit, onDobChange: (String) -> Unit) {
+fun BasicProfileStep(
+    name: String,
+    phone: String,
+    dob: String,
+    isAgeAccepted: Boolean,
+    onAgeAcceptedChange: (Boolean) -> Unit,
+    onNameChange: (String) -> Unit,
+    onPhoneChange: (String) -> Unit,
+    onDobChange: (String) -> Unit,
+    onOpenLegal: (LegalTab) -> Unit
+) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -262,6 +298,49 @@ fun BasicProfileStep(name: String, phone: String, dob: String, onNameChange: (St
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(text = "Mobile and DOB are mandatory to proceed.", color = Color(0xFFEF4444), fontSize = 12.sp)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Surface(
+            shape = RoundedCornerShape(14.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = isAgeAccepted,
+                    onCheckedChange = onAgeAcceptedChange,
+                    colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "18+ Age & Skill Gaming Declaration",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "I certify I am 18+ and agree to VeloRix Terms & Fair Play Rules.",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "Review Official Policies",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .clickable { onOpenLegal(LegalTab.TERMS) }
+                            .padding(top = 4.dp)
+                    )
+                }
             }
         }
     }
@@ -412,13 +491,41 @@ fun WelcomeBonusStep() {
             }
         }
         
-        Spacer(modifier = Modifier.height(48.dp))
+        Spacer(modifier = Modifier.height(36.dp))
         Text(
             text = "Added securely to your Velorix Wallet.",
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.primary
         )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+            modifier = Modifier.padding(horizontal = 8.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    painter = androidx.compose.ui.res.painterResource(id = com.example.R.drawable.ic_untitledui_shield_tick),
+                    contentDescription = null,
+                    tint = Color(0xFF38BDF8),
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Skill Gaming Protected • DPDP Act 2023 Compliant",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
     }
 }
 

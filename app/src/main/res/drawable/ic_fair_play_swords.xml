@@ -1,0 +1,13 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24.0"
+    android:viewportHeight="24.0">
+    <!-- Fair Play Crossed Swords Icon -->
+    <path
+        android:pathData="M14.5 4L16.5 2L22 7.5L20 9.5L14.5 4ZM19 8.5L15.5 5L8.5 12L7 10.5L4 13.5L7.5 17L3 21.5L2.5 21L7 16.5L10.5 20L13.5 17L12 15.5L19 8.5Z"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>

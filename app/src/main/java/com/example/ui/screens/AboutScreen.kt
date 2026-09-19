@@ -27,6 +27,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -40,6 +41,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
+import com.example.ui.components.CyberScanlineOverlay
+import com.example.ui.components.LegalComplianceModal
+import com.example.ui.components.LegalTab
+import com.example.ui.components.TacticalReticleFrame
+import com.example.ui.components.TacticalTelemetryRibbon
 import com.example.ui.components.stretchOverscroll
 import com.example.util.UpiPaymentManager
 import kotlinx.coroutines.Dispatchers
@@ -76,6 +82,8 @@ fun AboutScreen(
     val discordUrl = "https://discord.gg/ghxrpQAAC2"
 
     var showUpiQrDialog by remember { mutableStateOf(false) }
+    var showLegalModal by remember { mutableStateOf(false) }
+    var selectedLegalTab by remember { mutableStateOf(LegalTab.TERMS) }
 
     fun openUrl(url: String) {
         try {
@@ -162,39 +170,79 @@ fun AboutScreen(
                             .padding(vertical = 16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Big Circular App Logo with Concentric Rings (AMOLED Pure Black)
+                        // Big Circular App Logo with Cybernetic Radiant Aura
+                        val infiniteTransition = rememberInfiniteTransition(label = "about_logo_pulse")
+                        val logoGlowAlpha by infiniteTransition.animateFloat(
+                            initialValue = 0.5f,
+                            targetValue = 1.0f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(durationMillis = 2000, easing = FastOutSlowInEasing),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "logo_glow"
+                        )
+
                         Box(
                             modifier = Modifier
-                                .size(96.dp)
+                                .size(104.dp)
                                 .clip(CircleShape)
-                                .border(3.dp, Color(0xFFE5E5EA), CircleShape)
-                                .padding(4.dp)
-                                .clip(CircleShape)
-                                .border(2.dp, Color(0xFFE5E5EA).copy(alpha = 0.35f), CircleShape)
-                                .background(Color(0xFF0E0E11)),
+                                .background(
+                                    Brush.sweepGradient(
+                                        listOf(
+                                            Color(0xFF38BDF8).copy(alpha = logoGlowAlpha),
+                                            Color(0xFF818CF8).copy(alpha = logoGlowAlpha * 0.7f),
+                                            Color(0xFF00E5FF).copy(alpha = logoGlowAlpha),
+                                            Color(0xFF38BDF8).copy(alpha = logoGlowAlpha)
+                                        )
+                                    )
+                                )
+                                .padding(3.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Image(
-                                painter = painterResource(R.drawable.velorix_logo_image),
-                                contentDescription = "App Logo",
+                            Box(
                                 modifier = Modifier
-                                    .size(64.dp)
+                                    .fillMaxSize()
                                     .clip(CircleShape)
-                            )
+                                    .background(Color(0xFF08090C))
+                                    .border(1.5.dp, Color(0xFF1E2433), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Image(
+                                    painter = painterResource(R.drawable.velorix_logo_image),
+                                    contentDescription = "App Logo",
+                                    modifier = Modifier
+                                        .size(68.dp)
+                                        .clip(CircleShape)
+                                )
+                            }
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
 
                         Text(
-                            text = "VeloRix",
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold,
+                            text = "VELORIX",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Black,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                            letterSpacing = 2.sp,
                             color = primaryTextColor
                         )
 
-                        Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
 
-                        // Version & Release Pills
+                        Text(
+                            text = "APEX ESPORTS ENGINE // HIGH-VELOCITY COMBAT INFRASTRUCTURE",
+                            fontSize = 10.sp,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF38BDF8),
+                            letterSpacing = 0.8.sp,
+                            textAlign = TextAlign.Center
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Version & Release Pills with Monospace Tactical Badges
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -202,32 +250,46 @@ fun AboutScreen(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(pillBg)
+                                    .background(Color(0xFF11141D))
+                                    .border(1.dp, Color(0xFF1E2638), RoundedCornerShape(8.dp))
                                     .padding(horizontal = 10.dp, vertical = 4.dp)
                             ) {
                                 Text(
-                                    text = com.example.BuildConfig.VERSION_NAME,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = pillTextColor
+                                    text = "v${com.example.BuildConfig.VERSION_NAME}-SENTINEL",
+                                    fontSize = 11.sp,
+                                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF38BDF8)
                                 )
                             }
 
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(pillBg)
+                                    .background(Color(0xFF064E3B).copy(alpha = 0.4f))
+                                    .border(1.dp, Color(0xFF059669), RoundedCornerShape(8.dp))
                                     .padding(horizontal = 10.dp, vertical = 4.dp)
                             ) {
                                 Text(
-                                    text = "RELEASE",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = pillTextColor,
-                                    letterSpacing = 0.5.sp
+                                    text = "PRODUCTION KERNEL",
+                                    fontSize = 10.sp,
+                                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                    fontWeight = FontWeight.Black,
+                                    color = Color(0xFF34D399),
+                                    letterSpacing = 0.8.sp
                                 )
                             }
                         }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Telemetry Ribbon
+                        TacticalTelemetryRibbon(
+                            systemTag = "KERNEL-AUDIT",
+                            protocolCode = "HARDWARE-VERIFIED",
+                            statusText = "ZERO-COMPROMISE SENTRY",
+                            accentColor = Color(0xFF00E5FF)
+                        )
                     }
                 }
 
@@ -460,8 +522,127 @@ fun AboutScreen(
                         }
                     }
                 }
+
+                Spacer(modifier = Modifier.height(28.dp))
+            }
+
+            // 6. SOVEREIGN LEGAL FORTRESS & STATUTORY CITADEL
+            item {
+                AnimatedVisibility(
+                    visible = isVisible,
+                    enter = fadeIn(animationSpec = tween(450, delayMillis = 300)) +
+                        slideInVertically(animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow), initialOffsetY = { 60 })
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "SOVEREIGN LEGAL FORTRESS & STATUTORY CITADEL",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                            color = Color(0xFF38BDF8),
+                            letterSpacing = 1.sp,
+                            modifier = Modifier.padding(bottom = 10.dp)
+                        )
+
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = cardBg,
+                            border = BorderStroke(1.dp, Color(0xFF1E2638)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                // Terms of Service
+                                AboutRowItem(
+                                    drawableRes = R.drawable.ic_legal_gavel,
+                                    title = "Terms of Service",
+                                    subtitle = "Constitutional Game of Skill Covenant (Art. 19(1)(g))",
+                                    titleColor = primaryTextColor,
+                                    subtitleColor = secondaryTextColor,
+                                    onClick = {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                        selectedLegalTab = LegalTab.TERMS
+                                        showLegalModal = true
+                                    }
+                                )
+
+                                HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
+
+                                // Privacy Policy
+                                AboutRowItem(
+                                    drawableRes = R.drawable.ic_untitledui_shield_tick,
+                                    title = "Data Sovereignty & Privacy",
+                                    subtitle = "DPDP Act 2023 & Zero-Telemetry Commercialization",
+                                    titleColor = primaryTextColor,
+                                    subtitleColor = secondaryTextColor,
+                                    onClick = {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                        selectedLegalTab = LegalTab.PRIVACY
+                                        showLegalModal = true
+                                    }
+                                )
+
+                                HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
+
+                                // Fair Play Policy
+                                AboutRowItem(
+                                    drawableRes = R.drawable.ic_fair_play_swords,
+                                    title = "Sentinel Anti-Cheat Protocol",
+                                    subtitle = "Autonomous Forensic Bot & Zero-Tolerance Hardware Purge",
+                                    titleColor = primaryTextColor,
+                                    subtitleColor = secondaryTextColor,
+                                    onClick = {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                        selectedLegalTab = LegalTab.FAIR_PLAY
+                                        showLegalModal = true
+                                    }
+                                )
+
+                                HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
+
+                                // Escrow & Liquidation
+                                AboutRowItem(
+                                    drawableRes = R.drawable.ic_refund_receipt,
+                                    title = "Escrow & Liquidation Arbitration",
+                                    subtitle = "Deterministic Smart Escrow & Instant UPI Liquidation",
+                                    titleColor = primaryTextColor,
+                                    subtitleColor = secondaryTextColor,
+                                    onClick = {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                        selectedLegalTab = LegalTab.REFUNDS
+                                        showLegalModal = true
+                                    }
+                                )
+
+                                HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
+
+                                // Responsible Gaming
+                                AboutRowItem(
+                                    drawableRes = R.drawable.ic_age_18_badge,
+                                    title = "Operative Welfare & 18+ Gate",
+                                    subtitle = "Circuit-Breaker Limits & National Helpline Protocols",
+                                    titleColor = primaryTextColor,
+                                    subtitleColor = secondaryTextColor,
+                                    onClick = {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                        selectedLegalTab = LegalTab.RESPONSIBLE
+                                        showLegalModal = true
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
             }
         }
+    }
+
+    if (showLegalModal) {
+        LegalComplianceModal(
+            initialTab = selectedLegalTab,
+            onDismissRequest = { showLegalModal = false }
+        )
     }
 
     // UPI QR & Pay Dialog when tapping UPI row
