@@ -6,11 +6,14 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -24,12 +27,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -42,16 +49,12 @@ import com.example.util.UpiPaymentManager
 /**
  * DeveloperPopupDialog.kt
  *
- * Pixel-perfect subtle UI matching the user's reference screenshots,
- * with Anant's genuine developer credentials and links:
- * - App: VeloRix (Dynamic BuildConfig.VERSION_NAME)
- * - Instagram: @anant_sgh (https://instagram.com/anant_sgh)
- * - X (Twitter): @Anant__sgh (https://x.com/Anant__sgh)
- * - GitHub: VX-ANANT/Velorix-tournaments (https://github.com/VX-ANANT/Velorix-tournaments)
- * - Patreon: patreon.com/Anant_sgh (https://patreon.com/Anant_sgh)
- * - UPI: veloxyra.anant@fam
- * - Discord: discord.gg/ghxrpQAAC2 (https://discord.gg/ghxrpQAAC2)
- * - Star Repo: https://github.com/VX-ANANT/Velorix-tournaments
+ * Professional modal popup window featuring:
+ * - Real-time Gaussian window background blur (API 31+) & subtle darkened scrim
+ * - Centered modal window layout (not full-screen) with smooth spring scaling
+ * - Deep Navy Blue logo background canvas with precision border rings
+ * - Authentic developer profile credentials & direct interaction vectors
+ * - Touch-outside dismissal & Android system back-press integration
  */
 @Composable
 fun DeveloperPopupDialog(
@@ -62,13 +65,13 @@ fun DeveloperPopupDialog(
     val haptic = LocalHapticFeedback.current
     val scrollState = rememberScrollState()
 
-    val appName = "VeloRix"
+    val appName = "VeloRix Tournaments"
     val appVersion = BuildConfig.VERSION_NAME
 
     val instagramHandle = "@anant_sgh"
     val xHandle = "@Anant__sgh"
     val githubRepo = "VX-ANANT/Velorix-tournaments"
-    val upiId = UpiPaymentManager.PRIMARY_UPI_ID // veloxyra.anant@fam
+    val upiId = UpiPaymentManager.PRIMARY_UPI_ID
 
     val instagramUrl = "https://instagram.com/anant_sgh"
     val twitterUrl = "https://x.com/Anant__sgh"
@@ -83,7 +86,7 @@ fun DeveloperPopupDialog(
             }
             context.startActivity(intent)
         } catch (_: Exception) {
-            Toast.makeText(context, "Could not open link", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Could not launch link", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -91,22 +94,24 @@ fun DeveloperPopupDialog(
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val clip = ClipData.newPlainText(label, text)
         clipboard.setPrimaryClip(clip)
-        Toast.makeText(context, "Saved successfully: $text", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, "Copied to clipboard: $text", Toast.LENGTH_SHORT).show()
     }
 
-    // Palette extracted directly from reference screenshots
-    val cardBg = Color(0xFF1E1718)
-    val cardBorder = Color(0xFF2A2022)
-    val iconSquareBg = Color(0xFF2C2224)
-    val dividerColor = Color(0xFF261D1F)
-    val sectionHeaderColor = Color(0xFFEDE4E5)
-    val primaryTextColor = Color(0xFFF3ECEE)
-    val secondaryTextColor = Color(0xFFA69E9F)
-    val arrowColor = Color(0xFF8F888A)
-    val pillBg = Color(0xFF2B2224)
-    val pillTextColor = Color(0xFFCCC5C6)
-    val continueBtnBg = Color(0xFFF8A5A5) // Soft peach/coral button from screenshot
-    val continueBtnText = Color(0xFF1C1314)
+    // High-end Cybernetic Obsidian + Navy Palette (Refined, Zero Tacky Colors)
+    val modalBackground = Color(0xF80E131A)
+    val cardSectionBg = Color(0xFF131923)
+    val cardSectionBorder = Color(0xFF1E2636)
+    val iconSquareBg = Color(0xFF18202D)
+    val dividerColor = Color(0xFF1A2230)
+    val sectionHeaderColor = Color(0xFFCBD5E1)
+    val primaryTextColor = Color(0xFFF8FAFC)
+    val secondaryTextColor = Color(0xFF94A3B8)
+    val arrowColor = Color(0xFF64748B)
+
+    // Dedicated Deep Navy Blue Palette for Logo Emblem
+    val navyLogoBg = Color(0xFF0A192F) // Deep Authority Navy Blue
+    val navyLogoOuterRing = Color(0xFF0F2644)
+    val navyLogoBorder = Color(0xFF1E3A5F)
 
     Dialog(
         onDismissRequest = onDismissRequest,
@@ -116,308 +121,362 @@ fun DeveloperPopupDialog(
             dismissOnClickOutside = true
         )
     ) {
+        // Hardware Gaussian Background Blur behind Dialog Window (Android 12+)
+        ApplyDialogWindowBlur(dimAmount = 0.55f, blurRadius = 110)
+
+        var isVisible by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) {
+            isVisible = true
+        }
+
+        // Full-screen click-outside dismiss container
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.85f))
+                .background(Color(0x40000000))
                 .systemBarsPadding()
-                .padding(horizontal = 20.dp, vertical = 16.dp),
+                .padding(horizontal = 18.dp, vertical = 24.dp)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) {
+                    onDismissRequest()
+                },
             contentAlignment = Alignment.Center
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight()
-                    .verticalScroll(scrollState)
-                    .padding(vertical = 12.dp)
+            AnimatedVisibility(
+                visible = isVisible,
+                enter = fadeIn(animationSpec = tween(220, easing = LinearOutSlowInEasing)) +
+                        scaleIn(
+                            initialScale = 0.90f,
+                            animationSpec = spring(
+                                dampingRatio = 0.78f,
+                                stiffness = 380f
+                            )
+                        ),
+                exit = fadeOut(animationSpec = tween(150)) +
+                        scaleOut(targetScale = 0.92f, animationSpec = tween(150))
             ) {
-                // 1. TOP CARD: Centered App Identity & Concentric Logo
+                // Centered Modal Window Card
                 Surface(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 410.dp)
+                        .heightIn(max = 680.dp)
+                        .shadow(
+                            elevation = 32.dp,
+                            shape = RoundedCornerShape(26.dp),
+                            ambientColor = Color(0x99000000),
+                            spotColor = Color(0xDD000000)
+                        )
+                        .clip(RoundedCornerShape(26.dp))
+                        .border(
+                            BorderStroke(
+                                1.dp,
+                                Brush.verticalGradient(
+                                    listOf(
+                                        Color(0x38FFFFFF),
+                                        Color(0x14FFFFFF),
+                                        Color(0x06FFFFFF)
+                                    )
+                                )
+                            ),
+                            shape = RoundedCornerShape(26.dp)
+                        )
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            // Prevent outside dismiss when clicking inside the window
+                        },
                     shape = RoundedCornerShape(26.dp),
-                    color = cardBg,
-                    border = BorderStroke(1.dp, cardBorder)
+                    color = modalBackground
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 28.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                            .verticalScroll(scrollState)
+                            .padding(horizontal = 20.dp, vertical = 18.dp)
                     ) {
-                        // Concentric Rings Logo
+                        // HyperOS Subtle Top Handle Accent
                         Box(
                             modifier = Modifier
-                                .size(88.dp)
-                                .clip(CircleShape)
-                                .border(3.5.dp, Color(0xFFE84438), CircleShape)
-                                .padding(5.dp)
-                                .clip(CircleShape)
-                                .border(3.5.dp, Color.White, CircleShape)
-                                .padding(5.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFFE84438)),
-                            contentAlignment = Alignment.Center
+                                .align(Alignment.CenterHorizontally)
+                                .size(width = 38.dp, height = 4.dp)
+                                .clip(RoundedCornerShape(100.dp))
+                                .background(Color(0x33FFFFFF))
+                        )
+
+                        Spacer(modifier = Modifier.height(18.dp))
+
+                        // 1. BRAND HEADER WITH DEEP NAVY BLUE LOGO CANVAS
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Image(
-                                painter = painterResource(R.drawable.velorix_logo_image),
-                                contentDescription = "VeloRix Logo",
+                            // Concentric Deep Navy Blue Emblem Frame
+                            Box(
                                 modifier = Modifier
-                                    .size(44.dp)
+                                    .size(76.dp)
                                     .clip(CircleShape)
-                            )
-                        }
+                                    .background(navyLogoOuterRing)
+                                    .border(1.5.dp, navyLogoBorder, CircleShape)
+                                    .padding(6.dp)
+                                    .clip(CircleShape)
+                                    .background(navyLogoBg),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Image(
+                                    painter = painterResource(R.drawable.velorix_logo_image),
+                                    contentDescription = "VeloRix Emblem",
+                                    modifier = Modifier
+                                        .size(46.dp)
+                                        .clip(CircleShape)
+                                )
+                            }
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                            Spacer(modifier = Modifier.height(12.dp))
 
-                        Text(
-                            text = appName,
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = primaryTextColor
-                        )
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(pillBg)
-                                .padding(horizontal = 14.dp, vertical = 5.dp)
-                        ) {
                             Text(
-                                text = appVersion,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = pillTextColor
+                                text = appName,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = primaryTextColor,
+                                textAlign = TextAlign.Center
                             )
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            // Monospaced Version Badge
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = Color(0xFF1E293B),
+                                border = BorderStroke(1.dp, Color(0xFF334155))
+                            ) {
+                                Text(
+                                    text = appVersion,
+                                    fontSize = 11.sp,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color(0xFF94A3B8),
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+                                )
+                            }
                         }
-                    }
-                }
 
-                Spacer(modifier = Modifier.height(22.dp))
+                        Spacer(modifier = Modifier.height(20.dp))
 
-                // 2. SECTION: Follow Developer
-                Text(
-                    text = "Follow Developer",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = sectionHeaderColor,
-                    modifier = Modifier.padding(start = 6.dp, bottom = 10.dp)
-                )
-
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = cardBg,
-                    border = BorderStroke(1.dp, cardBorder),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        SubtlePopupRow(
-                            drawableRes = R.drawable.ic_instagram,
-                            title = "Instagram",
-                            subtitle = instagramHandle,
-                            iconBg = iconSquareBg,
-                            primaryTextColor = primaryTextColor,
-                            secondaryTextColor = secondaryTextColor,
-                            arrowColor = arrowColor,
-                            onClick = {
-                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                openUrl(instagramUrl)
-                            }
-                        )
-
-                        HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
-
-                        SubtlePopupRow(
-                            drawableRes = R.drawable.ic_x_twitter,
-                            title = "X (Twitter)",
-                            subtitle = xHandle,
-                            iconBg = iconSquareBg,
-                            primaryTextColor = primaryTextColor,
-                            secondaryTextColor = secondaryTextColor,
-                            arrowColor = arrowColor,
-                            onClick = {
-                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                openUrl(twitterUrl)
-                            }
-                        )
-
-                        HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
-
-                        SubtlePopupRow(
-                            drawableRes = R.drawable.ic_github,
-                            title = "GitHub",
-                            subtitle = githubRepo,
-                            iconBg = iconSquareBg,
-                            primaryTextColor = primaryTextColor,
-                            secondaryTextColor = secondaryTextColor,
-                            arrowColor = arrowColor,
-                            onClick = {
-                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                openUrl(githubUrl)
-                            }
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(22.dp))
-
-                // 3. SECTION: Support VeloRix
-                Text(
-                    text = "Support VeloRix",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = sectionHeaderColor,
-                    modifier = Modifier.padding(start = 6.dp, bottom = 10.dp)
-                )
-
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = cardBg,
-                    border = BorderStroke(1.dp, cardBorder),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        SubtlePopupRow(
-                            drawableRes = R.drawable.ic_patreon,
-                            title = "Patreon",
-                            subtitle = "patreon.com/Anant_sgh",
-                            iconBg = iconSquareBg,
-                            primaryTextColor = primaryTextColor,
-                            secondaryTextColor = secondaryTextColor,
-                            arrowColor = arrowColor,
-                            onClick = {
-                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                openUrl(patreonUrl)
-                            }
-                        )
-
-                        HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
-
-                        SubtlePopupRow(
-                            drawableRes = R.drawable.ic_bhim_upi,
-                            title = "UPI",
-                            subtitle = upiId,
-                            iconBg = iconSquareBg,
-                            primaryTextColor = primaryTextColor,
-                            secondaryTextColor = secondaryTextColor,
-                            arrowColor = arrowColor,
-                            onClick = {
-                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                copyToClipboard(upiId, "UPI ID")
-                                val upiUri = Uri.parse("upi://pay?pa=$upiId&pn=${Uri.encode("Anant (VeloRix Dev)")}&cu=INR")
-                                val intent = Intent(Intent.ACTION_VIEW, upiUri).apply {
-                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                }
-                                try {
-                                    context.startActivity(intent)
-                                } catch (_: Exception) {}
-                            }
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(22.dp))
-
-                // 4. SECTION: Community
-                Text(
-                    text = "Community",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = sectionHeaderColor,
-                    modifier = Modifier.padding(start = 6.dp, bottom = 10.dp)
-                )
-
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = cardBg,
-                    border = BorderStroke(1.dp, cardBorder),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        SubtlePopupRow(
-                            drawableRes = R.drawable.ic_discord,
-                            title = "Discord",
-                            subtitle = "discord.gg/ghxrpQAAC2",
-                            iconBg = iconSquareBg,
-                            primaryTextColor = primaryTextColor,
-                            secondaryTextColor = secondaryTextColor,
-                            arrowColor = arrowColor,
-                            onClick = {
-                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                openUrl(discordUrl)
-                            }
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(26.dp))
-
-                // 5. BUTTONS: Star the Repo & Continue
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
-                    shape = RoundedCornerShape(18.dp),
-                    color = cardBg,
-                    border = BorderStroke(1.dp, cardBorder),
-                    onClick = {
-                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                        openUrl(githubUrl)
-                    }
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.StarOutline,
-                            contentDescription = "Star",
-                            tint = primaryTextColor,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        // 2. DEVELOPER & COMMUNITY SECTION
                         Text(
-                            text = "Star the Repo",
+                            text = "Developer & Source",
+                            fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold,
-                            fontSize = 15.sp,
-                            color = primaryTextColor
+                            color = sectionHeaderColor,
+                            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
                         )
+
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = cardSectionBg,
+                            border = BorderStroke(1.dp, cardSectionBorder),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                ProfessionalDialogRow(
+                                    drawableRes = R.drawable.ic_github,
+                                    title = "GitHub Repository",
+                                    subtitle = githubRepo,
+                                    iconBg = iconSquareBg,
+                                    primaryTextColor = primaryTextColor,
+                                    secondaryTextColor = secondaryTextColor,
+                                    arrowColor = arrowColor,
+                                    onClick = {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                        openUrl(githubUrl)
+                                    }
+                                )
+
+                                HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
+
+                                ProfessionalDialogRow(
+                                    drawableRes = R.drawable.ic_discord,
+                                    title = "Discord Community",
+                                    subtitle = "discord.gg/ghxrpQAAC2",
+                                    iconBg = iconSquareBg,
+                                    primaryTextColor = primaryTextColor,
+                                    secondaryTextColor = secondaryTextColor,
+                                    arrowColor = arrowColor,
+                                    onClick = {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                        openUrl(discordUrl)
+                                    }
+                                )
+
+                                HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
+
+                                ProfessionalDialogRow(
+                                    drawableRes = R.drawable.ic_x_twitter,
+                                    title = "X (Twitter)",
+                                    subtitle = xHandle,
+                                    iconBg = iconSquareBg,
+                                    primaryTextColor = primaryTextColor,
+                                    secondaryTextColor = secondaryTextColor,
+                                    arrowColor = arrowColor,
+                                    onClick = {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                        openUrl(twitterUrl)
+                                    }
+                                )
+
+                                HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
+
+                                ProfessionalDialogRow(
+                                    drawableRes = R.drawable.ic_instagram,
+                                    title = "Instagram",
+                                    subtitle = instagramHandle,
+                                    iconBg = iconSquareBg,
+                                    primaryTextColor = primaryTextColor,
+                                    secondaryTextColor = secondaryTextColor,
+                                    arrowColor = arrowColor,
+                                    onClick = {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                        openUrl(instagramUrl)
+                                    }
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(18.dp))
+
+                        // 3. PROJECT BACKING SECTION
+                        Text(
+                            text = "Backing & Support",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = sectionHeaderColor,
+                            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
+                        )
+
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = cardSectionBg,
+                            border = BorderStroke(1.dp, cardSectionBorder),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                ProfessionalDialogRow(
+                                    drawableRes = R.drawable.ic_patreon,
+                                    title = "Patreon Backing",
+                                    subtitle = "patreon.com/Anant_sgh",
+                                    iconBg = iconSquareBg,
+                                    primaryTextColor = primaryTextColor,
+                                    secondaryTextColor = secondaryTextColor,
+                                    arrowColor = arrowColor,
+                                    onClick = {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                        openUrl(patreonUrl)
+                                    }
+                                )
+
+                                HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
+
+                                ProfessionalDialogRow(
+                                    drawableRes = R.drawable.ic_bhim_upi,
+                                    title = "Direct UPI (India)",
+                                    subtitle = upiId,
+                                    iconBg = iconSquareBg,
+                                    primaryTextColor = primaryTextColor,
+                                    secondaryTextColor = secondaryTextColor,
+                                    arrowColor = arrowColor,
+                                    onClick = {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                        copyToClipboard(upiId, "UPI ID")
+                                        val upiUri = Uri.parse("upi://pay?pa=$upiId&pn=${Uri.encode("Anant (VeloRix)")}&cu=INR")
+                                        val intent = Intent(Intent.ACTION_VIEW, upiUri).apply {
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        }
+                                        try {
+                                            context.startActivity(intent)
+                                        } catch (_: Exception) {}
+                                    }
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        // 4. ACTION CONTROLS
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            // Star Repo Secondary Button
+                            Surface(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(48.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                color = cardSectionBg,
+                                border = BorderStroke(1.dp, cardSectionBorder),
+                                onClick = {
+                                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                    openUrl(githubUrl)
+                                }
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxSize(),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.StarOutline,
+                                        contentDescription = "Star Repo",
+                                        tint = primaryTextColor,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Star Repo",
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 13.sp,
+                                        color = primaryTextColor
+                                    )
+                                }
+                            }
+
+                            // Dismiss Primary Button
+                            Button(
+                                onClick = {
+                                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                    onDismissRequest()
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(48.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFFF1F5F9),
+                                    contentColor = Color(0xFF0F172A)
+                                )
+                            ) {
+                                Text(
+                                    text = "Continue",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
                     }
                 }
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                Button(
-                    onClick = {
-                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                        onDismissRequest()
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(54.dp),
-                    shape = RoundedCornerShape(22.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = continueBtnBg,
-                        contentColor = continueBtnText
-                    )
-                ) {
-                    Text(
-                        text = "Continue",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
             }
         }
     }
 }
 
 @Composable
-private fun SubtlePopupRow(
+private fun ProfessionalDialogRow(
     title: String,
     subtitle: String,
     iconBg: Color,
@@ -432,13 +491,13 @@ private fun SubtlePopupRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
-                .size(42.dp)
-                .clip(RoundedCornerShape(12.dp))
+                .size(38.dp)
+                .clip(RoundedCornerShape(10.dp))
                 .background(iconBg),
             contentAlignment = Alignment.Center
         ) {
@@ -447,31 +506,31 @@ private fun SubtlePopupRow(
                     imageVector = vectorIcon,
                     contentDescription = title,
                     tint = primaryTextColor,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             } else if (drawableRes != null) {
                 Icon(
                     painter = painterResource(drawableRes),
                     contentDescription = title,
                     tint = primaryTextColor,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
 
-        Spacer(modifier = Modifier.width(16.dp))
+        Spacer(modifier = Modifier.width(14.dp))
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                fontSize = 15.sp,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = primaryTextColor
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = subtitle,
-                fontSize = 13.sp,
+                fontSize = 12.sp,
                 color = secondaryTextColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -480,9 +539,9 @@ private fun SubtlePopupRow(
 
         Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-            contentDescription = "Go",
+            contentDescription = "Navigate",
             tint = arrowColor,
-            modifier = Modifier.size(18.dp)
+            modifier = Modifier.size(16.dp)
         )
     }
 }
