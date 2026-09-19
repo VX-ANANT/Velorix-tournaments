@@ -30,6 +30,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
@@ -250,39 +251,32 @@ fun AboutScreen(
                             modifier = Modifier.padding(bottom = 12.dp)
                         )
 
-                        // Horizontal Row of Circular Contributor Avatars
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                        // Centered Circular Frame for Developer / Contributor Profile Picture
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            val contributors = listOf(
-                                ContributorItem("Cat Mascot", Color(0xFFE8D7F1), "🐱"),
-                                ContributorItem("Lead Dev", Color(0xFF1F2937), "👨‍💻"),
-                                ContributorItem("Core", Color(0xFFEA580C), "🎨"),
-                                ContributorItem("GitHub", Color(0xFF181717), "🐙"),
-                                ContributorItem("Doodle", Color(0xFFF3F4F6), "😀"),
-                                ContributorItem("Anime", Color(0xFF0284C7), "✨")
-                            )
-
-                            contributors.forEach { item ->
-                                Box(
+                            Box(
+                                modifier = Modifier
+                                    .size(54.dp)
+                                    .clip(CircleShape)
+                                    .border(2.dp, Color(0xFFE5E5EA).copy(alpha = 0.45f), CircleShape)
+                                    .clickable {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                        Toast.makeText(context, "Anant (Lead Developer)", Toast.LENGTH_SHORT).show()
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Image(
+                                    painter = painterResource(R.drawable.developer_pfp),
+                                    contentDescription = "Developer Profile Picture",
+                                    contentScale = ContentScale.Crop,
                                     modifier = Modifier
-                                        .size(48.dp)
+                                        .fillMaxSize()
                                         .clip(CircleShape)
-                                        .border(1.5.dp, Color(0xFF222228), CircleShape)
-                                        .background(item.bgColor)
-                                        .clickable {
-                                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                            Toast.makeText(context, item.name, Toast.LENGTH_SHORT).show()
-                                        },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = item.emoji,
-                                        fontSize = 22.sp
-                                    )
-                                }
+                                )
                             }
                         }
                     }
@@ -490,12 +484,6 @@ fun AboutScreen(
         )
     }
 }
-
-private data class ContributorItem(
-    val name: String,
-    val bgColor: Color,
-    val emoji: String
-)
 
 @Composable
 private fun AboutRowItem(
