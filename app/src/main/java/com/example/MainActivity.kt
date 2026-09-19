@@ -210,9 +210,6 @@ class MainActivity : ComponentActivity() {
                                         val ex = task.exception
                                         val errMsg = ex?.message.orEmpty()
                                         android.util.Log.w("FCM_TOKEN", "FCM token registration status: $errMsg")
-                                        if (errMsg.contains("TOO_MANY_REGISTRATIONS", ignoreCase = true)) {
-                                            android.util.Log.w("FCM_TOKEN", "FCM rate-limit / too many registrations reached. Backing off safely.")
-                                        }
                                     }
                                 } catch (e: Throwable) {
                                     android.util.Log.d("FCM_TOKEN", "Token handler exception: ${e.message}")
@@ -220,6 +217,9 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     } else {
+                        try {
+                            com.google.firebase.messaging.FirebaseMessaging.getInstance().isAutoInitEnabled = false
+                        } catch (_: Throwable) {}
                         android.util.Log.d("FCM", "Skipping FCM push sync on emulator or Play Services unavailable (code: $statusCode)")
                     }
                 } catch (e: Throwable) {

@@ -18,6 +18,12 @@ class MyApplication : Application() {
             } else {
                 android.util.Log.d("Firebase", "Firebase already initialized.")
             }
+
+            if (isEmulator) {
+                try {
+                    com.google.firebase.messaging.FirebaseMessaging.getInstance().isAutoInitEnabled = false
+                } catch (_: Throwable) {}
+            }
         } catch (e: Exception) {
             android.util.Log.e("Firebase", "Failed to init FIREBASE APP", e)
         }
