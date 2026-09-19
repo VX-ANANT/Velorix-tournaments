@@ -8,7 +8,16 @@
   <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=700&size=18&duration=2500&pause=1000&color=FF3366&center=true&vCenter=true&width=780&lines=DISTRIBUTED+REAL-TIME+ESPORTS+MATCHMAKING+ENGINE;ATOMIC+MUTEX+TRANSACTION+PROCESSING+FOR+LOBBY+RESERVATION;DETERMINISTIC+CRYPTOGRAPHIC+ROOM+CREDENTIAL+ORCHESTRATION;AUTONOMOUS+GEMINI+FLASH+HEURISTIC+ANOMALY+SENTRY;SUB-15MS+REACTIVE+SOCKET+STATE+PROPAGATION;UNIDIRECTIONAL+DATA+FLOW+WITH+STRICT+DOMAIN+INVARIANTS" alt="Telemetry Typing SVG" />
 </a>
 
-<br><br>
+<br>
+
+--- 
+
+<a href="https://trendshift.io/repositories/177639?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-177639" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/177639/daily?language=Kotlin" alt="kushagrasinghx%2FBitChord | Trendshift" width="250" height="55"/></a>
+<br>
+
+<a href="https://trendshift.io/repositories/177639?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-177639" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/177639/weekly?language=Kotlin" alt="kushagrasinghx%2FBitChord | Trendshift" width="250" height="55"/></a>
+
+---
 
 <!-- Core Telemetry Badges -->
 <p align="center">
