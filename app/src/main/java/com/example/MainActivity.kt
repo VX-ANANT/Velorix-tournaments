@@ -18,24 +18,8 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.animation.*
 import androidx.compose.animation.core.*
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.Modifier
-import androidx.compose.foundation.background
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.size
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.animation.togetherWith
 import androidx.navigation.compose.*
 import androidx.navigation.navDeepLink
@@ -588,7 +572,31 @@ class MainActivity : ComponentActivity() {
                     // 4. TOURNAMENT COMPREHENSIVE DETAIL DISPLAY PANEL
                     composable(
                         "details/{tournamentId}",
-                        deepLinks = listOf(navDeepLink { uriPattern = "velorixtournaments://details/{tournamentId}" })
+                        deepLinks = listOf(navDeepLink { uriPattern = "velorixtournaments://details/{tournamentId}" }),
+                        enterTransition = {
+                            slideIntoContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                                animationSpec = tween(350, easing = FastOutSlowInEasing)
+                            ) + fadeIn(tween(300))
+                        },
+                        exitTransition = {
+                            slideOutOfContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                                animationSpec = tween(300, easing = FastOutSlowInEasing)
+                            ) + fadeOut(tween(250))
+                        },
+                        popEnterTransition = {
+                            slideIntoContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                                animationSpec = tween(350, easing = FastOutSlowInEasing)
+                            ) + fadeIn(tween(300))
+                        },
+                        popExitTransition = {
+                            slideOutOfContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                                animationSpec = tween(300, easing = FastOutSlowInEasing)
+                            ) + fadeOut(tween(250))
+                        }
                     ) { backStackEntry ->
                         val tournamentId = backStackEntry.arguments?.getString("tournamentId") ?: ""
                         TournamentDetailsScreen(
@@ -601,7 +609,33 @@ class MainActivity : ComponentActivity() {
                     }
 
                     // 5. NOTIFICATION CENTER SCREEN
-                    composable("notifications") {
+                    composable(
+                        "notifications",
+                        enterTransition = {
+                            slideIntoContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                                animationSpec = tween(350, easing = FastOutSlowInEasing)
+                            ) + fadeIn(tween(300))
+                        },
+                        exitTransition = {
+                            slideOutOfContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                                animationSpec = tween(300, easing = FastOutSlowInEasing)
+                            ) + fadeOut(tween(250))
+                        },
+                        popEnterTransition = {
+                            slideIntoContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                                animationSpec = tween(350, easing = FastOutSlowInEasing)
+                            ) + fadeIn(tween(300))
+                        },
+                        popExitTransition = {
+                            slideOutOfContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                                animationSpec = tween(300, easing = FastOutSlowInEasing)
+                            ) + fadeOut(tween(250))
+                        }
+                    ) {
                         com.example.ui.screens.NotificationCenterScreen(
                             viewModel = viewModel,
                             onNavigateBack = {
@@ -614,7 +648,33 @@ class MainActivity : ComponentActivity() {
                     }
 
                     // 6. DEDICATED SETTINGS SCREEN
-                    composable("settings") {
+                    composable(
+                        "settings",
+                        enterTransition = {
+                            slideIntoContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                                animationSpec = tween(350, easing = FastOutSlowInEasing)
+                            ) + fadeIn(tween(300))
+                        },
+                        exitTransition = {
+                            slideOutOfContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                                animationSpec = tween(300, easing = FastOutSlowInEasing)
+                            ) + fadeOut(tween(250))
+                        },
+                        popEnterTransition = {
+                            slideIntoContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                                animationSpec = tween(350, easing = FastOutSlowInEasing)
+                            ) + fadeIn(tween(300))
+                        },
+                        popExitTransition = {
+                            slideOutOfContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                                animationSpec = tween(300, easing = FastOutSlowInEasing)
+                            ) + fadeOut(tween(250))
+                        }
+                    ) {
                         com.example.ui.screens.SettingsScreen(
                             viewModel = viewModel,
                             onNavigateBack = {
@@ -631,7 +691,33 @@ class MainActivity : ComponentActivity() {
                     }
 
                     // 7. DEDICATED ABOUT SCREEN (EXACT REFERENCE FORMAT)
-                    composable("about") {
+                    composable(
+                        "about",
+                        enterTransition = {
+                            slideIntoContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                                animationSpec = tween(350, easing = FastOutSlowInEasing)
+                            ) + fadeIn(tween(300))
+                        },
+                        exitTransition = {
+                            slideOutOfContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                                animationSpec = tween(300, easing = FastOutSlowInEasing)
+                            ) + fadeOut(tween(250))
+                        },
+                        popEnterTransition = {
+                            slideIntoContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                                animationSpec = tween(350, easing = FastOutSlowInEasing)
+                            ) + fadeIn(tween(300))
+                        },
+                        popExitTransition = {
+                            slideOutOfContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                                animationSpec = tween(300, easing = FastOutSlowInEasing)
+                            ) + fadeOut(tween(250))
+                        }
+                    ) {
                         com.example.ui.screens.AboutScreen(
                             onNavigateBack = {
                                 navController.navigateUp()

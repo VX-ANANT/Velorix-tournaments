@@ -7,6 +7,8 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -92,16 +94,21 @@ fun AboutScreen(
         Toast.makeText(context, "Saved successfully", Toast.LENGTH_SHORT).show()
     }
 
-    // Reference Screenshot Palette (Pitch Black AMOLED with Dark Warm-Charcoal Surfaces)
+    // Pure AMOLED Black Palette (0% Red/Warm Tint, Pure Obsidian Neutral Charcoal Surfaces)
     val screenBg = Color(0xFF000000)
-    val cardBg = Color(0xFF1E1718)
-    val cardBorder = Color(0xFF2C2426)
-    val dividerColor = Color(0xFF282022)
-    val sectionHeaderColor = Color(0xFF8F888A)
-    val primaryTextColor = Color(0xFFF0ECEC)
-    val secondaryTextColor = Color(0xFFA69E9F)
-    val pillBg = Color(0xFF251E20)
-    val pillTextColor = Color(0xFFCCC5C6)
+    val cardBg = Color(0xFF0E0E11)
+    val cardBorder = Color(0xFF1C1C22)
+    val dividerColor = Color(0xFF18181D)
+    val sectionHeaderColor = Color(0xFF8E8E93)
+    val primaryTextColor = Color(0xFFFFFFFF)
+    val secondaryTextColor = Color(0xFFA1A1A6)
+    val pillBg = Color(0xFF151518)
+    val pillTextColor = Color(0xFFE5E5EA)
+
+    var isVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        isVisible = true
+    }
 
     Scaffold(
         containerColor = screenBg,
@@ -143,76 +150,82 @@ fun AboutScreen(
         ) {
             // 1. APP LOGO, TITLE, & VERSION/RELEASE BADGES
             item {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                AnimatedVisibility(
+                    visible = isVisible,
+                    enter = fadeIn(animationSpec = tween(400)) +
+                        slideInVertically(animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow), initialOffsetY = { -30 })
                 ) {
-                    // Big Circular App Logo with Concentric Rings
-                    Box(
+                    Column(
                         modifier = Modifier
-                            .size(96.dp)
-                            .clip(CircleShape)
-                            .border(3.dp, Color(0xFFE5E0E1), CircleShape)
-                            .padding(4.dp)
-                            .clip(CircleShape)
-                            .border(2.dp, Color(0xFFE5E0E1).copy(alpha = 0.5f), CircleShape)
-                            .background(Color(0xFF0F0E10)),
-                        contentAlignment = Alignment.Center
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Image(
-                            painter = painterResource(R.drawable.velorix_logo_image),
-                            contentDescription = "App Logo",
-                            modifier = Modifier
-                                .size(64.dp)
-                                .clip(CircleShape)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Text(
-                        text = "VeloRix",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = primaryTextColor
-                    )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    // Version & Release Pills
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                        // Big Circular App Logo with Concentric Rings (AMOLED Pure Black)
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(pillBg)
-                                .padding(horizontal = 10.dp, vertical = 4.dp)
+                                .size(96.dp)
+                                .clip(CircleShape)
+                                .border(3.dp, Color(0xFFE5E5EA), CircleShape)
+                                .padding(4.dp)
+                                .clip(CircleShape)
+                                .border(2.dp, Color(0xFFE5E5EA).copy(alpha = 0.35f), CircleShape)
+                                .background(Color(0xFF0E0E11)),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                text = com.example.BuildConfig.VERSION_NAME,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = pillTextColor
+                            Image(
+                                painter = painterResource(R.drawable.velorix_logo_image),
+                                contentDescription = "App Logo",
+                                modifier = Modifier
+                                    .size(64.dp)
+                                    .clip(CircleShape)
                             )
                         }
 
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(pillBg)
-                                .padding(horizontal = 10.dp, vertical = 4.dp)
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            text = "VeloRix",
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = primaryTextColor
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Version & Release Pills
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "RELEASE",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = pillTextColor,
-                                letterSpacing = 0.5.sp
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(pillBg)
+                                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = com.example.BuildConfig.VERSION_NAME,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = pillTextColor
+                                )
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(pillBg)
+                                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = "RELEASE",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = pillTextColor,
+                                    letterSpacing = 0.5.sp
+                                )
+                            }
                         }
                     }
                 }
@@ -222,47 +235,55 @@ fun AboutScreen(
 
             // 2. CONTRIBUTORS SECTION
             item {
-                Text(
-                    text = "CONTRIBUTORS",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = sectionHeaderColor,
-                    letterSpacing = 0.8.sp,
-                    modifier = Modifier.padding(bottom = 12.dp)
-                )
-
-                // Horizontal Row of Circular Contributor Avatars
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                AnimatedVisibility(
+                    visible = isVisible,
+                    enter = fadeIn(animationSpec = tween(400, delayMillis = 80)) +
+                        slideInVertically(animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow), initialOffsetY = { 30 })
                 ) {
-                    val contributors = listOf(
-                        ContributorItem("Cat Mascot", Color(0xFFE8D7F1), "🐱"),
-                        ContributorItem("Lead Dev", Color(0xFF1F2937), "👨‍💻"),
-                        ContributorItem("Core", Color(0xFFEA580C), "🎨"),
-                        ContributorItem("GitHub", Color(0xFF181717), "🐙"),
-                        ContributorItem("Doodle", Color(0xFFF3F4F6), "😀"),
-                        ContributorItem("Anime", Color(0xFF0284C7), "✨")
-                    )
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "CONTRIBUTORS",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = sectionHeaderColor,
+                            letterSpacing = 0.8.sp,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
 
-                    contributors.forEach { item ->
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(CircleShape)
-                                .border(1.5.dp, Color(0xFF382F31), CircleShape)
-                                .background(item.bgColor)
-                                .clickable {
-                                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                    Toast.makeText(context, item.name, Toast.LENGTH_SHORT).show()
-                                },
-                            contentAlignment = Alignment.Center
+                        // Horizontal Row of Circular Contributor Avatars
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = item.emoji,
-                                fontSize = 22.sp
+                            val contributors = listOf(
+                                ContributorItem("Cat Mascot", Color(0xFFE8D7F1), "🐱"),
+                                ContributorItem("Lead Dev", Color(0xFF1F2937), "👨‍💻"),
+                                ContributorItem("Core", Color(0xFFEA580C), "🎨"),
+                                ContributorItem("GitHub", Color(0xFF181717), "🐙"),
+                                ContributorItem("Doodle", Color(0xFFF3F4F6), "😀"),
+                                ContributorItem("Anime", Color(0xFF0284C7), "✨")
                             )
+
+                            contributors.forEach { item ->
+                                Box(
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .clip(CircleShape)
+                                        .border(1.5.dp, Color(0xFF222228), CircleShape)
+                                        .background(item.bgColor)
+                                        .clickable {
+                                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                            Toast.makeText(context, item.name, Toast.LENGTH_SHORT).show()
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = item.emoji,
+                                        fontSize = 22.sp
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -272,64 +293,72 @@ fun AboutScreen(
 
             // 3. DEVELOPER SECTION
             item {
-                Text(
-                    text = "DEVELOPER",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = sectionHeaderColor,
-                    letterSpacing = 0.8.sp,
-                    modifier = Modifier.padding(bottom = 10.dp)
-                )
-
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = cardBg,
-                    border = BorderStroke(1.dp, cardBorder),
-                    modifier = Modifier.fillMaxWidth()
+                AnimatedVisibility(
+                    visible = isVisible,
+                    enter = fadeIn(animationSpec = tween(450, delayMillis = 140)) +
+                        slideInVertically(animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow), initialOffsetY = { 40 })
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        // GitHub / Repo
-                        AboutRowItem(
-                            drawableRes = R.drawable.ic_github,
-                            title = "GitHub / Website",
-                            subtitle = "github.com/VX-ANANT/Velorix-tournaments",
-                            titleColor = primaryTextColor,
-                            subtitleColor = secondaryTextColor,
-                            onClick = {
-                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                openUrl(githubUrl)
-                            }
+                        Text(
+                            text = "DEVELOPER",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = sectionHeaderColor,
+                            letterSpacing = 0.8.sp,
+                            modifier = Modifier.padding(bottom = 10.dp)
                         )
 
-                        HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = cardBg,
+                            border = BorderStroke(1.dp, cardBorder),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                // GitHub / Repo
+                                AboutRowItem(
+                                    drawableRes = R.drawable.ic_github,
+                                    title = "GitHub / Website",
+                                    subtitle = "github.com/VX-ANANT/Velorix-tournaments",
+                                    titleColor = primaryTextColor,
+                                    subtitleColor = secondaryTextColor,
+                                    onClick = {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                        openUrl(githubUrl)
+                                    }
+                                )
 
-                        // Instagram
-                        AboutRowItem(
-                            drawableRes = R.drawable.ic_instagram,
-                            title = "Instagram",
-                            subtitle = "@anant_sgh",
-                            titleColor = primaryTextColor,
-                            subtitleColor = secondaryTextColor,
-                            onClick = {
-                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                openUrl(instagramUrl)
+                                HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
+
+                                // Instagram
+                                AboutRowItem(
+                                    drawableRes = R.drawable.ic_instagram,
+                                    title = "Instagram",
+                                    subtitle = "@anant_sgh",
+                                    titleColor = primaryTextColor,
+                                    subtitleColor = secondaryTextColor,
+                                    onClick = {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                        openUrl(instagramUrl)
+                                    }
+                                )
+
+                                HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
+
+                                // X (Twitter)
+                                AboutRowItem(
+                                    drawableRes = R.drawable.ic_x_twitter,
+                                    title = "X (Twitter)",
+                                    subtitle = "@Anant__sgh",
+                                    titleColor = primaryTextColor,
+                                    subtitleColor = secondaryTextColor,
+                                    onClick = {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                        openUrl(twitterUrl)
+                                    }
+                                )
                             }
-                        )
-
-                        HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
-
-                        // X (Twitter)
-                        AboutRowItem(
-                            drawableRes = R.drawable.ic_x_twitter,
-                            title = "X (Twitter)",
-                            subtitle = "@Anant__sgh",
-                            titleColor = primaryTextColor,
-                            subtitleColor = secondaryTextColor,
-                            onClick = {
-                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                openUrl(twitterUrl)
-                            }
-                        )
+                        }
                     }
                 }
 
@@ -338,51 +367,59 @@ fun AboutScreen(
 
             // 4. SUPPORT SECTION
             item {
-                Text(
-                    text = "SUPPORT",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = sectionHeaderColor,
-                    letterSpacing = 0.8.sp,
-                    modifier = Modifier.padding(bottom = 10.dp)
-                )
-
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = cardBg,
-                    border = BorderStroke(1.dp, cardBorder),
-                    modifier = Modifier.fillMaxWidth()
+                AnimatedVisibility(
+                    visible = isVisible,
+                    enter = fadeIn(animationSpec = tween(450, delayMillis = 200)) +
+                        slideInVertically(animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow), initialOffsetY = { 50 })
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        // Patreon
-                        AboutRowItem(
-                            drawableRes = R.drawable.ic_patreon,
-                            title = "Patreon",
-                            subtitle = "patreon.com/Anant_sgh",
-                            titleColor = primaryTextColor,
-                            subtitleColor = secondaryTextColor,
-                            onClick = {
-                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                openUrl(patreonUrl)
-                            }
+                        Text(
+                            text = "SUPPORT",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = sectionHeaderColor,
+                            letterSpacing = 0.8.sp,
+                            modifier = Modifier.padding(bottom = 10.dp)
                         )
 
-                        HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = cardBg,
+                            border = BorderStroke(1.dp, cardBorder),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                // Patreon
+                                AboutRowItem(
+                                    drawableRes = R.drawable.ic_patreon,
+                                    title = "Patreon",
+                                    subtitle = "patreon.com/Anant_sgh",
+                                    titleColor = primaryTextColor,
+                                    subtitleColor = secondaryTextColor,
+                                    onClick = {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                        openUrl(patreonUrl)
+                                    }
+                                )
 
-                        // UPI
-                        AboutRowItem(
-                            drawableRes = R.drawable.ic_upi_logo,
-                            title = "UPI",
-                            subtitle = "veloxyra.anant@fam",
-                            titleColor = primaryTextColor,
-                            subtitleColor = secondaryTextColor,
-                            iconTint = null,
-                            onClick = {
-                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                copyToClipboard(upiId, "UPI ID")
-                                showUpiQrDialog = true
+                                HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
+
+                                // UPI
+                                AboutRowItem(
+                                    drawableRes = R.drawable.ic_upi_logo,
+                                    title = "UPI",
+                                    subtitle = "veloxyra.anant@fam",
+                                    titleColor = primaryTextColor,
+                                    subtitleColor = secondaryTextColor,
+                                    iconTint = null,
+                                    onClick = {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                        copyToClipboard(upiId, "UPI ID")
+                                        showUpiQrDialog = true
+                                    }
+                                )
                             }
-                        )
+                        }
                     }
                 }
 
@@ -391,34 +428,42 @@ fun AboutScreen(
 
             // 5. COMMUNITY SECTION
             item {
-                Text(
-                    text = "COMMUNITY",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = sectionHeaderColor,
-                    letterSpacing = 0.8.sp,
-                    modifier = Modifier.padding(bottom = 10.dp)
-                )
-
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = cardBg,
-                    border = BorderStroke(1.dp, cardBorder),
-                    modifier = Modifier.fillMaxWidth()
+                AnimatedVisibility(
+                    visible = isVisible,
+                    enter = fadeIn(animationSpec = tween(450, delayMillis = 260)) +
+                        slideInVertically(animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow), initialOffsetY = { 60 })
                 ) {
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        // Discord
-                        AboutRowItem(
-                            drawableRes = R.drawable.ic_discord,
-                            title = "Discord",
-                            subtitle = "discord.gg/ghxrpQAAC2",
-                            titleColor = primaryTextColor,
-                            subtitleColor = secondaryTextColor,
-                            onClick = {
-                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                openUrl(discordUrl)
-                            }
+                        Text(
+                            text = "COMMUNITY",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = sectionHeaderColor,
+                            letterSpacing = 0.8.sp,
+                            modifier = Modifier.padding(bottom = 10.dp)
                         )
+
+                        Surface(
+                            shape = RoundedCornerShape(20.dp),
+                            color = cardBg,
+                            border = BorderStroke(1.dp, cardBorder),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                // Discord
+                                AboutRowItem(
+                                    drawableRes = R.drawable.ic_discord,
+                                    title = "Discord",
+                                    subtitle = "discord.gg/ghxrpQAAC2",
+                                    titleColor = primaryTextColor,
+                                    subtitleColor = secondaryTextColor,
+                                    onClick = {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                        openUrl(discordUrl)
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -550,7 +595,7 @@ private fun UpiSupportModal(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF1E1718),
+        containerColor = Color(0xFF0E0E12),
         shape = RoundedCornerShape(24.dp),
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -563,7 +608,7 @@ private fun UpiSupportModal(
                 Text(
                     text = "UPI Support",
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFFF0ECEC),
+                    color = Color(0xFFFFFFFF),
                     fontSize = 18.sp
                 )
             }
@@ -577,7 +622,7 @@ private fun UpiSupportModal(
                     text = upiId,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
-                    color = Color(0xFFE5E0E1)
+                    color = Color(0xFFE5E5EA)
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -602,7 +647,7 @@ private fun UpiSupportModal(
                         modifier = Modifier
                             .size(190.dp)
                             .clip(RoundedCornerShape(16.dp))
-                            .background(Color(0xFF2C2426)),
+                            .background(Color(0xFF16161A)),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator(color = Color.White, modifier = Modifier.size(32.dp))
@@ -614,7 +659,7 @@ private fun UpiSupportModal(
                 Text(
                     text = "Scan with any UPI app (GPay, PhonePe, Paytm)",
                     fontSize = 12.sp,
-                    color = Color(0xFFA69E9F),
+                    color = Color(0xFFA1A1A6),
                     textAlign = TextAlign.Center
                 )
             }
@@ -623,7 +668,7 @@ private fun UpiSupportModal(
             Button(
                 onClick = onPayViaApp,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFF0ECEC),
+                    containerColor = Color(0xFFFFFFFF),
                     contentColor = Color(0xFF000000)
                 ),
                 shape = RoundedCornerShape(12.dp)
@@ -633,7 +678,7 @@ private fun UpiSupportModal(
         },
         dismissButton = {
             TextButton(onClick = onCopy) {
-                Text("Copy UPI", color = Color(0xFFF0ECEC), fontWeight = FontWeight.SemiBold)
+                Text("Copy UPI", color = Color(0xFFFFFFFF), fontWeight = FontWeight.SemiBold)
             }
         }
     )
