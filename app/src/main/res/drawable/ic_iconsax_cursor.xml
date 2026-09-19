@@ -1,6 +1,26 @@
-<vector android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24" xmlns:android="http://schemas.android.com/apk/res/android">
-  <group>
-    <path android:pathData="M11.2 14.5601l-1.14.26c-.81998.19-1.45998.83-1.64998 1.65l-.27 1.14c-.03.12-.2.12-.23 0l-.26-1.14c-.19-.82-.83-1.46-1.65-1.65l-1.14-.27c-.12-.03-.12-.2 0-.23l1.14-.26c.82-.19 1.46-.83 1.65-1.65l.27-1.14c.03-.12.2-.12.23 0l.26 1.14c.19.82.83 1.46 1.64998 1.65l1.14.27c.12.03.12.2 0 .23z" android:strokeMiterLimit="10" android:strokeColor="#ffffff" android:strokeWidth="1.5" android:fillColor="#000000"/>
-    <path android:pathData="M12.11 17.7101h2.38c.25.01.5.11.68.29l3.53 3.45c.56.55 1.39.7 2.11.4.72-.3 1.19-1.01 1.19-1.79V5.49005c0-.9-.54-1.71-1.37-2.06-.83-.35-1.79-.16-2.43.47l-6.83 6.74005M7 2H2M12 2H9.5M2 7h5" android:strokeLineCap="round" android:strokeLineJoin="round" android:strokeColor="#ffffff" android:strokeWidth="1.5" android:fillColor="#000000"/>
-  </group>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24.0"
+    android:viewportHeight="24.0">
+    <!-- Star Sparkle Outline -->
+    <path
+        android:pathData="M11.2 14.56L10.06 14.82C9.24 15.01 8.6 15.65 8.41 16.47L8.14 17.61C8.11 17.73 7.94 17.73 7.91 17.61L7.65 16.47C7.46 15.65 6.82 15.01 6 14.82L4.86 14.55C4.74 14.52 4.74 14.35 4.86 14.32L6 14.06C6.82 13.87 7.46 13.23 7.65 12.41L7.92 11.27C7.95 11.15 8.12 11.15 8.15 11.27L8.41 12.41C8.6 13.23 9.24 13.87 10.06 14.06L11.2 14.33C11.32 14.36 11.32 14.53 11.2 14.56Z"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeMiterLimit="10" />
+    <!-- Outer Cursor Outline (Precision Hollow Shape) -->
+    <path
+        android:pathData="M12.11 17.71H14.49C14.74 17.72 14.99 17.82 15.17 18L18.7 21.45C19.26 22 20.09 22.15 20.81 21.85C21.53 21.55 22 20.84 22 20.06V5.49C22 4.59 21.46 3.78 20.63 3.43C19.8 3.08 18.84 3.27 18.2 3.9L11.37 10.64"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <!-- Top-Left Speed Accents -->
+    <path
+        android:pathData="M7 2H2M12 2H9.5M2 7H7"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
 </vector>

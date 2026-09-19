@@ -176,6 +176,7 @@ velorix-tournaments/
 ├── APK_DOWNLOAD/             # Standalone Compiled Release Artifacts (v0.0.2 Verified)
 ├── velorix-watchdog-bot/      # Standalone Node.js + Gemini 3.6 Flash Realtime Telemetry Daemon
 ├── database.rules.json       # Strict Edge Data Access Control and Invariant Rules
+├── ARCHITECTURE.md           # Deep-Dive Architectural & System Invariant Specification
 └── README.md                 # Primary Architectural and Engineering Documentation
 ```
 
