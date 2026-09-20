@@ -320,7 +320,10 @@ data class SystemAppConfig(
     var emergencyNotice: String = "",
 
     @JsonNames("vpnRestrictionEnabled", "vpn_restriction_enabled", "vpn_blocked", "block_vpn")
-    var vpnRestrictionEnabled: Boolean = true
+    var vpnRestrictionEnabled: Boolean = true,
+
+    @JsonNames("showDeveloperModal", "show_developer_modal", "developer_modal_visible", "dev_window_enabled")
+    var showDeveloperModal: Boolean = true
 )
 
 enum class SituationPreviewType {

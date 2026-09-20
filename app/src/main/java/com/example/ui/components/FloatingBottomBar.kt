@@ -70,8 +70,10 @@ data class BottomTab(
 /**
  * Optimized BitChord metrics for an elongated horizontal pill capsule
  */
+// Elongated horizontal pill capsule (smooth sleek pill shape instead of circle)
+internal val PILL_CORNER_RADIUS = 20.dp
 internal val PILL_INSET = 4.dp
-internal val TAB_VERTICAL_PADDING = 4.dp
+internal val TAB_VERTICAL_PADDING = 3.dp
 internal val TAB_ICON_LABEL_GAP = 1.dp
 internal val PAGE_GUTTER = 8.dp
 
@@ -105,7 +107,8 @@ fun FloatingBottomBar(
     hazeState: HazeState,
     modifier: Modifier = Modifier,
 ) {
-    val pillShape = RoundedCornerShape(percent = 50)
+    val barShape = RoundedCornerShape(26.dp)
+    val activePillShape = RoundedCornerShape(16.dp)
     val circleShape = CircleShape
     val density = LocalDensity.current
     val haptic = LocalHapticFeedback.current
@@ -166,15 +169,15 @@ fun FloatingBottomBar(
         Box(
             modifier = Modifier
                 .weight(1f)
-                .clip(pillShape)
-                .hazeChild(state = hazeState, shape = pillShape)
+                .clip(barShape)
+                .hazeChild(state = hazeState, shape = barShape)
                 .background(Color(0x2B111827))
-                .border(GLASS_EDGE_WIDTH, GLASS_EDGE_COLOR, pillShape)
-                .border(GLASS_EDGE_WIDTH, SpecularHighlightBrush, pillShape)
+                .border(GLASS_EDGE_WIDTH, GLASS_EDGE_COLOR, barShape)
+                .border(GLASS_EDGE_WIDTH, SpecularHighlightBrush, barShape)
                 .padding(horizontal = PILL_INSET, vertical = PILL_INSET),
             contentAlignment = Alignment.CenterStart,
         ) {
-            // Active Tab Indicator: Smooth elongated capsule (Pill shape)
+            // Active Tab Indicator: Elongated horizontal pill capsule
             if (tabWidthPx > 0f && selectedIndex >= 0) {
                 Box(
                     modifier = Modifier
@@ -186,7 +189,8 @@ fun FloatingBottomBar(
                             scaleX = 1f + lag * STRETCH
                             scaleY = 1f - lag * STRETCH * SQUASH
                         }
-                        .clip(pillShape)
+                        .padding(horizontal = 2.dp, vertical = 2.dp)
+                        .clip(activePillShape)
                         .background(Color.White.copy(alpha = 0.14f))
                         .border(
                             GLASS_EDGE_WIDTH,
@@ -196,7 +200,7 @@ fun FloatingBottomBar(
                                     Color.White.copy(alpha = 0.08f)
                                 )
                             ),
-                            pillShape
+                            activePillShape
                         ),
                 )
             }
@@ -359,7 +363,7 @@ private fun BottomBarItem(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
-            .clip(RoundedCornerShape(percent = 50))
+            .clip(RoundedCornerShape(16.dp))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
