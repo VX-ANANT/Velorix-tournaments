@@ -471,6 +471,7 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier
                                 .fillMaxSize()
                                 .statusBarsPadding(),
+                            contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
                             containerColor = Color.Transparent,
                             bottomBar = {
                                 if (currentTabState != "support") {
@@ -480,24 +481,24 @@ class MainActivity : ComponentActivity() {
                                     val walletIcon = androidx.compose.ui.graphics.vector.ImageVector.vectorResource(id = R.drawable.ic_iconsax_wallet)
                                     val profileIcon = androidx.compose.ui.graphics.vector.ImageVector.vectorResource(id = R.drawable.ic_iconsax_profile)
 
-                                    val navTabs = remember(homeIcon, matchesIcon, ranksIcon, walletIcon, profileIcon) {
+                                    val mainTabs = remember(homeIcon, matchesIcon, ranksIcon, walletIcon) {
                                         listOf(
                                             com.example.ui.components.BottomTab("home", "Home", homeIcon),
                                             com.example.ui.components.BottomTab("matches", "Matches", matchesIcon),
                                             com.example.ui.components.BottomTab("leaderboard", "Ranks", ranksIcon),
-                                            com.example.ui.components.BottomTab("wallet", "Wallet", walletIcon),
-                                            com.example.ui.components.BottomTab("profile", "Profile", profileIcon)
+                                            com.example.ui.components.BottomTab("wallet", "Wallet", walletIcon)
                                         )
                                     }
-                                    val selectedIdx = navTabs.indexOfFirst { it.route == currentTabState }.let { if (it == -1) 0 else it }
+                                    val profileTab = remember(profileIcon) {
+                                        com.example.ui.components.BottomTab("profile", "Profile", profileIcon)
+                                    }
 
                                     com.example.ui.components.FloatingBottomBar(
-                                        tabs = navTabs,
-                                        selectedIndex = selectedIdx,
-                                        onTabSelected = { newIdx ->
-                                            if (newIdx in navTabs.indices) {
-                                                currentTabState = navTabs[newIdx].route
-                                            }
+                                        tabs = mainTabs,
+                                        profileTab = profileTab,
+                                        currentRoute = currentTabState,
+                                        onTabSelected = { route ->
+                                            currentTabState = route
                                         },
                                         hazeState = hazeState
                                     )
@@ -511,13 +512,13 @@ class MainActivity : ComponentActivity() {
                                         state = hazeState,
                                         style = HazeStyle(
                                             tint = Color.Transparent,
-                                            blurRadius = 16.dp,
+                                            blurRadius = 8.dp, // BitChord BLUR_RADIUS_DP = 8f for subtle frosted glass
                                             noiseFactor = 0f
                                         )
                                     )
                                     .padding(
-                                        top = innerPadding.calculateTopPadding()
-                                        // bottom padding removed to allow content to scroll behind the glass bottom bar
+                                        top = innerPadding.calculateTopPadding(),
+                                        bottom = 80.dp // Allow scrollable lists to scroll fully above the floating glass bar
                                     )
                             ) {
                                 androidx.compose.animation.AnimatedContent(
