@@ -38,6 +38,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import com.example.ui.theme.GffDevanagariFontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
@@ -458,7 +459,7 @@ private fun PageHeroHeader(
             Text(
                 text = tag,
                 fontSize = 10.sp,
-                fontFamily = FontFamily.Monospace,
+                fontFamily = GffDevanagariFontFamily,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFFA1A1A6),
                 letterSpacing = 0.5.sp
@@ -511,7 +512,7 @@ private fun SectionBlock(
                 Text(
                     text = number,
                     fontSize = 11.sp,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = GffDevanagariFontFamily,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF555555)
                 )
@@ -581,7 +582,7 @@ private fun GrievanceFooter(
             Text(
                 text = "GRIEVANCE REDRESSAL OFFICER",
                 fontSize = 10.sp,
-                fontFamily = FontFamily.Monospace,
+                fontFamily = GffDevanagariFontFamily,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF666666),
                 letterSpacing = 0.6.sp
@@ -609,7 +610,7 @@ private fun GrievanceFooter(
                     Text(
                         text = "✉ anantisback47@gmail.com",
                         fontSize = 12.sp,
-                        fontFamily = FontFamily.Monospace,
+                        fontFamily = GffDevanagariFontFamily,
                         fontWeight = FontWeight.Medium,
                         color = Color(0xFFE5E5EA)
                     )

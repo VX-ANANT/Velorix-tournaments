@@ -41,6 +41,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import com.example.ui.theme.GffDevanagariFontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -234,7 +235,7 @@ fun MatchPassDialog(
                         text = ticketCode,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Monospace,
+                        fontFamily = GffDevanagariFontFamily,
                         color = Color(0xFF34D399),
                         letterSpacing = 2.sp
                     )
@@ -271,7 +272,7 @@ fun MatchPassDialog(
                                 }
                                 Column(horizontalAlignment = Alignment.End) {
                                     Text("CHARACTER UID", fontSize = 10.sp, color = Color(0xFF94A3B8), fontWeight = FontWeight.Bold)
-                                    Text(characterId, fontSize = 13.sp, color = Color(0xFFCBD5E1), fontFamily = FontFamily.Monospace)
+                                    Text(characterId, fontSize = 13.sp, color = Color(0xFFCBD5E1), fontFamily = GffDevanagariFontFamily)
                                 }
                             }
 

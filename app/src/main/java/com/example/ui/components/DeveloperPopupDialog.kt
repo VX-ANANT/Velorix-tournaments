@@ -36,6 +36,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import com.example.ui.theme.GffDevanagariFontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -257,7 +258,7 @@ fun DeveloperPopupDialog(
                                 Text(
                                     text = appVersion,
                                     fontSize = 11.sp,
-                                    fontFamily = FontFamily.Monospace,
+                                    fontFamily = GffDevanagariFontFamily,
                                     fontWeight = FontWeight.Medium,
                                     color = Color(0xFF94A3B8),
                                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)

@@ -24,6 +24,7 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import com.example.ui.theme.GffDevanagariFontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -1296,7 +1297,7 @@ fun ProfileScreen(
                             text = "SOVEREIGN SKILL CITADEL // INDIA DPDP ACT 2023",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Black,
-                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                            fontFamily = GffDevanagariFontFamily,
                             color = Color(0xFF38BDF8),
                             letterSpacing = 0.8.sp
                         )
@@ -1305,7 +1306,7 @@ fun ProfileScreen(
                     Text(
                         text = "18+ CRYPTOGRAPHIC GATING // ZERO-TOLERANCE SENTINEL ACTIVE",
                         fontSize = 9.sp,
-                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        fontFamily = GffDevanagariFontFamily,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF64748B),
                         letterSpacing = 0.5.sp

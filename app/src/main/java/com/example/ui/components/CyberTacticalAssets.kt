@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import com.example.ui.theme.GffDevanagariFontFamily
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -207,14 +208,14 @@ fun TacticalTelemetryRibbon(
                     text = systemTag,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Black,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = GffDevanagariFontFamily,
                     letterSpacing = 1.sp,
                     color = Color.White
                 )
                 Text(
                     text = " :: $protocolCode",
                     fontSize = 9.sp,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = GffDevanagariFontFamily,
                     color = Color(0xFF64748B)
                 )
             }
@@ -223,7 +224,7 @@ fun TacticalTelemetryRibbon(
                 text = statusText,
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace,
+                fontFamily = GffDevanagariFontFamily,
                 letterSpacing = 0.8.sp,
                 color = accentColor
             )

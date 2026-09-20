@@ -234,6 +234,22 @@ velorix-tournaments/
 
 ---
 
+## COMPONENT DECLARATIONS, OPEN SOURCE ATTRIBUTIONS & SPECIAL THANKS
+
+VeloRix Engine stands on the shoulders of remarkable open-source engineering and design innovations. Sincere gratitude and official attributions are extended to the creators and maintainers of these core technologies:
+
+| COMPONENT / ASSET | ORIGIN & SOURCE | LICENSE / ATTRIBUTION | SPECIAL THANKS |
+| :--- | :--- | :--- | :--- |
+| **GFF Devanagari Typography** | Garena Free Fire / GFF Design System | Free Fire Brand Asset & Font Family | **Special Thanks** to the GFF Typography team for the high-octane gaming font family (Regular, Medium, SemiBold, Bold, ExtraBold, Black) powering every typographic surface across the VeloRix ecosystem. |
+| **Liquid Glass Navigation Dock** | [BitChord](https://github.com/bitchord) & [Kyant0/backdrop](https://github.com/Kyant0/backdrop) | Open Source / Apache-2.0 / MIT | **Special Thanks** to the BitChord engineering team and Kyant0 for pioneering the dual-island floating frosted glass dock architecture, momentum spring physics (`dampingRatio = 0.72f`, `stiffness = 320f`), and real-time backdrop blur refraction. |
+| **Haze Compose Backdrop** | [chrisbanes/haze](https://github.com/chrisbanes/haze) | Apache-2.0 License | **Special Thanks** to Chris Banes for the Haze library, enabling hardware-accelerated real-time background blurring and frosted glass effects on Jetpack Compose. |
+| **Iconsax Vector Library** | [Iconsax / Vuesax](https://iconsax.io/) | Free Vector System | **Special Thanks** to the Iconsax creative team for the ultra-clean tactical linear and bold iconography representing tournament lobbies, wallet transactions, and system statuses. |
+| **Vico Data Visualization** | [patrykgoworowski/vico](https://github.com/patrykgoworowski/vico) | Apache-2.0 License | **Special Thanks** to Patryk Goworowski and contributors for the modern Compose-native chart and data telemetry visualization engine. |
+| **Android Jetpack & Compose** | [Google Android Open Source Project](https://developer.android.com/jetpack) | Apache-2.0 License | **Special Thanks** to the Google Android & Jetpack Compose team for declarative UI rendering, Room SQLite local persistence, and lifecycle coroutine dispatchers. |
+| **Firebase Cloud Ecosystem** | [Google Firebase](https://firebase.google.com/) | Commercial / Free Tier | **Special Thanks** to Google Firebase for the Realtime Database socket cluster, Firebase Cloud Messaging (FCM) high-priority dispatch, and Google Identity auth infrastructure. |
+
+---
+
 ## ARCHITECTURAL LEADERSHIP AND NETWORK NODES
 
 <div align="center">

@@ -23,6 +23,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import com.example.ui.theme.GffDevanagariFontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -201,7 +202,7 @@ fun LegalComplianceModal(
                             Text(
                                 text = "JURISDICTION: REPUBLIC OF INDIA",
                                 fontSize = 10.sp,
-                                fontFamily = FontFamily.Monospace,
+                                fontFamily = GffDevanagariFontFamily,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF737373)
                             )
@@ -376,7 +377,7 @@ private fun LegalHighlightBadge(title: String, desc: String) {
                 text = title,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace,
+                fontFamily = GffDevanagariFontFamily,
                 letterSpacing = 0.5.sp,
                 color = Color(0xFFEDEDED)
             )
@@ -398,7 +399,7 @@ private fun LegalSectionTitle(title: String) {
         text = title,
         fontSize = 12.sp,
         fontWeight = FontWeight.SemiBold,
-        fontFamily = FontFamily.Monospace,
+        fontFamily = GffDevanagariFontFamily,
         color = Color(0xFFEDEDED),
         letterSpacing = 0.5.sp
     )

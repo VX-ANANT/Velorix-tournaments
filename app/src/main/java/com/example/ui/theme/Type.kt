@@ -9,13 +9,18 @@ import androidx.compose.ui.unit.sp
 import com.example.R
 
 val GffDevanagariFontFamily = FontFamily(
+    Font(R.font.gff_devanagari_regular, FontWeight.Thin),
+    Font(R.font.gff_devanagari_regular, FontWeight.ExtraLight),
+    Font(R.font.gff_devanagari_regular, FontWeight.Light),
     Font(R.font.gff_devanagari_regular, FontWeight.Normal),
     Font(R.font.gff_devanagari_medium, FontWeight.Medium),
-    Font(R.font.gff_devanagari_bold, FontWeight.Bold),
     Font(R.font.gff_devanagari_bold, FontWeight.SemiBold),
+    Font(R.font.gff_devanagari_bold, FontWeight.Bold),
     Font(R.font.gff_devanagari_bold, FontWeight.ExtraBold),
     Font(R.font.gff_devanagari_bold, FontWeight.Black)
 )
+
+val GffDevanagari = GffDevanagariFontFamily
 
 // GFF Devanagari typography throughout the entire app
 val Typography = Typography(

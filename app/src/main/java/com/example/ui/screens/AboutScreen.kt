@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.sp
 import com.example.R
 import com.example.ui.components.LegalTab
 import com.example.ui.components.stretchOverscroll
+import com.example.ui.theme.GffDevanagariFontFamily
 import com.example.util.UpiPaymentManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -215,7 +216,7 @@ fun AboutScreen(
                                 Text(
                                     text = "v${com.example.BuildConfig.VERSION_NAME}",
                                     fontSize = 11.sp,
-                                    fontFamily = FontFamily.Monospace,
+                                    fontFamily = GffDevanagariFontFamily,
                                     fontWeight = FontWeight.Medium,
                                     color = Color(0xFFD4D4D8)
                                 )
@@ -231,7 +232,7 @@ fun AboutScreen(
                                 Text(
                                     text = "PROD RELEASE",
                                     fontSize = 10.sp,
-                                    fontFamily = FontFamily.Monospace,
+                                    fontFamily = GffDevanagariFontFamily,
                                     fontWeight = FontWeight.SemiBold,
                                     color = Color(0xFF4ADE80)
                                 )
@@ -312,7 +313,7 @@ fun AboutScreen(
                                                 Text(
                                                     text = "CREATOR",
                                                     fontSize = 9.sp,
-                                                    fontFamily = FontFamily.Monospace,
+                                                    fontFamily = GffDevanagariFontFamily,
                                                     fontWeight = FontWeight.Bold,
                                                     color = Color(0xFFA1A1A6)
                                                 )
@@ -555,6 +556,64 @@ fun AboutScreen(
                     }
                 }
 
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+
+            // 6. ATTRIBUTIONS & SPECIAL THANKS
+            item {
+                AnimatedVisibility(
+                    visible = isVisible,
+                    enter = fadeIn(animationSpec = tween(350, delayMillis = 280)) +
+                        slideInVertically(animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow), initialOffsetY = { 40 })
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        SectionHeader(text = "ATTRIBUTIONS & SPECIAL THANKS")
+
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = cardBg,
+                            border = BorderStroke(1.dp, cardBorder),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                MinimalRowItem(
+                                    drawableRes = R.drawable.ic_iconsax_heart,
+                                    title = "GFF Devanagari Typography",
+                                    subtitle = "GFF Design System — Primary Gaming Font Family",
+                                    onClick = {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                        Toast.makeText(context, "Special Thanks: GFF Devanagari Font Family", Toast.LENGTH_SHORT).show()
+                                    }
+                                )
+
+                                HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
+
+                                MinimalRowItem(
+                                    drawableRes = R.drawable.ic_barcode,
+                                    title = "Liquid Glass Navigation Dock",
+                                    subtitle = "BitChord & Kyant0 Backdrop UI Architecture",
+                                    onClick = {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                        Toast.makeText(context, "Special Thanks: BitChord & Kyant0 Backdrop UI", Toast.LENGTH_SHORT).show()
+                                    }
+                                )
+
+                                HorizontalDivider(thickness = 0.8.dp, color = dividerColor)
+
+                                MinimalRowItem(
+                                    drawableRes = R.drawable.ic_untitledui_shield_tick,
+                                    title = "Iconsax & Open Source Ecosystem",
+                                    subtitle = "Iconsax Vectors, Haze Blur & Vico Charts",
+                                    onClick = {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                        Toast.makeText(context, "Special Thanks: Open Source Android Contributors", Toast.LENGTH_SHORT).show()
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(32.dp))
             }
         }
@@ -589,7 +648,7 @@ private fun SectionHeader(text: String) {
         text = text,
         fontSize = 11.sp,
         fontWeight = FontWeight.Bold,
-        fontFamily = FontFamily.Monospace,
+        fontFamily = GffDevanagariFontFamily,
         color = Color(0xFF737373),
         letterSpacing = 0.8.sp,
         modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
@@ -723,7 +782,7 @@ private fun UpiSupportModal(
                     text = upiId,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 15.sp,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = GffDevanagariFontFamily,
                     color = Color(0xFFFFFFFF)
                 )
 
