@@ -1,7 +1,3 @@
-<div align="center">
-
-<!-- TERMINAL NEOFETCH CARD (NATIVE MARKDOWN - ALWAYS LOADS INSTANTLY) -->
-```text
                               ..'``^"^   anant@archlinux ------------------------------------------------
                      i    ^    ..'``^^    . OS: .................. Arch Linux x86_64, Android 14
           -        .1"   !i     ...'`'    . Host: ................ Hyprland Compositor (Wayland)
@@ -28,35 +24,3 @@ w0O%$8M#ZUM$$$$$$BMM$WLXJZCZUUnJdQdqmm    . Discord: .................... discor
 o&o&MMBB%Bob$$*aMM&B$$@#Z0#hbwwwCdx }p    - GitHub Telemetry ----------------------------------------------
 $#*aba#8M&p%@$@bM$@%8adw0aopd*#*8%$-.x    . Repos: ... VX-ANANT | Role: ... Architect & Founder
 #Md*MMakkah$$$$$d*$$$*ZpMMpmnUM*$$$u~|    . Philosophy: ..... "Build it clean. Build it fast. Ship it."
-```
-
-<br>
-
-<!-- CONNECT & SOCIALS (ZERO EMOJIS, HIGH-TECH MONOCHROME / ACCENT BADGES) -->
-<p align="center">
-  <a href="https://github.com/VX-ANANT">
-    <img src="https://img.shields.io/badge/GITHUB-VX--ANANT-181717?style=for-the-badge&logo=github&logoColor=white" alt="GitHub" />
-  </a>
-  <a href="https://instagram.com/anant_sgh">
-    <img src="https://img.shields.io/badge/INSTAGRAM-%40anant__sgh-E4405F?style=for-the-badge&logo=instagram&logoColor=white" alt="Instagram" />
-  </a>
-  <a href="https://x.com/Anant__sgh">
-    <img src="https://img.shields.io/badge/X-(TWITTER)-000000?style=for-the-badge&logo=x&logoColor=white" alt="X Twitter" />
-  </a>
-  <a href="mailto:anantisback47@gmail.com">
-    <img src="https://img.shields.io/badge/EMAIL-anantisback47%40gmail.com-D14836?style=for-the-badge&logo=gmail&logoColor=white" alt="Email" />
-  </a>
-  <a href="https://discord.gg/ghxrpQAAC2">
-    <img src="https://img.shields.io/badge/DISCORD-COMMUNITY-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord" />
-  </a>
-  <a href="https://patreon.com/Anant_sgh">
-    <img src="https://img.shields.io/badge/PATREON-SUPPORT-FF424D?style=for-the-badge&logo=patreon&logoColor=white" alt="Patreon" />
-  </a>
-</p>
-
-<!-- GITHUB ANALYTICS BADGE -->
-<p align="center">
-  <img src="https://komarev.com/ghpvc/?username=VX-ANANT&style=flat-square&color=00E5FF&label=SYSTEM+TELEMETRY+VIEWS" alt="Profile Views" />
-</p>
-
-</div>

@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 510" width="980" height="510">
+  <defs>
+    <style>
+      .mono {
+        font-family: 'Fira Code', 'Courier New', 'SFMono-Regular', Consolas, monospace;
+        font-size: 13px;
+        white-space: pre;
+      }
+      .ascii { fill: #8B949E; }
+      .header { fill: #58A6FF; font-weight: bold; }
+      .sep { fill: #30363D; }
+      .label { fill: #79C0FF; font-weight: 600; }
+      .category { fill: #FFA657; font-weight: 600; }
+      .dot { fill: #484F58; }
+      .val { fill: #C9D1D9; }
+      .val_hi { fill: #7EE787; font-weight: bold; }
+      .val_green { fill: #7EE787; font-style: italic; }
+    </style>
+  </defs>
+
+  <!-- Background Card -->
+  <rect x="2" y="2" width="976" height="506" rx="14" ry="14" fill="#0D1117" stroke="#30363D" stroke-width="1.5"/>
+
+  <!-- Left Column: Character ASCII Art -->
+  <g class="mono ascii" transform="translate(26, 32)">
+    <text x="0" y="0.0">                              ..&#x27;``^&quot;^</text>
+    <text x="0" y="17.5">                     i    ^    ..&#x27;``^^</text>
+    <text x="0" y="35.0">          -        .1&quot;   !i     ...&#x27;`&#x27;</text>
+    <text x="0" y="52.5">          )&gt;&gt;, &quot;::`C]    U        ....</text>
+    <text x="0" y="70.0">         `1dhuxzzuJvI^  Oz         .. </text>
+    <text x="0" y="87.5">        &quot;I0o8d*ZXmqt(j{f$l            </text>
+    <text x="0" y="105.0">      &#x27;^?C&amp;kaqk#do@*h&amp;cb&amp;  ^          </text>
+    <text x="0" y="122.5">      ^[vwM%%WM&amp;@$@$BMa*qJv;          </text>
+    <text x="0" y="140.0">         CkhhkMWW$$$$MYQaJ.           </text>
+    <text x="0" y="157.5">        f$B$#*&amp;%@$BB@&amp;Uu)`            </text>
+    <text x="0" y="175.0"> I     _$WB$##*a@$%&amp;Wbj0m-            </text>
+    <text x="0" y="192.5">xf    ;$@#$Boo$$B$$#&amp;z_~~_&quot;           </text>
+    <text x="0" y="210.0">*}   `&amp;$8&amp;$B#8$$#aM8Bju               </text>
+    <text x="0" y="227.5">MX! .M$BW#@BW&amp;$%#*h#xCr               </text>
+    <text x="0" y="245.0">8oU/0&amp;#$oW%8MB$kkkoh}Mi               </text>
+    <text x="0" y="262.5">%*bQW$$%W&amp;%%8$&amp;pk*%Zr8^               </text>
+    <text x="0" y="280.0">oqZLh$$B%&amp;$$@$$ohM$Yxof               </text>
+    <text x="0" y="297.5">UZwbQ&amp;$$$@$$$$$$WaW)**xv:             </text>
+    <text x="0" y="315.0">_ohdbC%$$$$$$$$$$$&amp;d$$CrY;          -Y</text>
+    <text x="0" y="332.5">[YWbkpza$$$$$$$$$$$$a$$0ZwJ]     !|Ohk</text>
+    <text x="0" y="350.0">j)Y$M#dcL%$$$$$%$@hW$$ooCO0Jj; iCakwOZ</text>
+    <text x="0" y="367.5">w0O%$8M#ZUM$$$$$$BMM$WLXJZCZUUnJdQdqmm</text>
+    <text x="0" y="385.0">#*&amp;*%$@8@#Zd8*M&amp;WWM#*hkqCXCbpmLY0Q+XqZ</text>
+    <text x="0" y="402.5">o&amp;o&amp;MMBB%Bob$$*aMM&amp;B$$@#Z0#hbwwwCdx }p</text>
+    <text x="0" y="420.0">$#*aba#8M&amp;p%@$@bM$@%8adw0aopd*#*8%$-.x</text>
+    <text x="0" y="437.5">#Md*MMakkah$$$$$d*$$$*ZpMMpmnUM*$$$u~|</text>
+  </g>
+
+  <!-- Right Column: Terminal Details -->
+  <g class="mono" transform="translate(370, 32)">
+    <text x="0" y="0.0"><tspan class="header">anant@archlinux</tspan><tspan class="sep"> ------------------------------------------------</tspan></text>
+    <text x="0" y="17.5"><tspan class="label"> . OS:</tspan><tspan class="dot"> .................. </tspan><tspan class="val">Arch Linux x86_64, Android 14</tspan></text>
+    <text x="0" y="35.0"><tspan class="label"> . Host:</tspan><tspan class="dot"> ................ </tspan><tspan class="val">Hyprland Compositor (Wayland)</tspan></text>
+    <text x="0" y="52.5"><tspan class="label"> . Kernel:</tspan><tspan class="dot"> .............. </tspan><tspan class="val">Linux 6.x-zen (Custom Architecture)</tspan></text>
+    <text x="0" y="70.0"><tspan class="label"> . IDE:</tspan><tspan class="dot"> ................. </tspan><tspan class="val">Neovim (NvChad), Android Studio</tspan></text>
+    <text x="0" y="87.5"><tspan class="label"> . Terminal:</tspan><tspan class="dot"> ............ </tspan><tspan class="val">Kitty + Zsh + Starship Prompt</tspan></text>
+    <text x="0" y="105.0"><tspan class="dot"> . </tspan></text>
+    <text x="0" y="122.5"><tspan class="category"> . Languages.Programming:</tspan><tspan class="dot"> ... </tspan><tspan class="val">Kotlin, Python, Java, Bash, Dart</tspan></text>
+    <text x="0" y="140.0"><tspan class="category"> . Languages.Web&amp;Data:</tspan><tspan class="dot"> ...... </tspan><tspan class="val">TypeScript, SQL, C, HTML/CSS</tspan></text>
+    <text x="0" y="157.5"><tspan class="category"> . Frameworks.Core:</tspan><tspan class="dot"> ......... </tspan><tspan class="val">Jetpack Compose, Flutter, Node.js</tspan></text>
+    <text x="0" y="175.0"><tspan class="category"> . Infrastructure:</tspan><tspan class="dot"> .......... </tspan><tspan class="val">Firebase, Supabase, n8n, Docker</tspan></text>
+    <text x="0" y="192.5"><tspan class="dot"> . </tspan></text>
+    <text x="0" y="210.0"><tspan class="category"> . Security.Domains:</tspan><tspan class="dot"> ........ </tspan><tspan class="val">Web Exploitation, PrivEsc, CTFs</tspan></text>
+    <text x="0" y="227.5"><tspan class="category"> . Security.Arsenal:</tspan><tspan class="dot"> ........ </tspan><tspan class="val">Burp Suite, Metasploit, Wireshark, Nmap</tspan></text>
+    <text x="0" y="245.0"><tspan class="category"> . Flagship.Project:</tspan><tspan class="dot"> ........ </tspan><tspan class="val">VeloRix Esports Platform &amp; Engine</tspan></text>
+    <text x="0" y="262.5"><tspan class="category"> . Hobbies.Hardware:</tspan><tspan class="dot"> ........ </tspan><tspan class="val">System Tweaking, Custom Kernels</tspan></text>
+    <text x="0" y="280.0"><tspan class="dot"> . </tspan></text>
+    <text x="0" y="297.5"><tspan class="header"> - Contact</tspan><tspan class="sep"> ----------------------------------------------------</tspan></text>
+    <text x="0" y="315.0"><tspan class="label"> . Email.Personal:</tspan><tspan class="dot"> ............. </tspan><tspan class="val">anantisback47@gmail.com</tspan></text>
+    <text x="0" y="332.5"><tspan class="label"> . Instagram:</tspan><tspan class="dot"> .................. </tspan><tspan class="val">@anant_sgh</tspan></text>
+    <text x="0" y="350.0"><tspan class="label"> . X (Twitter):</tspan><tspan class="dot"> ................ </tspan><tspan class="val">@Anant__sgh</tspan></text>
+    <text x="0" y="367.5"><tspan class="label"> . Discord:</tspan><tspan class="dot"> .................... </tspan><tspan class="val">discord.gg/ghxrpQAAC2</tspan></text>
+    <text x="0" y="385.0"><tspan class="dot"> . </tspan></text>
+    <text x="0" y="402.5"><tspan class="header"> - GitHub Telemetry</tspan><tspan class="sep"> ----------------------------------------------</tspan></text>
+    <text x="0" y="420.0"><tspan class="label"> . Repos:</tspan><tspan class="dot"> ... </tspan><tspan class="val_hi">VX-ANANT</tspan><tspan class="dot"> | </tspan><tspan class="label">Role:</tspan><tspan class="dot"> ... </tspan><tspan class="val_hi">Architect &amp; Founder</tspan></text>
+    <text x="0" y="437.5"><tspan class="label"> . Philosophy:</tspan><tspan class="dot"> ..... </tspan><tspan class="val_green">&quot;Build it clean. Build it fast. Ship it.&quot;</tspan></text>
+  </g>
+</svg>

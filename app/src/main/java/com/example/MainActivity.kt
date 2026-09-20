@@ -474,9 +474,31 @@ class MainActivity : ComponentActivity() {
                             containerColor = Color.Transparent,
                             bottomBar = {
                                 if (currentTabState != "support") {
-                                    GlassBottomBar(
-                                        currentTab = currentTabState,
-                                        onTabSelected = { currentTabState = it },
+                                    val homeIcon = androidx.compose.ui.graphics.vector.ImageVector.vectorResource(id = R.drawable.ic_iconsax_home)
+                                    val matchesIcon = androidx.compose.ui.graphics.vector.ImageVector.vectorResource(id = R.drawable.ic_iconsax_matches)
+                                    val ranksIcon = androidx.compose.material.icons.Icons.Rounded.Leaderboard
+                                    val walletIcon = androidx.compose.ui.graphics.vector.ImageVector.vectorResource(id = R.drawable.ic_iconsax_wallet)
+                                    val profileIcon = androidx.compose.ui.graphics.vector.ImageVector.vectorResource(id = R.drawable.ic_iconsax_profile)
+
+                                    val navTabs = remember(homeIcon, matchesIcon, ranksIcon, walletIcon, profileIcon) {
+                                        listOf(
+                                            com.example.ui.components.BottomTab("home", "Home", homeIcon),
+                                            com.example.ui.components.BottomTab("matches", "Matches", matchesIcon),
+                                            com.example.ui.components.BottomTab("leaderboard", "Ranks", ranksIcon),
+                                            com.example.ui.components.BottomTab("wallet", "Wallet", walletIcon),
+                                            com.example.ui.components.BottomTab("profile", "Profile", profileIcon)
+                                        )
+                                    }
+                                    val selectedIdx = navTabs.indexOfFirst { it.route == currentTabState }.let { if (it == -1) 0 else it }
+
+                                    com.example.ui.components.FloatingBottomBar(
+                                        tabs = navTabs,
+                                        selectedIndex = selectedIdx,
+                                        onTabSelected = { newIdx ->
+                                            if (newIdx in navTabs.indices) {
+                                                currentTabState = navTabs[newIdx].route
+                                            }
+                                        },
                                         hazeState = hazeState
                                     )
                                 }
