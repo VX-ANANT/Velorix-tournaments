@@ -85,32 +85,13 @@ internal val GlassSpring = spring<Float>(dampingRatio = 0.72f, stiffness = 320f)
 internal const val STRETCH = 0.16f
 internal const val SQUASH = 0.5f
 
-/** Surface opacity matching BitChord's Apple Glass (0.4f) */
-private const val SURFACE_OPACITY = 0.42f
+internal val GLASS_EDGE_WIDTH = 0.5.dp
+internal val GLASS_EDGE_COLOR = Color.White.copy(alpha = 0.16f)
 
-/**
- * Lens Refraction Chromatic Dispersion Gradient.
- * Creates the rainbow iridescent sheen seen along the outer glass rims in BitChord / iOS 26.
- */
-private val ChromaticLensRimBrush = Brush.linearGradient(
-    colors = listOf(
-        Color(0xFF38BDF8).copy(alpha = 0.50f), // Spectral Cyan
-        Color(0xFF818CF8).copy(alpha = 0.35f), // Indigo refraction
-        Color(0xFFC084FC).copy(alpha = 0.45f), // Magenta / Violet flare
-        Color(0xFFF472B6).copy(alpha = 0.30f), // Rose dispersion
-        Color(0xFF38BDF8).copy(alpha = 0.35f), // Cyan flare
-        Color.White.copy(alpha = 0.55f)        // Crisp specular highlight
-    ),
-    start = Offset(0f, 0f),
-    end = Offset(400f, 120f)
-)
-
-/** Upper glass specular light bevel */
 private val SpecularHighlightBrush = Brush.verticalGradient(
     colors = listOf(
-        Color.White.copy(alpha = 0.38f),
-        Color.White.copy(alpha = 0.08f),
-        Color.Transparent
+        Color.White.copy(alpha = 0.32f),
+        Color.White.copy(alpha = 0.06f)
     )
 )
 
@@ -185,15 +166,12 @@ fun FloatingBottomBar(
                 .weight(1f)
                 .clip(pillShape)
                 .hazeChild(state = hazeState, shape = pillShape)
-                // Subtle dark translucent glass tint (BitChord SURFACE_OPACITY = 0.42f)
-                .background(Color(0xFF0C1018).copy(alpha = SURFACE_OPACITY))
-                // Lens Refraction Chromatic Dispersion Edge
-                .border(0.8.dp, ChromaticLensRimBrush, pillShape)
-                // Specular light highlight on top edge
-                .border(0.5.dp, SpecularHighlightBrush, pillShape)
+                .background(Color(0x2B111827))
+                .border(GLASS_EDGE_WIDTH, GLASS_EDGE_COLOR, pillShape)
+                .border(GLASS_EDGE_WIDTH, SpecularHighlightBrush, pillShape)
                 .padding(horizontal = PILL_INSET, vertical = PILL_INSET),
         ) {
-            // Active Tab Indicator: Smooth elongated capsule (Pill shape, not a circle!)
+            // Active Tab Indicator: Smooth elongated capsule (Pill shape)
             if (tabWidthPx > 0f && selectedIndex >= 0) {
                 Box(
                     modifier = Modifier
@@ -206,23 +184,13 @@ fun FloatingBottomBar(
                             scaleY = 1f - lag * STRETCH * SQUASH
                         }
                         .clip(pillShape)
-                        // Elegant translucent dark glass pill fill with subtle contrast
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    Color(0xFF1E2638).copy(alpha = 0.85f),
-                                    Color(0xFF0F1522).copy(alpha = 0.90f)
-                                )
-                            )
-                        )
-                        .background(Color.White.copy(alpha = 0.08f))
-                        // Delicate inner specular border around the active pill
+                        .background(Color.White.copy(alpha = 0.14f))
                         .border(
-                            0.6.dp,
+                            GLASS_EDGE_WIDTH,
                             Brush.verticalGradient(
                                 colors = listOf(
                                     Color.White.copy(alpha = 0.35f),
-                                    Color.White.copy(alpha = 0.06f)
+                                    Color.White.copy(alpha = 0.08f)
                                 )
                             ),
                             pillShape
@@ -310,16 +278,16 @@ fun FloatingBottomBar(
 
         Box(
             modifier = Modifier
-                .size(58.dp) // Matches the height of the main tab pill
+                .size(54.dp)
                 .graphicsLayer {
                     scaleX = profileScale
                     scaleY = profileScale
                 }
                 .clip(circleShape)
                 .hazeChild(state = hazeState, shape = circleShape)
-                .background(Color(0xFF0C1018).copy(alpha = SURFACE_OPACITY))
-                .border(0.8.dp, ChromaticLensRimBrush, circleShape)
-                .border(0.5.dp, SpecularHighlightBrush, circleShape)
+                .background(Color(0x2B111827))
+                .border(GLASS_EDGE_WIDTH, GLASS_EDGE_COLOR, circleShape)
+                .border(GLASS_EDGE_WIDTH, SpecularHighlightBrush, circleShape)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -333,23 +301,15 @@ fun FloatingBottomBar(
             if (isProfileSelected) {
                 Box(
                     modifier = Modifier
-                        .size(46.dp)
+                        .size(44.dp)
                         .clip(circleShape)
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    Color(0xFF1E2638).copy(alpha = 0.85f),
-                                    Color(0xFF0F1522).copy(alpha = 0.90f)
-                                )
-                            )
-                        )
-                        .background(Color.White.copy(alpha = 0.08f))
+                        .background(Color.White.copy(alpha = 0.14f))
                         .border(
-                            0.6.dp,
+                            GLASS_EDGE_WIDTH,
                             Brush.verticalGradient(
                                 colors = listOf(
                                     Color.White.copy(alpha = 0.35f),
-                                    Color.White.copy(alpha = 0.06f)
+                                    Color.White.copy(alpha = 0.08f)
                                 )
                             ),
                             circleShape
