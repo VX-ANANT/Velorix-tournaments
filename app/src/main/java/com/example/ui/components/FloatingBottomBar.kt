@@ -55,6 +55,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ui.theme.GffDevanagariFontFamily
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeChild
 import kotlin.math.abs
@@ -67,12 +68,12 @@ data class BottomTab(
 )
 
 /**
- * Exact BitChord metrics and constants
+ * Optimized BitChord metrics for an elongated horizontal pill capsule
  */
-internal val PILL_INSET = 6.dp
-internal val TAB_VERTICAL_PADDING = 8.dp
-internal val TAB_ICON_LABEL_GAP = 2.dp
-internal val PAGE_GUTTER = 12.dp
+internal val PILL_INSET = 4.dp
+internal val TAB_VERTICAL_PADDING = 4.dp
+internal val TAB_ICON_LABEL_GAP = 1.dp
+internal val PAGE_GUTTER = 8.dp
 
 /**
  * BitChord Damped Spring: Damping 0.72f, Stiffness 320f
@@ -118,7 +119,8 @@ fun FloatingBottomBar(
     val currentSelectedIndex by rememberUpdatedState(if (selectedIndex != -1) selectedIndex else 0)
 
     var rowSize by remember { mutableStateOf(IntSize.Zero) }
-    val gapPx = with(density) { 4.dp.toPx() }
+    val tabGap = 2.dp
+    val gapPx = with(density) { tabGap.toPx() }
     val n = tabs.size
 
     val tabWidthPx = if (rowSize.width > 0 && n > 0) {
@@ -155,7 +157,7 @@ fun FloatingBottomBar(
             .padding(horizontal = PAGE_GUTTER)
             .padding(bottom = 2.dp) // Sits low right above the system navigation bar
             .fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // -------------------------------------------------------------
@@ -170,6 +172,7 @@ fun FloatingBottomBar(
                 .border(GLASS_EDGE_WIDTH, GLASS_EDGE_COLOR, pillShape)
                 .border(GLASS_EDGE_WIDTH, SpecularHighlightBrush, pillShape)
                 .padding(horizontal = PILL_INSET, vertical = PILL_INSET),
+            contentAlignment = Alignment.CenterStart,
         ) {
             // Active Tab Indicator: Smooth elongated capsule (Pill shape)
             if (tabWidthPx > 0f && selectedIndex >= 0) {
@@ -244,7 +247,7 @@ fun FloatingBottomBar(
                             },
                         )
                     },
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(tabGap),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 tabs.forEachIndexed { index, tab ->
@@ -278,7 +281,7 @@ fun FloatingBottomBar(
 
         Box(
             modifier = Modifier
-                .size(54.dp)
+                .size(48.dp)
                 .graphicsLayer {
                     scaleX = profileScale
                     scaleY = profileScale
@@ -301,7 +304,7 @@ fun FloatingBottomBar(
             if (isProfileSelected) {
                 Box(
                     modifier = Modifier
-                        .size(44.dp)
+                        .size(38.dp)
                         .clip(circleShape)
                         .background(Color.White.copy(alpha = 0.14f))
                         .border(
@@ -321,7 +324,7 @@ fun FloatingBottomBar(
                 imageVector = profileTab.icon,
                 contentDescription = profileTab.label,
                 tint = profileTint,
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(20.dp),
             )
         }
     }
@@ -373,7 +376,7 @@ private fun BottomBarItem(
             contentDescription = tab.label,
             tint = tint,
             modifier = Modifier
-                .size(24.dp)
+                .size(20.dp)
                 .graphicsLayer {
                     scaleX = scale
                     scaleY = scale
@@ -382,8 +385,9 @@ private fun BottomBarItem(
         Spacer(Modifier.height(TAB_ICON_LABEL_GAP))
         Text(
             text = tab.label,
-            fontSize = 11.sp,
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+            fontSize = 10.5.sp,
+            fontFamily = GffDevanagariFontFamily,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
             color = tint,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,

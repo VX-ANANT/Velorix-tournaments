@@ -151,25 +151,52 @@ private fun BannerCard(
 ) {
     val style = getBannerThemeStyle(banner.gradientTheme)
 
+    // Liquid Glass Specular & Tint Brushes
+    val glassCardBackground = Brush.linearGradient(
+        colors = listOf(
+            Color(0xFF141824).copy(alpha = 0.88f),
+            Color(0xFF0F121B).copy(alpha = 0.92f),
+            style.accentColor.copy(alpha = 0.12f)
+        )
+    )
+
+    val specularBorderBrush = Brush.linearGradient(
+        colors = listOf(
+            Color.White.copy(alpha = 0.28f),
+            style.accentColor.copy(alpha = 0.40f),
+            Color.White.copy(alpha = 0.05f)
+        )
+    )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .shadow(elevation = 8.dp, shape = RoundedCornerShape(24.dp), ambientColor = style.accentColor.copy(alpha = 0.35f))
-            .clip(RoundedCornerShape(24.dp))
-            .background(style.gradient)
+            .shadow(elevation = 10.dp, shape = RoundedCornerShape(22.dp), ambientColor = style.accentColor.copy(alpha = 0.25f))
+            .clip(RoundedCornerShape(22.dp))
+            .background(glassCardBackground)
             .border(
-                width = 1.2.dp,
-                brush = Brush.linearGradient(
-                    listOf(
-                        style.accentColor.copy(alpha = 0.65f),
-                        Color.White.copy(alpha = 0.08f)
-                    )
-                ),
-                shape = RoundedCornerShape(24.dp)
+                width = 1.dp,
+                brush = specularBorderBrush,
+                shape = RoundedCornerShape(22.dp)
             )
             .clickable(onClick = onClick)
     ) {
-        // Background Image with gradient darkening scrim
+        // Inner Glass Radial Glow
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            style.accentColor.copy(alpha = 0.15f),
+                            Color.Transparent
+                        ),
+                        radius = 450f
+                    )
+                )
+        )
+
+        // Background Image with frosted glass darkening scrim if provided
         if (banner.imageUrl.isNotBlank()) {
             AsyncImage(
                 model = banner.imageUrl,
@@ -177,18 +204,18 @@ private fun BannerCard(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxSize()
-                    .clip(RoundedCornerShape(24.dp))
+                    .clip(RoundedCornerShape(22.dp))
             )
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .clip(RoundedCornerShape(24.dp))
+                    .clip(RoundedCornerShape(22.dp))
                     .background(
                         Brush.linearGradient(
                             listOf(
-                                Color.Black.copy(alpha = 0.88f),
-                                Color.Black.copy(alpha = 0.60f),
-                                style.accentColor.copy(alpha = 0.25f)
+                                Color.Black.copy(alpha = 0.85f),
+                                Color.Black.copy(alpha = 0.55f),
+                                style.accentColor.copy(alpha = 0.20f)
                             )
                         )
                     )
@@ -198,7 +225,7 @@ private fun BannerCard(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(horizontal = 18.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             // Top Badge Pill & Validity Tag
@@ -207,16 +234,26 @@ private fun BannerCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
+                // Glassmorphic Capsule Badge
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color.Black.copy(alpha = 0.55f))
-                        .border(1.dp, style.accentColor.copy(alpha = 0.7f), RoundedCornerShape(12.dp))
-                        .padding(horizontal = 8.dp, vertical = 3.5.dp)
+                        .clip(RoundedCornerShape(percent = 50))
+                        .background(Color.White.copy(alpha = 0.08f))
+                        .border(
+                            width = 0.8.dp,
+                            brush = Brush.horizontalGradient(
+                                listOf(
+                                    style.accentColor.copy(alpha = 0.7f),
+                                    Color.White.copy(alpha = 0.15f)
+                                )
+                            ),
+                            shape = RoundedCornerShape(percent = 50)
+                        )
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
                         val icon = when {
                             banner.badgeText.contains("LIVE", ignoreCase = true) -> Icons.Rounded.LocalFireDepartment
@@ -231,7 +268,7 @@ private fun BannerCard(
                         )
                         Text(
                             text = banner.badgeText.ifBlank { "FEATURED" }.uppercase(),
-                            fontSize = 9.sp,
+                            fontSize = 9.5.sp,
                             fontWeight = FontWeight.Black,
                             color = Color.White,
                             letterSpacing = 0.6.sp
@@ -242,10 +279,10 @@ private fun BannerCard(
                 if (banner.validUntil.isNotBlank()) {
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
+                            .clip(RoundedCornerShape(percent = 50))
                             .background(Color.Black.copy(alpha = 0.45f))
-                            .border(0.8.dp, Color(0x66F59E0B), RoundedCornerShape(10.dp))
-                            .padding(horizontal = 6.dp, vertical = 2.5.dp)
+                            .border(0.8.dp, Color(0x55F59E0B), RoundedCornerShape(percent = 50))
+                            .padding(horizontal = 8.dp, vertical = 3.dp)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -273,60 +310,79 @@ private fun BannerCard(
                 Text(
                     text = banner.title,
                     fontWeight = FontWeight.Black,
-                    fontSize = 16.sp,
+                    fontSize = 16.5.sp,
                     color = Color.White,
                     maxLines = 1,
-                    lineHeight = 20.sp
+                    lineHeight = 21.sp
                 )
                 if (banner.subtitle.isNotBlank()) {
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = banner.subtitle,
-                        fontSize = 11.sp,
-                        color = Color.White.copy(alpha = 0.88f),
+                        fontSize = 11.5.sp,
+                        color = Color.White.copy(alpha = 0.78f),
                         maxLines = 2,
-                        lineHeight = 15.sp
+                        lineHeight = 16.sp
                     )
                 }
             }
 
-            // Bottom CTA Pill
+            // Bottom CTA Pill - Frosted Glass Pill
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Frosted Glass Pill Button
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(style.accentColor)
-                        .padding(horizontal = 12.dp, vertical = 5.dp)
+                        .clip(RoundedCornerShape(percent = 50))
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(
+                                    style.accentColor.copy(alpha = 0.22f),
+                                    style.accentColor.copy(alpha = 0.12f)
+                                )
+                            )
+                        )
+                        .border(
+                            width = 0.8.dp,
+                            brush = Brush.horizontalGradient(
+                                listOf(
+                                    style.accentColor.copy(alpha = 0.75f),
+                                    Color.White.copy(alpha = 0.2f)
+                                )
+                            ),
+                            shape = RoundedCornerShape(percent = 50)
+                        )
+                        .padding(horizontal = 14.dp, vertical = 6.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
                         Text(
-                            text = banner.ctaText.ifBlank { "EXPLORE" }.uppercase(),
+                            text = banner.ctaText.ifBlank { "EXPLORE NOW" }.uppercase(),
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Black,
-                            color = style.textColor,
-                            letterSpacing = 0.5.sp
+                            color = style.accentColor,
+                            letterSpacing = 0.6.sp
                         )
                         Icon(
                             imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
                             contentDescription = null,
-                            tint = style.textColor,
-                            modifier = Modifier.size(11.dp)
+                            tint = style.accentColor,
+                            modifier = Modifier.size(12.dp)
                         )
                     }
                 }
 
                 Text(
                     text = "Tap for details",
-                    fontSize = 9.sp,
+                    fontSize = 9.5.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color.White.copy(alpha = 0.6f)
+                    color = Color.White.copy(alpha = 0.45f),
+                    letterSpacing = 0.3.sp
                 )
             }
         }

@@ -35,6 +35,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.example.data.model.Banner
+import com.example.ui.theme.GffDevanagariFontFamily
 import com.example.ui.viewmodel.PlatformViewModel
 
 /**
@@ -241,26 +242,42 @@ fun BannerDetailDialog(
                         1.2.dp,
                         Brush.verticalGradient(
                             listOf(
-                                style.accentColor.copy(alpha = 0.7f),
+                                Color.White.copy(alpha = 0.35f),
+                                style.accentColor.copy(alpha = 0.45f),
                                 Color.White.copy(alpha = 0.08f)
                             )
                         ),
                         RoundedCornerShape(26.dp)
                     )
-                    .shadow(16.dp, RoundedCornerShape(26.dp), ambientColor = style.accentColor.copy(alpha = 0.35f)),
-                color = Color(0xFF101217)
+                    .shadow(20.dp, RoundedCornerShape(26.dp), ambientColor = style.accentColor.copy(alpha = 0.25f)),
+                color = Color(0xEE121620)
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    Color(0xFA161B26),
+                                    Color(0xF50D1017)
+                                )
+                            )
+                        )
                         .verticalScroll(scrollState)
                 ) {
-                    // Hero Cover Header Section
+                    // Hero Cover Header Section with Glass Tint
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(180.dp)
-                            .background(style.heroGradient)
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(
+                                        style.accentColor.copy(alpha = 0.15f),
+                                        Color.Transparent
+                                    )
+                                )
+                            )
                     ) {
                         if (banner.imageUrl.isNotBlank()) {
                             AsyncImage(
@@ -275,9 +292,9 @@ fun BannerDetailDialog(
                                     .background(
                                         Brush.verticalGradient(
                                             listOf(
-                                                Color.Black.copy(alpha = 0.35f),
-                                                Color.Black.copy(alpha = 0.75f),
-                                                Color(0xFF101217)
+                                                Color.Black.copy(alpha = 0.40f),
+                                                Color.Black.copy(alpha = 0.70f),
+                                                Color(0xEE121620)
                                             )
                                         )
                                     )
@@ -289,15 +306,16 @@ fun BannerDetailDialog(
                                     .background(
                                         Brush.radialGradient(
                                             colors = listOf(
-                                                style.accentColor.copy(alpha = 0.25f),
+                                                style.accentColor.copy(alpha = 0.22f),
                                                 Color.Transparent
-                                            )
+                                            ),
+                                            radius = 500f
                                         )
                                     )
                             )
                         }
 
-                        // Top Action Icons (Share, Close)
+                        // Top Action Icons (Category Pill, Share, Close)
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -305,14 +323,19 @@ fun BannerDetailDialog(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Category / Badge Pill
+                            // Category / Badge Glass Pill
                             Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = Color.Black.copy(alpha = 0.65f),
-                                border = BorderStroke(1.dp, style.accentColor.copy(alpha = 0.8f))
+                                shape = RoundedCornerShape(percent = 50),
+                                color = Color.White.copy(alpha = 0.10f),
+                                border = BorderStroke(0.8.dp, Brush.horizontalGradient(
+                                    listOf(
+                                        style.accentColor.copy(alpha = 0.75f),
+                                        Color.White.copy(alpha = 0.2f)
+                                    )
+                                ))
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.5.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(5.dp)
                                 ) {
@@ -327,11 +350,11 @@ fun BannerDetailDialog(
                                         imageVector = badgeIcon,
                                         contentDescription = null,
                                         tint = style.accentColor,
-                                        modifier = Modifier.size(13.dp)
+                                        modifier = Modifier.size(12.dp)
                                     )
                                     Text(
                                         text = banner.badgeText.ifBlank { "OFFICIAL" }.uppercase(),
-                                        fontSize = 10.sp,
+                                        fontSize = 9.5.sp,
                                         fontWeight = FontWeight.Black,
                                         color = Color.White,
                                         letterSpacing = 0.6.sp
@@ -355,14 +378,14 @@ fun BannerDetailDialog(
                                     modifier = Modifier
                                         .size(36.dp)
                                         .clip(CircleShape)
-                                        .background(Color.Black.copy(alpha = 0.55f))
-                                        .border(1.dp, Color.White.copy(alpha = 0.15f), CircleShape)
+                                        .background(Color.White.copy(alpha = 0.12f))
+                                        .border(0.8.dp, Color.White.copy(alpha = 0.25f), CircleShape)
                                 ) {
                                     Icon(
                                         imageVector = if (isBookmarked) Icons.Rounded.Bookmark else Icons.Rounded.BookmarkBorder,
                                         contentDescription = "Bookmark",
                                         tint = if (isBookmarked) style.accentColor else Color.White,
-                                        modifier = Modifier.size(18.dp)
+                                        modifier = Modifier.size(17.dp)
                                     )
                                 }
 
@@ -389,14 +412,14 @@ fun BannerDetailDialog(
                                     modifier = Modifier
                                         .size(36.dp)
                                         .clip(CircleShape)
-                                        .background(Color.Black.copy(alpha = 0.55f))
-                                        .border(1.dp, Color.White.copy(alpha = 0.15f), CircleShape)
+                                        .background(Color.White.copy(alpha = 0.12f))
+                                        .border(0.8.dp, Color.White.copy(alpha = 0.25f), CircleShape)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Rounded.Share,
                                         contentDescription = "Share",
                                         tint = Color.White,
-                                        modifier = Modifier.size(17.dp)
+                                        modifier = Modifier.size(16.dp)
                                     )
                                 }
 
@@ -409,14 +432,14 @@ fun BannerDetailDialog(
                                     modifier = Modifier
                                         .size(36.dp)
                                         .clip(CircleShape)
-                                        .background(Color.Black.copy(alpha = 0.55f))
-                                        .border(1.dp, Color.White.copy(alpha = 0.15f), CircleShape)
+                                        .background(Color.White.copy(alpha = 0.12f))
+                                        .border(0.8.dp, Color.White.copy(alpha = 0.25f), CircleShape)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Rounded.Close,
                                         contentDescription = "Close",
                                         tint = Color.White,
-                                        modifier = Modifier.size(18.dp)
+                                        modifier = Modifier.size(17.dp)
                                     )
                                 }
                             }
@@ -463,28 +486,28 @@ fun BannerDetailDialog(
                         ) {
                             // Action category pill
                             Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = style.chipBackground,
-                                border = BorderStroke(0.8.dp, style.accentColor.copy(alpha = 0.4f))
+                                shape = RoundedCornerShape(percent = 50),
+                                color = Color.White.copy(alpha = 0.08f),
+                                border = BorderStroke(0.8.dp, style.accentColor.copy(alpha = 0.45f))
                             ) {
                                 Text(
                                     text = "ACTION: ${banner.actionType.uppercase()}",
-                                    fontSize = 10.sp,
+                                    fontSize = 9.5.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = style.accentColor,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.5.dp)
                                 )
                             }
 
                             // Validity Tag if available
                             if (banner.validUntil.isNotBlank()) {
                                 Surface(
-                                    shape = RoundedCornerShape(8.dp),
+                                    shape = RoundedCornerShape(percent = 50),
                                     color = Color(0x22F59E0B),
                                     border = BorderStroke(0.8.dp, Color(0x55F59E0B))
                                 ) {
                                     Row(
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.5.dp),
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                                     ) {
@@ -496,7 +519,7 @@ fun BannerDetailDialog(
                                         )
                                         Text(
                                             text = banner.validUntil,
-                                            fontSize = 10.sp,
+                                            fontSize = 9.5.sp,
                                             fontWeight = FontWeight.SemiBold,
                                             color = Color(0xFFFCD34D)
                                         )
@@ -506,16 +529,16 @@ fun BannerDetailDialog(
 
                             if (banner.targetId.isNotBlank()) {
                                 Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = Color(0x22FFFFFF),
-                                    border = BorderStroke(0.8.dp, Color(0x33FFFFFF))
+                                    shape = RoundedCornerShape(percent = 50),
+                                    color = Color.White.copy(alpha = 0.06f),
+                                    border = BorderStroke(0.8.dp, Color.White.copy(alpha = 0.15f))
                                 ) {
                                     Text(
                                         text = "#${banner.targetId.takeLast(8)}",
-                                        fontSize = 10.sp,
+                                        fontSize = 9.5.sp,
                                         fontWeight = FontWeight.Medium,
-                                        color = Color.LightGray,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                        color = Color.White.copy(alpha = 0.7f),
+                                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.5.dp)
                                     )
                                 }
                             }
@@ -523,7 +546,7 @@ fun BannerDetailDialog(
 
                         Spacer(modifier = Modifier.height(14.dp))
 
-                        // Full Announcement Description / Content
+                        // Full Announcement Description / Content Card - Liquid Glass Style
                         val displayDescription = when {
                             banner.description.isNotBlank() -> banner.description
                             banner.subtitle.isNotBlank() -> banner.subtitle
@@ -532,11 +555,19 @@ fun BannerDetailDialog(
 
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(14.dp),
-                            color = Color(0xFF161922),
-                            border = BorderStroke(1.dp, Color(0x22FFFFFF))
+                            shape = RoundedCornerShape(16.dp),
+                            color = Color.White.copy(alpha = 0.05f),
+                            border = BorderStroke(
+                                0.8.dp,
+                                Brush.verticalGradient(
+                                    listOf(
+                                        Color.White.copy(alpha = 0.20f),
+                                        Color.White.copy(alpha = 0.04f)
+                                    )
+                                )
+                            )
                         ) {
-                            Column(modifier = Modifier.padding(14.dp)) {
+                            Column(modifier = Modifier.padding(16.dp)) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -551,7 +582,7 @@ fun BannerDetailDialog(
                                         text = "BROADCAST DETAILS",
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color.Gray,
+                                        color = Color.White.copy(alpha = 0.65f),
                                         letterSpacing = 0.8.sp
                                     )
                                 }
@@ -560,22 +591,22 @@ fun BannerDetailDialog(
                                     text = displayDescription,
                                     fontSize = 13.5.sp,
                                     color = Color(0xFFE2E8F0),
-                                    lineHeight = 19.sp
+                                    lineHeight = 20.sp
                                 )
                             }
                         }
 
-                        // Optional Terms & Conditions Accordion
+                        // Optional Terms & Conditions Accordion - Glass Surface
                         if (banner.terms.isNotBlank()) {
                             Spacer(modifier = Modifier.height(10.dp))
                             Surface(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
+                                    .clip(RoundedCornerShape(14.dp))
                                     .clickable { isTermsExpanded = !isTermsExpanded },
-                                shape = RoundedCornerShape(12.dp),
-                                color = Color(0xFF181A20),
-                                border = BorderStroke(1.dp, Color(0x1FFFFFFF))
+                                shape = RoundedCornerShape(14.dp),
+                                color = Color.White.copy(alpha = 0.04f),
+                                border = BorderStroke(0.8.dp, Color.White.copy(alpha = 0.12f))
                             ) {
                                 Column(modifier = Modifier.padding(12.dp)) {
                                     Row(
@@ -590,30 +621,30 @@ fun BannerDetailDialog(
                                             Icon(
                                                 imageVector = Icons.Rounded.Gavel,
                                                 contentDescription = null,
-                                                tint = Color.Gray,
+                                                tint = Color.White.copy(alpha = 0.6f),
                                                 modifier = Modifier.size(14.dp)
                                             )
                                             Text(
                                                 text = "Rules & Terms of Participation",
                                                 fontSize = 12.sp,
                                                 fontWeight = FontWeight.SemiBold,
-                                                color = Color.LightGray
+                                                color = Color.White.copy(alpha = 0.85f)
                                             )
                                         }
                                         Icon(
                                             imageVector = if (isTermsExpanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
                                             contentDescription = null,
-                                            tint = Color.Gray,
+                                            tint = Color.White.copy(alpha = 0.6f),
                                             modifier = Modifier.size(18.dp)
                                         )
                                     }
                                     AnimatedVisibility(visible = isTermsExpanded) {
                                         Column(modifier = Modifier.padding(top = 8.dp)) {
-                                            HorizontalDivider(color = Color(0x1AFFFFFF), modifier = Modifier.padding(bottom = 8.dp))
+                                            HorizontalDivider(color = Color.White.copy(alpha = 0.08f), modifier = Modifier.padding(bottom = 8.dp))
                                             Text(
                                                 text = banner.terms,
                                                 fontSize = 11.5.sp,
-                                                color = Color.Gray,
+                                                color = Color.White.copy(alpha = 0.7f),
                                                 lineHeight = 16.sp
                                             )
                                         }
@@ -622,9 +653,9 @@ fun BannerDetailDialog(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(18.dp))
 
-                        // Primary Action CTA Button
+                        // Primary Action CTA Button - Frosted Glass Gradient Pill
                         Surface(
                             onClick = {
                                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
@@ -652,30 +683,52 @@ fun BannerDetailDialog(
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(48.dp)
-                                .shadow(8.dp, RoundedCornerShape(14.dp), ambientColor = style.accentColor.copy(alpha = 0.5f)),
-                            shape = RoundedCornerShape(14.dp),
-                            color = style.accentColor
+                                .height(50.dp)
+                                .shadow(10.dp, RoundedCornerShape(percent = 50), ambientColor = style.accentColor.copy(alpha = 0.35f)),
+                            shape = RoundedCornerShape(percent = 50),
+                            color = Color.Transparent,
+                            border = BorderStroke(
+                                1.dp,
+                                Brush.horizontalGradient(
+                                    listOf(
+                                        style.accentColor.copy(alpha = 0.85f),
+                                        Color.White.copy(alpha = 0.35f)
+                                    )
+                                )
+                            )
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxSize(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        Brush.horizontalGradient(
+                                            listOf(
+                                                style.accentColor.copy(alpha = 0.28f),
+                                                style.accentColor.copy(alpha = 0.15f)
+                                            )
+                                        )
+                                    ),
+                                contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    text = banner.ctaText.ifBlank { "EXPLORE NOW" }.uppercase(),
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Black,
-                                    color = style.textColor,
-                                    letterSpacing = 0.8.sp
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
-                                    contentDescription = null,
-                                    tint = style.textColor,
-                                    modifier = Modifier.size(16.dp)
-                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Text(
+                                        text = banner.ctaText.ifBlank { "EXPLORE NOW" }.uppercase(),
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = style.accentColor,
+                                        letterSpacing = 0.8.sp
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                                        contentDescription = null,
+                                        tint = style.accentColor,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
                             }
                         }
 
@@ -730,9 +783,17 @@ private fun BannerSatisfactionReviewSection(
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = Color(0xFF14171E),
-        border = BorderStroke(1.dp, style.accentColor.copy(alpha = 0.25f))
+        shape = RoundedCornerShape(18.dp),
+        color = Color.White.copy(alpha = 0.04f),
+        border = BorderStroke(
+            0.8.dp,
+            Brush.verticalGradient(
+                listOf(
+                    style.accentColor.copy(alpha = 0.35f),
+                    Color.White.copy(alpha = 0.06f)
+                )
+            )
+        )
     ) {
         Column(
             modifier = Modifier
@@ -751,9 +812,9 @@ private fun BannerSatisfactionReviewSection(
                 )
                 Text(
                     text = "COMMUNITY FEEDBACK",
-                    fontSize = 10.5.sp,
+                    fontSize = 10.sp,
                     fontWeight = FontWeight.Black,
-                    color = Color.Gray,
+                    color = Color.White.copy(alpha = 0.6f),
                     letterSpacing = 0.8.sp
                 )
             }
@@ -774,18 +835,18 @@ private fun BannerSatisfactionReviewSection(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Positive / Satisfied Button
+                    // Positive / Satisfied Button - Frosted Pill
                     Surface(
                         onClick = { onReact("SATISFIED", "User indicated satisfaction with banner") },
                         modifier = Modifier.weight(1.2f),
-                        shape = RoundedCornerShape(10.dp),
+                        shape = RoundedCornerShape(percent = 50),
                         color = Color(0x2210B981),
-                        border = BorderStroke(1.dp, Color(0x6610B981))
+                        border = BorderStroke(0.8.dp, Color(0x6610B981))
                     ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 10.dp, horizontal = 8.dp),
+                                .padding(vertical = 9.dp, horizontal = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Center
                         ) {
@@ -793,12 +854,12 @@ private fun BannerSatisfactionReviewSection(
                                 imageVector = Icons.Rounded.ThumbUp,
                                 contentDescription = null,
                                 tint = Color(0xFF34D399),
-                                modifier = Modifier.size(14.dp)
+                                modifier = Modifier.size(13.dp)
                             )
-                            Spacer(modifier = Modifier.width(6.dp))
+                            Spacer(modifier = Modifier.width(5.dp))
                             Text(
                                 text = positiveLabel,
-                                fontSize = 11.sp,
+                                fontSize = 10.5.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF34D399),
                                 maxLines = 1
@@ -806,18 +867,18 @@ private fun BannerSatisfactionReviewSection(
                         }
                     }
 
-                    // Need Help Button
+                    // Need Help Button - Frosted Pill
                     Surface(
                         onClick = { onReact("NEED_HELP", "User requested clarification or support") },
                         modifier = Modifier.weight(0.9f),
-                        shape = RoundedCornerShape(10.dp),
+                        shape = RoundedCornerShape(percent = 50),
                         color = Color(0x22F59E0B),
-                        border = BorderStroke(1.dp, Color(0x66F59E0B))
+                        border = BorderStroke(0.8.dp, Color(0x66F59E0B))
                     ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 10.dp, horizontal = 6.dp),
+                                .padding(vertical = 9.dp, horizontal = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Center
                         ) {
@@ -825,12 +886,12 @@ private fun BannerSatisfactionReviewSection(
                                 imageVector = Icons.Rounded.HelpOutline,
                                 contentDescription = null,
                                 tint = Color(0xFFFCD34D),
-                                modifier = Modifier.size(14.dp)
+                                modifier = Modifier.size(13.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = "Need Help",
-                                fontSize = 11.sp,
+                                fontSize = 10.5.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFFFCD34D),
                                 maxLines = 1
@@ -838,18 +899,18 @@ private fun BannerSatisfactionReviewSection(
                         }
                     }
 
-                    // Not Satisfied Button
+                    // Not Satisfied Button - Frosted Pill
                     Surface(
                         onClick = { onReact("NOT_SATISFIED", "User marked announcement as irrelevant") },
                         modifier = Modifier.weight(0.8f),
-                        shape = RoundedCornerShape(10.dp),
+                        shape = RoundedCornerShape(percent = 50),
                         color = Color(0x22EF4444),
-                        border = BorderStroke(1.dp, Color(0x44EF4444))
+                        border = BorderStroke(0.8.dp, Color(0x44EF4444))
                     ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 10.dp, horizontal = 4.dp),
+                                .padding(vertical = 9.dp, horizontal = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Center
                         ) {
@@ -857,12 +918,12 @@ private fun BannerSatisfactionReviewSection(
                                 imageVector = Icons.Rounded.ThumbDown,
                                 contentDescription = null,
                                 tint = Color(0xFFFCA5A5),
-                                modifier = Modifier.size(14.dp)
+                                modifier = Modifier.size(13.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = "Irrelevant",
-                                fontSize = 10.5.sp,
+                                fontSize = 10.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = Color(0xFFFCA5A5),
                                 maxLines = 1
@@ -873,14 +934,14 @@ private fun BannerSatisfactionReviewSection(
             } else {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
+                    shape = RoundedCornerShape(14.dp),
                     color = when (currentReaction) {
-                        "SATISFIED" -> Color(0x2210B981)
-                        "NEED_HELP" -> Color(0x22F59E0B)
-                        else -> Color(0x2264748B)
+                        "SATISFIED" -> Color(0x1E10B981)
+                        "NEED_HELP" -> Color(0x1EF59E0B)
+                        else -> Color(0x1E64748B)
                     },
                     border = BorderStroke(
-                        1.dp,
+                        0.8.dp,
                         when (currentReaction) {
                             "SATISFIED" -> Color(0x5510B981)
                             "NEED_HELP" -> Color(0x55F59E0B)
