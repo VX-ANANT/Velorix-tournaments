@@ -81,6 +81,7 @@ fun SettingsScreen(
 
     val themeMode by viewModel.themeMode.collectAsState()
     val user by viewModel.userState.collectAsState()
+    val systemConfig by viewModel.systemConfig.collectAsState()
 
     val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val isSystemDark = isSystemInDarkTheme()
@@ -143,15 +144,17 @@ fun SettingsScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = {
-                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                        showDeveloperModal = true
-                    }) {
-                        Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = "About Developer",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
+                    if (systemConfig.showDeveloperModal) {
+                        IconButton(onClick = {
+                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                            showDeveloperModal = true
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = "About Developer",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

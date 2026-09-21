@@ -304,6 +304,7 @@ class MainActivity : ComponentActivity() {
                 val isVpnDetected by viewModel.isVpnDetected.collectAsStateWithLifecycle()
                 val showDailyDeveloperPopup by viewModel.showDailyDeveloperPopup.collectAsStateWithLifecycle()
                 var showAdminSituationSheet by remember { mutableStateOf(false) }
+                var showExplicitDeveloperPopup by remember { mutableStateOf(false) }
 
                 LaunchedEffect(Unit) {
                     viewModel.checkVpnStatus()
@@ -810,15 +811,17 @@ class MainActivity : ComponentActivity() {
                     } // End of NavHost
                         } // End of activeSituation == NONE check
 
-                        // Once-per-day developer highlight & support popup (ONLY shown after login, NEVER over auth/splash/onboarding)
-                        val isUserReadyForPopup = isLoggedIn && user != null && currentRoute != "auth" && currentRoute != "splash" && currentRoute != "onboarding"
-                        if (showDailyDeveloperPopup && isUserReadyForPopup) {
+                        // Developer highlight & support popup (Shown daily if enabled, or explicitly previewed/triggered)
+                        val isUserReadyForPopup = isLoggedIn && user != null && currentRoute != "auth" && currentRoute != "splash" && currentRoute != "onboarding" && systemConfig.showDeveloperModal
+                        if ((showDailyDeveloperPopup && isUserReadyForPopup) || showExplicitDeveloperPopup) {
                             com.example.ui.components.DeveloperPopupDialog(
                                 onDismissRequest = {
-                                    viewModel.dismissDailyDeveloperPopup()
+                                    if (showDailyDeveloperPopup) viewModel.dismissDailyDeveloperPopup()
+                                    showExplicitDeveloperPopup = false
                                 },
                                 onOpenSettings = {
-                                    viewModel.dismissDailyDeveloperPopup()
+                                    if (showDailyDeveloperPopup) viewModel.dismissDailyDeveloperPopup()
+                                    showExplicitDeveloperPopup = false
                                     navController.navigate("about")
                                 }
                             )
@@ -836,7 +839,11 @@ class MainActivity : ComponentActivity() {
                                 user = user,
                                 systemConfig = systemConfig,
                                 currentPreview = situationPreview,
-                                onDismiss = { showAdminSituationSheet = false }
+                                onDismiss = { showAdminSituationSheet = false },
+                                onOpenDeveloperModal = {
+                                    showAdminSituationSheet = false
+                                    showExplicitDeveloperPopup = true
+                                }
                             )
                         }
                     }

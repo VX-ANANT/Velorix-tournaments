@@ -3,6 +3,7 @@ package com.example.ui.screens
 import androidx.compose.animation.core.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -53,6 +54,7 @@ fun ProfileScreen(
     val matchStats by viewModel.matchStats.collectAsStateWithLifecycle(emptyList())
     val showConfetti by viewModel.showConfetti.collectAsStateWithLifecycle()
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+    val systemConfig by viewModel.systemConfig.collectAsStateWithLifecycle()
     val actionCooldowns by viewModel.actionCooldownSeconds.collectAsStateWithLifecycle()
     val profileCooldown = actionCooldowns["profile_update"] ?: 0
     val convertCooldown = actionCooldowns["token_convert"] ?: 0
@@ -1232,6 +1234,76 @@ fun ProfileScreen(
                                 text = "App info and licenses",
                                 fontSize = 13.sp,
                                 color = Color(0xFFA69E9F)
+                            )
+                        }
+                    }
+                }
+
+                if (systemConfig.showDeveloperModal) {
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Surface(
+                        onClick = {
+                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                            showAboutDeveloperModal = true
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(22.dp),
+                        color = Color(0xFF0D1525),
+                        border = BorderStroke(1.dp, Color(0xFF1E3A5F))
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 18.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(44.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF142848)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Image(
+                                    painter = androidx.compose.ui.res.painterResource(com.example.R.drawable.developer_pfp),
+                                    contentDescription = "Developer",
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .clip(CircleShape)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(18.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = "Lead Architect & Developer",
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFFF0ECEC)
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(Color(0x3338BDF8))
+                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    ) {
+                                        Text("ANANT", fontSize = 9.sp, fontWeight = FontWeight.Black, color = Color(0xFF38BDF8))
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "Creator profile, GitHub, UPI support & socials",
+                                    fontSize = 12.sp,
+                                    color = Color(0xFF94A3B8)
+                                )
+                            }
+                            Icon(
+                                imageVector = Icons.Default.ArrowForwardIos,
+                                contentDescription = null,
+                                tint = Color(0xFF64748B),
+                                modifier = Modifier.size(16.dp)
                             )
                         }
                     }

@@ -4601,6 +4601,7 @@ class PlatformRepository(
                         val minVer = doc.getString("minRequiredVersion") ?: doc.getString("min_version") ?: ""
                         val updUrl = doc.getString("updateUrl") ?: doc.getString("update_url") ?: ""
                         val changelog = doc.getString("changelog") ?: ""
+                        val showDevModal = doc.getBoolean("showDeveloperModal") ?: doc.getBoolean("show_developer_modal") ?: doc.getBoolean("developer_modal_visible") ?: true
 
                         _systemConfig.value = _systemConfig.value.copy(
                             isMaintenance = isMaint,
@@ -4610,7 +4611,8 @@ class PlatformRepository(
                             isForceUpdate = isForce,
                             minRequiredVersion = if (minVer.isNotBlank()) minVer else _systemConfig.value.minRequiredVersion,
                             updateUrl = if (updUrl.isNotBlank()) updUrl else _systemConfig.value.updateUrl,
-                            changelog = if (changelog.isNotBlank()) changelog else _systemConfig.value.changelog
+                            changelog = if (changelog.isNotBlank()) changelog else _systemConfig.value.changelog,
+                            showDeveloperModal = showDevModal
                         )
                     }
                 }
@@ -4646,6 +4648,10 @@ class PlatformRepository(
         val updateUrl = snapshot.child("updateUrl").value?.toString()
             ?: snapshot.child("update_url").value?.toString() ?: ""
         val changelog = snapshot.child("changelog").value?.toString() ?: ""
+        val showDeveloperModal = snapshot.child("showDeveloperModal").getValue(Boolean::class.java)
+            ?: snapshot.child("show_developer_modal").getValue(Boolean::class.java)
+            ?: snapshot.child("developer_modal_visible").getValue(Boolean::class.java)
+            ?: snapshot.child("dev_window_enabled").getValue(Boolean::class.java) ?: true
 
         _systemConfig.value = _systemConfig.value.copy(
             isMaintenance = isMaint,
@@ -4655,7 +4661,8 @@ class PlatformRepository(
             isForceUpdate = isForceUpdate,
             minRequiredVersion = if (minVersion.isNotBlank()) minVersion else _systemConfig.value.minRequiredVersion,
             updateUrl = if (updateUrl.isNotBlank()) updateUrl else _systemConfig.value.updateUrl,
-            changelog = if (changelog.isNotBlank()) changelog else _systemConfig.value.changelog
+            changelog = if (changelog.isNotBlank()) changelog else _systemConfig.value.changelog,
+            showDeveloperModal = showDeveloperModal
         )
     }
 
@@ -4784,6 +4791,26 @@ class PlatformRepository(
             )
         } catch (e: Exception) {
             Log.e(TAG, "Error toggling force update: ${e.message}")
+        }
+    }
+
+    suspend fun toggleDeveloperModal(enabled: Boolean) {
+        try {
+            val map = mapOf<String, Any>(
+                "showDeveloperModal" to enabled,
+                "show_developer_modal" to enabled,
+                "developer_modal_visible" to enabled,
+                "dev_window_enabled" to enabled
+            )
+            rtdb.getReference("app_config").updateChildren(map)
+            FirebaseFirestore.getInstance().collection("app_config").document("global")
+                .set(map, com.google.firebase.firestore.SetOptions.merge())
+
+            _systemConfig.value = _systemConfig.value.copy(
+                showDeveloperModal = enabled
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Error toggling developer modal: ${e.message}")
         }
     }
 }

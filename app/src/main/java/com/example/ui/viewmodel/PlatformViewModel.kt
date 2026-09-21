@@ -191,6 +191,13 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    fun toggleDeveloperModal(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.toggleDeveloperModal(enabled)
+            showToast(if (enabled) "Developer Modal ENABLED" else "Developer Modal DISABLED")
+        }
+    }
+
     fun checkVpnStatus() {
         viewModelScope.launch(Dispatchers.IO) {
             val detected = isVpnActive()

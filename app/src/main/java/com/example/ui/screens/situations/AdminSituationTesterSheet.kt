@@ -32,7 +32,8 @@ fun AdminSituationTesterSheet(
     user: User?,
     systemConfig: SystemAppConfig,
     currentPreview: SituationPreviewType,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onOpenDeveloperModal: (() -> Unit)? = null
 ) {
     val haptic = LocalHapticFeedback.current
     var customMaintMsg by remember { mutableStateOf(systemConfig.maintenanceMessage) }
@@ -98,7 +99,7 @@ fun AdminSituationTesterSheet(
                     ) {
                         StatusIndicatorPill(label = "Maintenance", isActive = systemConfig.isMaintenance)
                         StatusIndicatorPill(label = "Account Banned", isActive = user?.isBanned == true)
-                        StatusIndicatorPill(label = "Suspended", isActive = user?.isSuspended == true)
+                        StatusIndicatorPill(label = "Dev Modal", isActive = systemConfig.showDeveloperModal)
                     }
                 }
             }
@@ -197,6 +198,24 @@ fun AdminSituationTesterSheet(
                     ) {
                         Text("Reset to Live", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF10B981))
                     }
+                }
+            }
+
+            if (onOpenDeveloperModal != null) {
+                Spacer(Modifier.height(8.dp))
+                Button(
+                    onClick = {
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                        onOpenDeveloperModal()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0A192F)),
+                    border = BorderStroke(1.dp, Color(0xFF1E3A5F)),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Icon(Icons.Default.Info, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Preview Developer Modal", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF38BDF8))
                 }
             }
 
@@ -388,6 +407,37 @@ fun AdminSituationTesterSheet(
                         onCheckedChange = { isChecked ->
                             haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                             viewModel.toggleForceUpdate(enabled = isChecked)
+                        },
+                        colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = Color(0xFF0284C7))
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // Developer Modal Remote Config Toggle Card
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF161A26)),
+                shape = RoundedCornerShape(14.dp),
+                border = BorderStroke(1.dp, Color(0xFF262E42)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text("Developer Profile Modal", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Text("Remote toggle for in-app developer highlights", fontSize = 11.sp, color = Color(0xFF94A3B8))
+                    }
+                    Switch(
+                        checked = systemConfig.showDeveloperModal,
+                        onCheckedChange = { isChecked ->
+                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                            viewModel.toggleDeveloperModal(enabled = isChecked)
                         },
                         colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = Color(0xFF0284C7))
                     )
