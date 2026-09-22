@@ -189,6 +189,7 @@ fun LegalComplianceScreen(
                         when (targetTab) {
                             LegalTab.TERMS -> TermsPage()
                             LegalTab.PRIVACY -> PrivacyPage()
+                            LegalTab.DMCA -> DmcaPage()
                             LegalTab.FAIR_PLAY -> FairPlayPage()
                             LegalTab.REFUNDS -> RefundsPage()
                             LegalTab.RESPONSIBLE -> ResponsiblePage()
@@ -202,12 +203,12 @@ fun LegalComplianceScreen(
                             onEmailClick = {
                                 try {
                                     val intent = Intent(Intent.ACTION_SENDTO).apply {
-                                        data = Uri.parse("mailto:anantisback47@gmail.com")
+                                        data = Uri.parse("mailto:service.veloxyra@gmail.com")
                                         putExtra(Intent.EXTRA_SUBJECT, "VeloRix Legal Inquiry / Grievance")
                                     }
                                     context.startActivity(intent)
                                 } catch (_: Exception) {
-                                    Toast.makeText(context, "Contact: anantisback47@gmail.com", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Contact: service.veloxyra@gmail.com", Toast.LENGTH_SHORT).show()
                                 }
                             }
                         )
@@ -290,8 +291,61 @@ private fun PrivacyPage() {
 
         SectionBlock(
             number = "03",
+            title = "Zero-Keystroke & No Session Replay Architecture (CIPA §631)",
+            content = "VeloRix strictly does NOT deploy session replay trackers, screen/key recording software, or background input watchers. Sensitive passwords utilize native UI transformations and are never ingested, logged, or recorded."
+        )
+
+        SectionBlock(
+            number = "04",
+            title = "Local Typography & Zero Third-Party IP Leaks",
+            content = "All font typefaces are bundled as local offline application assets. Zero requests are routed to external third-party font networks or overseas CDNs, safeguarding operative IP addresses from external tracking."
+        )
+
+        SectionBlock(
+            number = "05",
+            title = "Zero Automatic Subscriptions (ARL Compliance)",
+            content = "VeloRix charges zero recurring subscriptions or hidden automatic renewals. All tournament participation entries are one-time, explicitly authorized user payments."
+        )
+
+        SectionBlock(
+            number = "06",
             title = "Data Retention & Right to Erasure",
             content = "Under Section 12 of the DPDP Act 2023, you hold the right to demand complete erasure of your data. Triggering 'Delete Account' in App Settings queues all personal identifiers for complete deletion within 7 business days."
+        )
+    }
+}
+
+@Composable
+private fun DmcaPage() {
+    Column {
+        PageHeroHeader(
+            tag = "INTELLECTUAL PROPERTY & SAFE HARBOR",
+            title = "DMCA & Copyright Compliance Policy",
+            subtitle = "Safe harbor protections pursuant to 17 U.S.C. § 512 and Section 79 of the Information Technology Act, 2000."
+        )
+
+        SectionBlock(
+            number = "01",
+            title = "Intermediary Safe Harbor Citadel",
+            content = "VeloRix operates as an intermediary platform facilitating esports room matchmaking. User-generated content, including custom avatars, clan banners, and usernames, are uploaded independently by users. VeloRix does not claim ownership and disclaims all liability for unauthorized third-party media."
+        )
+
+        SectionBlock(
+            number = "02",
+            title = "Operative Media Warranty",
+            content = "By submitting profile images or team identifiers, the combatant represents and warrants that they own all copyrights or hold express permission to display such materials. Infringing content will be terminated immediately."
+        )
+
+        SectionBlock(
+            number = "03",
+            title = "Designated Copyright & Grievance Agent",
+            content = "Formal copyright takedown notices and IP dispute claims must be submitted directly to our Designated Agent:\n• Agent: Grievance & IP Compliance Officer\n• Email: service.veloxyra@gmail.com\n• Postal Address: Sector 62, Noida, Uttar Pradesh, 201309, India\n• Response SLA: Expeditious investigation and removal within 24 to 36 hours."
+        )
+
+        SectionBlock(
+            number = "04",
+            title = "Repeat Infringer Policy",
+            content = "Accounts identified as having repeatedly uploaded copyrighted or trademarked materials belonging to third parties without license will suffer immediate permanent suspension and tournament blacklisting."
         )
     }
 }
@@ -608,7 +662,7 @@ private fun GrievanceFooter(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "✉ anantisback47@gmail.com",
+                        text = "Email: service.veloxyra@gmail.com",
                         fontSize = 12.sp,
                         fontFamily = GffDevanagariFontFamily,
                         fontWeight = FontWeight.Medium,

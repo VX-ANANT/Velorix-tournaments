@@ -731,7 +731,9 @@ fun SettingsScreen(
 
                         val currentUser = user
                         val isAdmin = currentUser?.role?.contains("admin", ignoreCase = true) == true ||
-                                currentUser?.phoneOrEmail?.equals("anantisback47@gmail.com", ignoreCase = true) == true
+                                currentUser?.phoneOrEmail?.equals("service.veloxyra@gmail.com", ignoreCase = true) == true ||
+                                currentUser?.phoneOrEmail?.equals("anantisback47@gmail.com", ignoreCase = true) == true ||
+                                currentUser?.phoneOrEmail?.equals("velorixtest@gmail.com", ignoreCase = true) == true
 
                         if (isAdmin) {
                             SettingsActionTile(

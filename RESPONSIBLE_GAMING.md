@@ -38,7 +38,7 @@ Competitive esports can induce intense adrenaline. Watch out for warning signs:
 
 ## 4. Strict 18+ Verification & Parental Guidelines
 - **Underage Prohibition**: Minor participation in paid cash tournaments is unlawful.
-- **Parental Controls**: If you are a parent or guardian who suspects your minor child has registered an account without authorization, contact [anantisback47@gmail.com](mailto:anantisback47@gmail.com) immediately. We will freeze the account and reverse any unauthorized initial wallet deposit.
+- **Parental Controls**: If you are a parent or guardian who suspects your minor child has registered an account without authorization, contact [service.veloxyra@gmail.com](mailto:service.veloxyra@gmail.com) immediately. We will freeze the account and reverse any unauthorized initial wallet deposit.
 
 ---
 

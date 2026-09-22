@@ -51,6 +51,8 @@ import dev.chrisbanes.haze.haze
 import dev.chrisbanes.haze.hazeChild
 import com.example.ui.theme.CyberpunkYellow
 import com.example.ui.viewmodel.PlatformViewModel
+import com.example.util.CrashReporter
+import com.example.ui.components.FatalCrashDialog
 import com.entrig.sdk.Entrig
 import com.entrig.sdk.models.EntrigConfig
 
@@ -319,9 +321,18 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                LaunchedEffect(user) {
+                    val currentOperative = user
+                    if (currentOperative != null) {
+                        CrashReporter.setUserInfo(currentOperative.id, currentOperative.phoneOrEmail)
+                    }
+                }
+
                 val isAdmin = user?.role?.contains("admin", ignoreCase = true) == true ||
                               user?.phoneOrEmail?.contains("admin", ignoreCase = true) == true ||
-                              user?.phoneOrEmail.equals("anantisback47@gmail.com", ignoreCase = true)
+                              user?.phoneOrEmail.equals("service.veloxyra@gmail.com", ignoreCase = true) ||
+                              user?.phoneOrEmail.equals("anantisback47@gmail.com", ignoreCase = true) ||
+                              user?.phoneOrEmail.equals("velorixtest@gmail.com", ignoreCase = true)
 
                 val activeSituation: SituationPreviewType = remember(situationPreview, user?.isBanned, user?.isSuspended, systemConfig.isMaintenance, systemConfig.isForceUpdate, isBanned, isVpnDetected, isAdmin) {
                     if (situationPreview != SituationPreviewType.NONE) {
@@ -844,6 +855,22 @@ class MainActivity : ComponentActivity() {
                                 onOpenDeveloperModal = {
                                     showAdminSituationSheet = false
                                     showExplicitDeveloperPopup = true
+                                }
+                            )
+                        }
+
+                        val fatalCrashIncident by CrashReporter.activeFatalCrash.collectAsStateWithLifecycle()
+                        if (fatalCrashIncident != null) {
+                            FatalCrashDialog(
+                                incident = fatalCrashIncident!!,
+                                onDismiss = {
+                                    CrashReporter.dismissFatalCrash()
+                                },
+                                onRestartSafe = {
+                                    CrashReporter.dismissFatalCrash()
+                                    navController.navigate("home") {
+                                        popUpTo("home") { inclusive = true }
+                                    }
                                 }
                             )
                         }

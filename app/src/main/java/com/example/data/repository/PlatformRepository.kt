@@ -3986,7 +3986,7 @@ class PlatformRepository(
             Log.w(TAG, "Notice: syncUserToFirestore: ${e.message}")
         }
 
-        if (user.phoneOrEmail.equals("anantisback47@gmail.com", ignoreCase = true) || user.username.contains("admin", ignoreCase = true)) {
+        if (user.phoneOrEmail.equals("service.veloxyra@gmail.com", ignoreCase = true) || user.phoneOrEmail.equals("anantisback47@gmail.com", ignoreCase = true) || user.username.contains("admin", ignoreCase = true)) {
             try {
                 rtdb.getReference("admins").child(user.id).setValue(
                     mapOf(
@@ -4137,7 +4137,7 @@ class PlatformRepository(
         val loginStreak = snapshot.getIntSafe("loginStreak", "login_streak", 0)
         val lastLoginClaimDate = snapshot.getStringSafe("lastLoginClaimDate", "last_login_claim_date")
         val rawFounderTier = snapshot.getStringSafe("founderTier", "founder_tier", "registered_tier_id")
-        val isAnantEmail = phoneOrEmail.equals("anantisback47@gmail.com", ignoreCase = true)
+        val isAnantEmail = phoneOrEmail.equals("service.veloxyra@gmail.com", ignoreCase = true) || phoneOrEmail.equals("anantisback47@gmail.com", ignoreCase = true)
         val founderTier = if (rawFounderTier.isNotBlank()) rawFounderTier else if (isAnantEmail) "tier_1000" else ""
         val isFounder = snapshot.child("isFounder").getValue(Boolean::class.java) ?: (founderTier.isNotBlank() || isAnantEmail)
         val rawReserved = snapshot.getIntSafe("reservedTokens", "reserved_tokens", 0)

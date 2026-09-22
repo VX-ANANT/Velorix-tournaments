@@ -20,7 +20,7 @@ MX! .M$BW#@BW&$%#*h#xCr                   . Security.Arsenal: ........ Burp Suit
 %*bQW$$%W&%%8$&pk*%Zr8^                   . Hobbies.Hardware: ........ System Tweaking, Custom Kernels
 oqZLh$$B%&$$@$$ohM$Yxof                   . 
 UZwbQ&$$$@$$$$$$WaW)**xv:                 - Contact ----------------------------------------------------
-_ohdbC%$$$$$$$$$$$&d$$CrY;          -Y    . Email.Personal: ............. anantisback47@gmail.com
+_ohdbC%$$$$$$$$$$$&d$$CrY;          -Y    . Email.Personal: ............. service.veloxyra@gmail.com
 [YWbkpza$$$$$$$$$$$$a$$0ZwJ]     !|Ohk    . Instagram: .................. @anant_sgh
 j)Y$M#dcL%$$$$$%$@hW$$ooCO0Jj; iCakwOZ    . X (Twitter): ................ @Anant__sgh
 w0O%$8M#ZUM$$$$$$BMM$WLXJZCZUUnJdQdqmm    . Discord: .................... discord.gg/ghxrpQAAC2
@@ -43,7 +43,7 @@ $#*aba#8M&p%@$@bM$@%8adw0aopd*#*8%$-.x    . Repos: ... VX-ANANT | Role: ... Arch
   <a href="https://x.com/Anant__sgh">
     <img src="https://img.shields.io/badge/X-(TWITTER)-000000?style=for-the-badge&logo=x&logoColor=white" alt="X Twitter" />
   </a>
-  <a href="mailto:anantisback47@gmail.com">
+  <a href="mailto:service.veloxyra@gmail.com">
     <img src="https://img.shields.io/badge/EMAIL-anantisback47%40gmail.com-D14836?style=for-the-badge&logo=gmail&logoColor=white" alt="Email" />
   </a>
   <a href="https://discord.gg/ghxrpQAAC2">

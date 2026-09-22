@@ -14,6 +14,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -106,16 +108,25 @@ fun HomeScreen(
     var searchFocused by remember { mutableStateOf(false) }
     val searchHistory by viewModel.searchHistory.collectAsState()
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
-    val categories = listOf("All", "BGMI", "Free Fire")
+    val categories = listOf("All", "Battle Royale", "Clash Squad", "Lone Wolf", "Free Fire", "BGMI")
 
     // Filtered tournaments memoization
     val filteredTournaments = remember(tournaments, selectedCategory, searchQuery, selectedFee) {
         tournaments.filter { t ->
             val matchesCategory = when (selectedCategory) {
                 "All" -> true
+                "Battle Royale" -> t.matchCategory.contains("BATTLE", ignoreCase = true) || 
+                                   t.matchCategory.contains("BR", ignoreCase = true) ||
+                                   (!t.matchCategory.contains("CLASH", ignoreCase = true) && !t.matchCategory.contains("LONE", ignoreCase = true) && (t.format.contains("SOLO", true) || t.format.contains("DUO", true) || t.format.contains("SQUAD", true)))
+                "Clash Squad" -> t.matchCategory.contains("CLASH", ignoreCase = true) || 
+                                 t.matchCategory.contains("CS", ignoreCase = true) || 
+                                 t.title.contains("CS", ignoreCase = true) ||
+                                 t.format.contains("v", ignoreCase = true)
+                "Lone Wolf" -> t.matchCategory.contains("LONE", ignoreCase = true) || 
+                               t.title.contains("Lone Wolf", ignoreCase = true)
                 "Free Fire" -> t.game.contains("Free", ignoreCase = true) || t.game.contains("FF", ignoreCase = true) || t.game.equals("Free Fire", ignoreCase = true)
                 "BGMI" -> t.game.contains("BGMI", ignoreCase = true) || t.game.contains("PUBG", ignoreCase = true) || t.game.contains("Battleground", ignoreCase = true) || t.game.equals("BGMI", ignoreCase = true)
-                else -> t.game.equals(selectedCategory, ignoreCase = true)
+                else -> true
             }
             val matchesSearch = searchQuery.isBlank() || 
                 t.title.contains(searchQuery, ignoreCase = true) ||
@@ -382,7 +393,8 @@ fun HomeScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 12.dp),
+                        .padding(bottom = 12.dp)
+                        .horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     categories.forEach { category ->

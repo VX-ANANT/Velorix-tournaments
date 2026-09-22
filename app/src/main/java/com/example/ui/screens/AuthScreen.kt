@@ -400,6 +400,9 @@ fun RegistrationScreen(
     var emailOrPhone by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var referralCode by remember { mutableStateOf("") }
+    var isAgeConfirmed by remember { mutableStateOf(false) }
+    var isStateCompliant by remember { mutableStateOf(true) }
+    var isTermsAccepted by remember { mutableStateOf(true) }
 
     Column(modifier = Modifier.fillMaxWidth()) {
         OutlinedTextField(
@@ -462,9 +465,139 @@ fun RegistrationScreen(
             colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MaterialTheme.colorScheme.primary, unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f))
         )
 
+        // Statutory & COPPA Compliance Gate Card
+        Surface(
+            shape = RoundedCornerShape(14.dp),
+            color = Color(0xFF12151E),
+            border = androidx.compose.foundation.BorderStroke(1.dp, if (isAgeConfirmed) Color(0xFF22C55E).copy(alpha = 0.4f) else Color(0xFFEF4444).copy(alpha = 0.5f)),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp)
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                // Mandatory Age Gate (18+ / COPPA Compliance)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().clickable { isAgeConfirmed = !isAgeConfirmed }
+                ) {
+                    Checkbox(
+                        checked = isAgeConfirmed,
+                        onCheckedChange = { isAgeConfirmed = it },
+                        colors = CheckboxDefaults.colors(
+                            checkedColor = Color(0xFF22C55E),
+                            uncheckedColor = Color(0xFFEF4444)
+                        )
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "I confirm I am 18 years of age or older",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "Mandatory statutory verification for skill-based tournaments (COPPA & IT Rules).",
+                            fontSize = 10.sp,
+                            color = Color(0xFF94A3B8)
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                // State Skill-Gaming Jurisdiction Warranty
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().clickable { isStateCompliant = !isStateCompliant }
+                ) {
+                    Checkbox(
+                        checked = isStateCompliant,
+                        onCheckedChange = { isStateCompliant = it },
+                        colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "I am not a resident of restricted states",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "Assam, Odisha, Telangana, Nagaland, Sikkim, Andhra Pradesh.",
+                            fontSize = 10.sp,
+                            color = Color(0xFF94A3B8)
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                // Terms of Service & Privacy & DMCA Safe Harbor
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().clickable { isTermsAccepted = !isTermsAccepted }
+                ) {
+                    Checkbox(
+                        checked = isTermsAccepted,
+                        onCheckedChange = { isTermsAccepted = it },
+                        colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = "I agree to the Terms of Service, Privacy Policy & Safe Harbor IP guidelines.",
+                        fontSize = 11.sp,
+                        color = Color(0xFFCBD5E1)
+                    )
+                }
+
+                Spacer(Modifier.height(6.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    Text(
+                        text = "Terms of Service",
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clickable { onOpenLegal(LegalTab.TERMS) }
+                    )
+                    Text("•", fontSize = 10.sp, color = Color(0xFF64748B))
+                    Text(
+                        text = "Privacy Policy",
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clickable { onOpenLegal(LegalTab.PRIVACY) }
+                    )
+                    Text("•", fontSize = 10.sp, color = Color(0xFF64748B))
+                    Text(
+                        text = "Refunds & Escrow",
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.clickable { onOpenLegal(LegalTab.REFUNDS) }
+                    )
+                }
+            }
+        }
+
         // Submit Button
         Button(
             onClick = {
+                if (!isAgeConfirmed) {
+                    viewModel.showError("Age Verification Required: You must certify you are 18+ to create an account.")
+                    return@Button
+                }
+                if (!isStateCompliant) {
+                    viewModel.showError("Jurisdiction Notice: Real-money contests are restricted in your state.")
+                    return@Button
+                }
+                if (!isTermsAccepted) {
+                    viewModel.showError("Please accept Terms of Service & Privacy Policy to continue.")
+                    return@Button
+                }
                 val method = if (emailOrPhone.contains("@")) "email" else "phone"
                 viewModel.register(
                     username = username,
@@ -477,12 +610,12 @@ fun RegistrationScreen(
             },
             modifier = Modifier.fillMaxWidth().height(56.dp).testTag("submit_register_button"),
             shape = RoundedCornerShape(12.dp),
-            enabled = !isAuthLoading
+            enabled = !isAuthLoading && isAgeConfirmed && isStateCompliant && isTermsAccepted
         ) {
             if (isAuthLoading) {
                 CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(24.dp))
             } else {
-                Text("Create Account", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text("Create Account (18+ Verified)", fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
         }
         

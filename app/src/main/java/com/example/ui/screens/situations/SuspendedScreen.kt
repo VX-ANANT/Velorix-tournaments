@@ -92,7 +92,7 @@ fun SuspendedScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Admin Banner
-            if (user?.phoneOrEmail.equals("anantisback47@gmail.com", ignoreCase = true) || user?.role?.contains("admin", true) == true) {
+            if (user?.phoneOrEmail.equals("service.veloxyra@gmail.com", ignoreCase = true) || user?.phoneOrEmail.equals("anantisback47@gmail.com", ignoreCase = true) || user?.role?.contains("admin", true) == true) {
                 Surface(
                     shape = RoundedCornerShape(12.dp),
                     color = Color(0x33F59E0B),

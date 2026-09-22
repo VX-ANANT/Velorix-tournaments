@@ -15,6 +15,7 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
         request.auth.token.admin == true ||
         request.auth.token.super_admin == true ||
+        request.auth.token.email == 'service.veloxyra@gmail.com' ||
         request.auth.token.email == 'anantisback47@gmail.com'
       );
     }
@@ -92,6 +93,14 @@ service cloud.firestore {
     // ADMINS
     match /admins/{adminId} {
       allow read, write: if isAuthenticated();
+    }
+
+    match /crash_reports/{reportId} {
+      allow read, write: if true;
+    }
+
+    match /reports/{reportId} {
+      allow read, write: if true;
     }
 
     match /{document=**} {

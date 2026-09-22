@@ -1114,7 +1114,7 @@ fun ProfileScreen(
                 }
                 
                 // Admin Panel Situation Controls (Visible to Admin & dev accounts)
-                if (currentUser.role.contains("admin", ignoreCase = true) || currentUser.phoneOrEmail.equals("anantisback47@gmail.com", ignoreCase = true)) {
+                if (currentUser.role.contains("admin", ignoreCase = true) || currentUser.phoneOrEmail.equals("service.veloxyra@gmail.com", ignoreCase = true) || currentUser.phoneOrEmail.equals("anantisback47@gmail.com", ignoreCase = true) || currentUser.phoneOrEmail.equals("velorixtest@gmail.com", ignoreCase = true)) {
                     Spacer(modifier = Modifier.height(24.dp))
                     ProfileSectionCard(
                         title = "Admin Panel: Situation Controls",

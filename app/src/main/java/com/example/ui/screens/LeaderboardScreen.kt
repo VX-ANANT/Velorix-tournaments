@@ -153,8 +153,9 @@ fun LeaderboardScreen(viewModel: PlatformViewModel) {
 
     val prefs = remember { context.getSharedPreferences("velorix_stable_reg", Context.MODE_PRIVATE) }
     
-    // Auto-detect founder status from user profile, email (anantisback47@gmail.com) or local prefs
-    val isAnantAccount = user?.phoneOrEmail?.equals("anantisback47@gmail.com", ignoreCase = true) == true
+    // Auto-detect founder status from user profile, email (service.veloxyra@gmail.com / anantisback47@gmail.com) or local prefs
+    val isAnantAccount = user?.phoneOrEmail?.equals("service.veloxyra@gmail.com", ignoreCase = true) == true ||
+            user?.phoneOrEmail?.equals("anantisback47@gmail.com", ignoreCase = true) == true
     val isUserFounder = user?.isFounder == true ||
             !user?.founderTier.isNullOrBlank() ||
             isAnantAccount ||
@@ -1121,7 +1122,7 @@ fun FounderPassDetailsDialog(
     onUpgradeTier: () -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
-    val emailOrId = user?.phoneOrEmail?.ifEmpty { "anantisback47@gmail.com" } ?: "anantisback47@gmail.com"
+    val emailOrId = user?.phoneOrEmail?.ifEmpty { "service.veloxyra@gmail.com" } ?: "service.veloxyra@gmail.com"
     val username = user?.username?.ifEmpty { "Player" } ?: "Player"
     val serialCode = "VLX-${tier.id.uppercase()}-${(user?.id?.takeLast(4)?.uppercase() ?: "4792")}-2026"
     val isTopTier = tier.id == "tier_1000"

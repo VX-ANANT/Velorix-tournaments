@@ -19,6 +19,9 @@ class MyApplication : Application() {
                 android.util.Log.d("Firebase", "Firebase already initialized.")
             }
 
+            // Initialize Firebase Crashlytics & Sentinel Defense
+            com.example.util.CrashReporter.init(this)
+
             if (isEmulator) {
                 try {
                     com.google.firebase.messaging.FirebaseMessaging.getInstance().isAutoInitEnabled = false

@@ -30,7 +30,7 @@ In compliance with the **Online Gaming Authority of India (OGAI)** established i
 - **Zero Algorithmic Manipulation**: Platform match matchmaking and room credentials follow deterministic protocols without RNG or operator interference.
 - **Hardware Parity Sentry**: Mobile-first esports contests strictly prohibit desktop PC emulators (BlueStacks, LDPlayer, Nox) to protect sporting integrity.
 - **Auditable Ledger**: All tournament registrations, tickets, kills, standings, and payouts generate cryptographic immutable logs.
-- **Designated Grievance Redressal**: Institutional Grievance Officer designated pursuant to OGAI directives (`anantisback47@gmail.com`).
+- **Designated Grievance Redressal**: Institutional Grievance Officer designated pursuant to OGAI directives (`service.veloxyra@gmail.com`).
 
 ---
 
@@ -63,7 +63,7 @@ Rule 7 of the **Promotion and Regulation of Online Gaming Rules, 2026** mandates
 ## 6. Law Enforcement & Intermediary Safe Harbor (Section 79)
 VeloRix functions as an intermediary under Section 79 of the Information Technology Act, 2000. In accordance with Section 69A and Rule 3 of the Intermediary Guidelines:
 - We expeditiously investigate and act upon legitimate governmental or judicial directives to remove unlawful content, detect financial fraud, or assist investigative agencies.
-- For law enforcement inquiries, send formal digital communications from official institutional domains to: [anantisback47@gmail.com](mailto:anantisback47@gmail.com).
+- For law enforcement inquiries, send formal digital communications from official institutional domains to: [service.veloxyra@gmail.com](mailto:service.veloxyra@gmail.com).
 
 ---
 <sub>Executed with full statutory fidelity under PROG Act 2025 & PROG Rules 2026 by VX-ANANT for the VeloRix Esports Platform.</sub>

@@ -179,17 +179,13 @@ fun TournamentCard(
                             modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = when {
-                                    isHeadshotOnly -> "🎯 "
-                                    isSniperOnly -> "🔭 "
-                                    isLoneWolf -> "🐺 "
-                                    isClashSquad -> "⚔️ "
-                                    isSurvival -> "🏆 "
-                                    else -> "💀 "
-                                },
-                                fontSize = 11.sp
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(badgeBorderColor)
                             )
+                            Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = tacticalBadgeText.uppercase(),
                                 color = badgeTextColor,

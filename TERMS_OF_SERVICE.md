@@ -86,4 +86,4 @@ These Terms shall be governed by and construed in accordance with the substantiv
 VeloRix reserves the right to amend these Terms at any time to reflect changing statutory regulations or platform enhancements. Continued usage of the app following notice of updates constitutes full acceptance of modified Terms.
 
 ---
-<sub>For legal or compliance inquiries: [anantisback47@gmail.com](mailto:anantisback47@gmail.com)</sub>
+<sub>For legal or compliance inquiries: [service.veloxyra@gmail.com](mailto:service.veloxyra@gmail.com)</sub>

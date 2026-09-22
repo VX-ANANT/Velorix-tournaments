@@ -350,7 +350,7 @@ data class SystemAppConfig(
     var changelog: String = "• Server stability & latency improvements\n• Enhanced anti-cheat & emulator detection\n• Fast wallet payouts and instant room access",
     
     @JsonNames("supportEmail", "support_email") 
-    var supportEmail: String = "anantisback47@gmail.com",
+    var supportEmail: String = "service.veloxyra@gmail.com",
     
     @JsonNames("supportWhatsApp", "support_whatsapp") 
     var supportWhatsApp: String = "+919876543210",

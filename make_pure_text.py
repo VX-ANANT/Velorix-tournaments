@@ -43,7 +43,7 @@ right_side = [
     ' . Hobbies.Hardware: ........ System Tweaking, Custom Kernels',
     ' . ',
     ' - Contact ----------------------------------------------------',
-    ' . Email.Personal: ............. anantisback47@gmail.com',
+    ' . Email.Personal: ............. service.veloxyra@gmail.com',
     ' . Instagram: .................. @anant_sgh',
     ' . X (Twitter): ................ @Anant__sgh',
     ' . Discord: .................... discord.gg/ghxrpQAAC2',

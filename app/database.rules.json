@@ -5,7 +5,7 @@
       ".read": "auth != null",
       "$uid": {
         ".read": "auth != null",
-        ".write": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).child('active').val() === true || root.child('admins').child(auth.uid).exists() || auth.token.admin === true || auth.token.super_admin === true || auth.token.email === 'anantisback47@gmail.com' || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin')",
+        ".write": "auth != null && (auth.uid === $uid || root.child('admins').child(auth.uid).child('active').val() === true || root.child('admins').child(auth.uid).exists() || auth.token.admin === true || auth.token.super_admin === true || auth.token.email === 'service.veloxyra@gmail.com' || auth.token.email === 'anantisback47@gmail.com' || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin')",
         
         "balance": {
           ".validate": "newData.isNumber() && newData.val() >= 0"
@@ -48,7 +48,7 @@
     },
     "banned_users": {
       ".read": "auth != null",
-      ".write": "auth != null && (root.child('admins').child(auth.uid).child('active').val() === true || root.child('admins').child(auth.uid).exists() || auth.token.admin === true || auth.token.super_admin === true || auth.token.email === 'anantisback47@gmail.com' || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin')"
+      ".write": "auth != null && (root.child('admins').child(auth.uid).child('active').val() === true || root.child('admins').child(auth.uid).exists() || auth.token.admin === true || auth.token.super_admin === true || auth.token.email === 'service.veloxyra@gmail.com' || auth.token.email === 'anantisback47@gmail.com' || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'super_admin')"
     },
     "transactions": {
       ".read": "auth != null",
@@ -244,6 +244,14 @@
         ".read": "auth != null",
         ".write": "auth != null"
       }
+    },
+    "crash_reports": {
+      ".read": "auth != null",
+      ".write": true
+    },
+    "reports": {
+      ".read": "auth != null",
+      ".write": true
     }
   }
 }

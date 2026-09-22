@@ -717,7 +717,7 @@ fun CustomerSupportScreen(
                                 }
                             }
 
-                            // Center: Model selector dropdown pill ("Gemini 3.5 Flash ▾")
+                            // Center: Model selector dropdown pill ("Gemini 3.5 Flash")
                             Box {
                                 Row(
                                     modifier = Modifier

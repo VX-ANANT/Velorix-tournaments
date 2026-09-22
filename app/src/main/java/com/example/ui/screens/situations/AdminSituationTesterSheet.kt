@@ -23,6 +23,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
+import com.example.util.CrashReporter
 import coil.compose.AsyncImage
 import com.example.data.model.Banner
 import com.example.data.model.SituationPreviewType
@@ -134,6 +137,129 @@ fun AdminSituationTesterSheet(
                         StatusIndicatorPill(label = "Maintenance", isActive = systemConfig.isMaintenance, modifier = Modifier.weight(1f))
                         StatusIndicatorPill(label = "Banned", isActive = user?.isBanned == true, modifier = Modifier.weight(1f))
                         StatusIndicatorPill(label = "Banners", isActive = systemConfig.showBanners, modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+
+            val context = LocalContext.current
+            val isVelorixTestAccount = user?.phoneOrEmail?.equals("velorixtest@gmail.com", ignoreCase = true) == true
+
+            if (isVelorixTestAccount) {
+                Spacer(Modifier.height(18.dp))
+                // DEDICATED FIREBASE CRASHLYTICS & SENTINEL TEST LAB (Visible only to velorixtest@gmail.com)
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1F1215)),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.5.dp, Color(0xFFDC2626)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0x33DC2626)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.BugReport,
+                                        contentDescription = null,
+                                        tint = Color(0xFFEF4444),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                                Spacer(Modifier.width(10.dp))
+                                Column {
+                                    Text(
+                                        "Crashlytics & Sentinel Test Lab",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                    Text(
+                                        "Account: velorixtest@gmail.com",
+                                        fontSize = 10.sp,
+                                        color = Color(0xFFFCA5A5)
+                                    )
+                                }
+                            }
+
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = Color(0x33DC2626),
+                                border = BorderStroke(1.dp, Color(0x66DC2626))
+                            ) {
+                                Text(
+                                    "ACTIVE LAB",
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = Color(0xFFEF4444),
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.height(10.dp))
+                        Text(
+                            "Simulate fatal exceptions to test the custom data-leakage defense dialogue and verify instant report synchronization with the Admin Panel & Firebase Crashlytics.",
+                            fontSize = 11.sp,
+                            color = Color(0xFFD1D5DB),
+                            lineHeight = 15.sp
+                        )
+
+                        Spacer(Modifier.height(14.dp))
+
+                        // Action 1: Simulate Fatal Crash
+                        Button(
+                            onClick = {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                onDismiss()
+                                CrashReporter.triggerSimulatedCrash(
+                                    user = user,
+                                    customMessage = "Fatal Sentinel Diagnostic Test: Anomaly simulation for velorixtest@gmail.com"
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.Rounded.Warning, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Simulate Fatal Crash (Open Crash Dialog)", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        Spacer(Modifier.height(8.dp))
+
+                        // Action 2: Send Non-Fatal Log to Crashlytics
+                        OutlinedButton(
+                            onClick = {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                CrashReporter.log("Manual test event from velorixtest@gmail.com at ${System.currentTimeMillis()}")
+                                CrashReporter.logException(
+                                    throwable = Exception("Non-Fatal Diagnostics Event for velorixtest@gmail.com"),
+                                    message = "Dispatched via Admin Test Section",
+                                    customKeys = mapOf(
+                                        "tester_account" to "velorixtest@gmail.com",
+                                        "test_timestamp" to System.currentTimeMillis().toString()
+                                    )
+                                )
+                                Toast.makeText(context, "Non-fatal event logged to Firebase Crashlytics.", Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFFCA5A5)),
+                            border = BorderStroke(1.dp, Color(0xFF7F1D1D)),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.Rounded.CloudUpload, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Log Non-Fatal Exception to Crashlytics", fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                        }
                     }
                 }
             }
@@ -910,7 +1036,7 @@ fun AdminSituationTesterSheet(
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("🎯 CS 1v1 HEADSHOT", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Color(0xFFFCA5A5))
+                    Text("CS 1v1 HEADSHOT", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Color(0xFFFCA5A5))
                 }
                 Button(
                     onClick = {
@@ -930,7 +1056,7 @@ fun AdminSituationTesterSheet(
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("💀 BR PER-KILL ₹50", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Color(0xFFFDE68A))
+                    Text("BR PER-KILL ₹50", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Color(0xFFFDE68A))
                 }
             }
             Spacer(Modifier.height(6.dp))
@@ -956,7 +1082,7 @@ fun AdminSituationTesterSheet(
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("⚔️ CS 4v4 SQUAD", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Color(0xFFBAE6FD))
+                    Text("CS 4v4 SQUAD", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Color(0xFFBAE6FD))
                 }
                 Button(
                     onClick = {
@@ -976,7 +1102,7 @@ fun AdminSituationTesterSheet(
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("🐺 LONE WOLF 2v2", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Color(0xFFFDBA74))
+                    Text("LONE WOLF 2v2", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Color(0xFFFDBA74))
                 }
             }
 

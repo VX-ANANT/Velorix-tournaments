@@ -53,4 +53,4 @@ VeloRix implements a multi-tiered forensic evaluation system:
 *All disciplinary decisions rendered by the VeloRix Fair Play Committee are final.*
 
 ---
-<sub>Report foul play directly in-app: **Settings → 24/7 Gemini AI Support** or email [anantisback47@gmail.com](mailto:anantisback47@gmail.com)</sub>
+<sub>Report foul play directly in-app: **Settings → 24/7 Gemini AI Support** or email [service.veloxyra@gmail.com](mailto:service.veloxyra@gmail.com)</sub>

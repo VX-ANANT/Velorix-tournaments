@@ -33,6 +33,7 @@ import com.example.R
 enum class LegalTab(val title: String, val tag: String, val iconRes: Int) {
     TERMS("Terms of Service", "ART. 19(1)(g)", R.drawable.ic_legal_gavel),
     PRIVACY("Data Sovereignty", "DPDP ACT 2023", R.drawable.ic_untitledui_shield_tick),
+    DMCA("DMCA & Safe Harbor", "17 U.S.C. §512", R.drawable.ic_untitledui_shield),
     FAIR_PLAY("Sentinel Anti-Cheat", "ZERO TOLERANCE", R.drawable.ic_fair_play_swords),
     REFUNDS("Escrow & Liquidation", "INSTANT UPI", R.drawable.ic_refund_receipt),
     RESPONSIBLE("Operative Welfare", "18+ GATED", R.drawable.ic_age_18_badge),
@@ -177,6 +178,7 @@ fun LegalComplianceModal(
                         when (selectedTab) {
                             LegalTab.TERMS -> TermsContent()
                             LegalTab.PRIVACY -> PrivacyContent()
+                            LegalTab.DMCA -> DmcaContent()
                             LegalTab.FAIR_PLAY -> FairPlayContent()
                             LegalTab.REFUNDS -> RefundsContent()
                             LegalTab.RESPONSIBLE -> ResponsibleContent()
@@ -207,7 +209,7 @@ fun LegalComplianceModal(
                                 color = Color(0xFF737373)
                             )
                             Text(
-                                text = "Grievance: anantisback47@gmail.com",
+                                text = "Grievance: service.veloxyra@gmail.com",
                                 fontSize = 11.sp,
                                 color = Color(0xFF999999)
                             )
@@ -265,7 +267,7 @@ private fun TermsContent() {
 private fun PrivacyContent() {
     Column {
         LegalHighlightBadge(
-            title = "DATA SOVEREIGNTY (DPDP ACT 2023)",
+            title = "DATA SOVEREIGNTY (DPDP ACT 2023 & PRIVACY)",
             desc = "Zero marketing telemetry brokers. Zero external data commercialization. Telemetry acquisition is restricted strictly to competitive integrity audit trails."
         )
 
@@ -273,11 +275,43 @@ private fun PrivacyContent() {
         LegalSectionTitle("1. SOVEREIGN STATUTORY MANDATE")
         LegalParagraph("Data architecture complies with the Digital Personal Data Protection (DPDP) Act 2023, the Information Technology Act 2000 (Sections 43A and 72A), and the IT SPDI Rules 2011.")
 
-        LegalSectionTitle("2. CRYPTOGRAPHIC DATA POINTS COLLECTED")
+        LegalSectionTitle("2. STRICT NO-KEYSTROKE & NO-SESSION-REPLAY ARCHITECTURE (CIPA §631)")
+        LegalParagraph("VeloRix strictly does NOT deploy session replay trackers, keystroke loggers, or background input monitors. Passwords and credentials use secure native UI transformations and are never ingested, logged, or recorded into telemetry pipelines.")
+
+        LegalSectionTitle("3. LOCAL FONT ASSETS & ZERO IP LEAKAGE")
+        LegalParagraph("All typography fonts are pre-compiled locally within the application binary. Zero requests are routed to external third-party font networks or foreign CDNs, ensuring absolute IP address privacy and zero third-party leakage.")
+
+        LegalSectionTitle("4. ZERO RECURRING SUBSCRIPTIONS (ARL COMPLIANCE)")
+        LegalParagraph("VeloRix charges zero automatic or recurring subscription fees. Every tournament registration is a one-time, explicitly authorized transaction with deterministic UPI escrow and cancellation protection.")
+
+        LegalSectionTitle("5. CRYPTOGRAPHIC DATA POINTS COLLECTED")
         LegalParagraph("• Terminal Account Identity: Verified Mobile Number, Google OAuth token, and Date of Birth for 18+ majority validation.\n• Tactical In-Game Telemetry: IGN and Free Fire UID for cryptographic lobby slot allocation.\n• Payout Liquidity Rails: Verified UPI handle for instant liquidation. Zero credit/debit card numbers or ATM PINs are ever ingested.\n• Anti-Cheat Telemetry: Cryptographic hardware device hash and network latency variance indicators to terminate multi-accounting and ban evasion.")
 
-        LegalSectionTitle("3. IRREVERSIBLE DATA PURGE RIGHTS")
+        LegalSectionTitle("6. IRREVERSIBLE DATA PURGE RIGHTS")
         LegalParagraph("Combatants possess complete sovereignty to demand irreversible data scrubbing. Triggering 'Delete Account' in Terminal Settings executes total cryptographic scrubbing within 7 business days.")
+    }
+}
+
+@Composable
+private fun DmcaContent() {
+    Column {
+        LegalHighlightBadge(
+            title = "DMCA & COPYRIGHT SAFE HARBOR (17 U.S.C. §512)",
+            desc = "Statutory Safe Harbor protection under Section 512 of the DMCA and Section 79 of the Indian Information Technology Act, 2000 for user-uploaded avatars and content."
+        )
+
+        Spacer(modifier = Modifier.height(14.dp))
+        LegalSectionTitle("1. INTERMEDIARY SAFE HARBOR CITADEL")
+        LegalParagraph("VeloRix operates strictly as an interactive intermediary platform. All profile avatars, clan graphics, and tournament logos uploaded by users remain the sole legal responsibility of the uploading combatant.")
+
+        LegalSectionTitle("2. COMBATANT INTELLECTUAL PROPERTY WARRANTY")
+        LegalParagraph("By uploading any image, logo, or text, the user explicitly warrants and represents that they own all proprietary rights or possess express authorization to display said media. Unauthorized or infringing works will be immediately purged.")
+
+        LegalSectionTitle("3. DESIGNATED COPYRIGHT & GRIEVANCE AGENT")
+        LegalParagraph("Copyright owners seeking takedown of infringing materials should submit a formal notice to our Designated Agent:\n• Officer: Grievance & IP Compliance Officer\n• Email: service.veloxyra@gmail.com\n• Postal Address: Sector 62, Noida, Uttar Pradesh, 201309, India\n• Response SLA: Expeditious investigation and takedown within 24 to 36 business hours.")
+
+        LegalSectionTitle("4. REPEAT INFRINGER TERMINATION POLICY")
+        LegalParagraph("VeloRix enforces an uncompromising repeat infringer policy. Accounts determined to have willfully or repeatedly uploaded infringing intellectual property face immediate account forfeiture and permanent blacklist.")
     }
 }
 

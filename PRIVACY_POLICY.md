@@ -3,7 +3,7 @@
 **Operational Epoch:** September 19, 2026  
 **Security Clearance Version:** 4.2.0-SENTINEL  
 **Controlling Entity:** VeloRix Cyber-Esports Technologies (Command Operator: VX-ANANT)  
-**Chief Data Sentry & Grievance Arbiter:** [anantisback47@gmail.com](mailto:anantisback47@gmail.com)  
+**Chief Data Sentry & Grievance Arbiter:** [service.veloxyra@gmail.com](mailto:service.veloxyra@gmail.com)  
 
 ---
 
@@ -74,7 +74,7 @@ Your data is utilized strictly for operational and regulatory esports purposes:
 - **Retention**: We retain personal data only as long as your account remains active or as required by applicable financial and accounting regulations.
 - **Right to Erasure (Account Deletion)**:
   - Users possess the absolute right to delete their account and purge associated telemetry at any time.
-  - You can trigger instant account deletion directly inside the app: `Profile` → `Settings` → `Account Actions` → `Delete Account`, or by emailing [anantisback47@gmail.com](mailto:anantisback47@gmail.com) with your registered Free Fire UID.
+  - You can trigger instant account deletion directly inside the app: `Profile` → `Settings` → `Account Actions` → `Delete Account`, or by emailing [service.veloxyra@gmail.com](mailto:service.veloxyra@gmail.com) with your registered Free Fire UID.
   - Upon confirmation, your personal identifiers and login tokens will be permanently scrubbed from our active databases within 7 working days.
 
 ---
@@ -91,7 +91,7 @@ In compliance with Rule 3(2) of the Information Technology (Intermediary Guideli
 
 - **Grievance Officer:** Anant Singh (VX-ANANT)  
 - **Designation:** Founder & Lead Systems Architect, VeloRix Esports  
-- **Email:** [anantisback47@gmail.com](mailto:anantisback47@gmail.com)  
+- **Email:** [service.veloxyra@gmail.com](mailto:service.veloxyra@gmail.com)  
 - **Response Timeline:** All inquiries, grievances, or legal data requests are acknowledged within 24 hours and addressed within 15 business days.
 
 ---

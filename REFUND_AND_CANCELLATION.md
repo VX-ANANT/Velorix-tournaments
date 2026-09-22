@@ -37,7 +37,7 @@ A tournament match may be cancelled or rescheduled under the following circumsta
 ### 3.1 Failed or Pending UPI Transactions
 - When adding funds via UPI (Google Pay, PhonePe, Paytm, FamPay):
   - If money is debited from your bank account but does not immediately reflect in your VeloRix balance within 15 minutes, the banking switch will usually auto-reverse the funds within 24 to 48 banking hours.
-  - If the transaction is not reconciled automatically, submit the 12-digit UPI UTR / Transaction Reference number through the in-app **Support Desk** or email [anantisback47@gmail.com](mailto:anantisback47@gmail.com). Verified manual reconciliations are credited within 2 to 4 hours.
+  - If the transaction is not reconciled automatically, submit the 12-digit UPI UTR / Transaction Reference number through the in-app **Support Desk** or email [service.veloxyra@gmail.com](mailto:service.veloxyra@gmail.com). Verified manual reconciliations are credited within 2 to 4 hours.
 
 ### 3.2 Accidental Top-Ups
 - Deposited balance intended for tournament play cannot be immediately refunded back to bank accounts without participating in matches, in order to prevent platform abuse and comply with Anti-Money Laundering (AML) standards.
@@ -57,7 +57,7 @@ A tournament match may be cancelled or rescheduled under the following circumsta
 ---
 
 ## 5. Contact for Financial Queries
-- **Billing & Payout Support:** [anantisback47@gmail.com](mailto:anantisback47@gmail.com)  
+- **Billing & Payout Support:** [service.veloxyra@gmail.com](mailto:service.veloxyra@gmail.com)  
 - **Telegram Ops Desk:** Real-time support via the in-app Watchdog interface.
 
 ---

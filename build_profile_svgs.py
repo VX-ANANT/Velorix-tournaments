@@ -48,7 +48,7 @@ right_side = [
     [("category", " . Hobbies.Hardware:"), ("dot", " ........ "), ("val", "System Tweaking, Custom Kernels")],
     [("dot", " . ")],
     [("header", " - Contact"), ("sep", " ----------------------------------------------------")],
-    [("label", " . Email.Personal:"), ("dot", " ............. "), ("val", "anantisback47@gmail.com")],
+    [("label", " . Email.Personal:"), ("dot", " ............. "), ("val", "service.veloxyra@gmail.com")],
     [("label", " . Instagram:"), ("dot", " .................. "), ("val", "@anant_sgh")],
     [("label", " . X (Twitter):"), ("dot", " ................ "), ("val", "@Anant__sgh")],
     [("label", " . Discord:"), ("dot", " .................... "), ("val", "discord.gg/ghxrpQAAC2")],

@@ -10,6 +10,7 @@ plugins {
   alias(libs.plugins.secrets)
   alias(libs.plugins.kotlin.serialization)
   alias(libs.plugins.google.services)
+  alias(libs.plugins.firebase.crashlytics)
 }
 
 android {
@@ -77,6 +78,7 @@ dependencies {
   implementation(platform(libs.androidx.compose.bom))
   implementation(platform(libs.firebase.bom))
   implementation(libs.firebase.analytics)
+  implementation(libs.firebase.crashlytics)
   implementation(libs.firebase.firestore)
   implementation(libs.firebase.auth)
   implementation(libs.play.services.auth)

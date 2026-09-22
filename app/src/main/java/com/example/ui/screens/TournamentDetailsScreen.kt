@@ -248,15 +248,26 @@ fun TournamentDetailsScreen(
                                 .padding(14.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = when {
-                                    t.displayCategoryBadge.contains("HEADSHOT", true) -> "🎯"
-                                    t.displayCategoryBadge.contains("SNIPER", true) -> "🔭"
-                                    t.displayCategoryBadge.contains("SURVIVAL", true) -> "🏆"
-                                    t.displayCategoryBadge.contains("CS", true) || t.displayCategoryBadge.contains("CLASH", true) -> "⚔️"
-                                    else -> "💀"
+                            Icon(
+                                imageVector = when {
+                                    t.displayCategoryBadge.contains("HEADSHOT", true) || t.displayCategoryBadge.contains("SNIPER", true) -> 
+                                        androidx.compose.ui.graphics.vector.ImageVector.vectorResource(com.example.R.drawable.ic_untitledui_target)
+                                    t.displayCategoryBadge.contains("SURVIVAL", true) -> 
+                                        androidx.compose.ui.graphics.vector.ImageVector.vectorResource(com.example.R.drawable.ic_untitledui_trophy)
+                                    t.displayCategoryBadge.contains("CS", true) || t.displayCategoryBadge.contains("CLASH", true) -> 
+                                        androidx.compose.ui.graphics.vector.ImageVector.vectorResource(com.example.R.drawable.ic_untitledui_shield)
+                                    else -> 
+                                        androidx.compose.ui.graphics.vector.ImageVector.vectorResource(com.example.R.drawable.ic_untitledui_target)
                                 },
-                                fontSize = 24.sp
+                                contentDescription = null,
+                                tint = when {
+                                    t.displayCategoryBadge.contains("HEADSHOT", true) -> Color(0xFFEF4444)
+                                    t.displayCategoryBadge.contains("SNIPER", true) -> Color(0xFFA855F7)
+                                    t.displayCategoryBadge.contains("SURVIVAL", true) -> Color(0xFF10B981)
+                                    t.displayCategoryBadge.contains("CS", true) || t.displayCategoryBadge.contains("CLASH", true) -> Color(0xFF38BDF8)
+                                    else -> Color(0xFFF59E0B)
+                                },
+                                modifier = Modifier.size(26.dp)
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
