@@ -92,6 +92,7 @@ fun HomeScreen(
     val tournaments by viewModel.tournaments.collectAsState()
     val missions by viewModel.missions.collectAsState()
     val banners by viewModel.banners.collectAsState()
+    val systemConfig by viewModel.systemConfig.collectAsState()
     val liveUpdatesMap by viewModel.liveMatchUpdates.collectAsState()
     val isRefreshing by viewModel.isRefreshingHome.collectAsState()
     val isLoadingTournaments by viewModel.isLoadingTournaments.collectAsState()
@@ -317,8 +318,8 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // Real-Time Dynamic Admin Banners (Only displayed when active campaigns exist in Firestore/RTDB)
-            if (banners.isNotEmpty()) {
+            // Real-Time Dynamic Admin Banners (Only displayed when Admin toggle is ON and active campaigns exist in Firestore/RTDB)
+            if (systemConfig.showBanners && banners.isNotEmpty()) {
                 item {
                     TopBannerCarousel(
                         banners = banners,

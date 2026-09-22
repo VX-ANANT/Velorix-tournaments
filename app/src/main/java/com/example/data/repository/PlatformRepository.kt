@@ -4713,6 +4713,7 @@ class PlatformRepository(
                         val updUrl = doc.getString("updateUrl") ?: doc.getString("update_url") ?: ""
                         val changelog = doc.getString("changelog") ?: ""
                         val showDevModal = doc.getBoolean("showDeveloperModal") ?: doc.getBoolean("show_developer_modal") ?: doc.getBoolean("developer_modal_visible") ?: true
+                        val showBanners = doc.getBoolean("showBanners") ?: doc.getBoolean("show_banners") ?: doc.getBoolean("banners_enabled") ?: doc.getBoolean("bannersEnabled") ?: false
 
                         _systemConfig.value = _systemConfig.value.copy(
                             isMaintenance = isMaint,
@@ -4723,7 +4724,8 @@ class PlatformRepository(
                             minRequiredVersion = if (minVer.isNotBlank()) minVer else _systemConfig.value.minRequiredVersion,
                             updateUrl = if (updUrl.isNotBlank()) updUrl else _systemConfig.value.updateUrl,
                             changelog = if (changelog.isNotBlank()) changelog else _systemConfig.value.changelog,
-                            showDeveloperModal = showDevModal
+                            showDeveloperModal = showDevModal,
+                            showBanners = showBanners
                         )
                     }
                 }
@@ -4763,6 +4765,11 @@ class PlatformRepository(
             ?: snapshot.child("show_developer_modal").getValue(Boolean::class.java)
             ?: snapshot.child("developer_modal_visible").getValue(Boolean::class.java)
             ?: snapshot.child("dev_window_enabled").getValue(Boolean::class.java) ?: true
+        val showBanners = snapshot.child("showBanners").getValue(Boolean::class.java)
+            ?: snapshot.child("show_banners").getValue(Boolean::class.java)
+            ?: snapshot.child("banners_enabled").getValue(Boolean::class.java)
+            ?: snapshot.child("bannersEnabled").getValue(Boolean::class.java)
+            ?: snapshot.child("isBannersEnabled").getValue(Boolean::class.java) ?: false
 
         _systemConfig.value = _systemConfig.value.copy(
             isMaintenance = isMaint,
@@ -4773,8 +4780,120 @@ class PlatformRepository(
             minRequiredVersion = if (minVersion.isNotBlank()) minVersion else _systemConfig.value.minRequiredVersion,
             updateUrl = if (updateUrl.isNotBlank()) updateUrl else _systemConfig.value.updateUrl,
             changelog = if (changelog.isNotBlank()) changelog else _systemConfig.value.changelog,
-            showDeveloperModal = showDeveloperModal
+            showDeveloperModal = showDeveloperModal,
+            showBanners = showBanners
         )
+    }
+
+    suspend fun toggleShowBanners(enabled: Boolean) {
+        withContext(Dispatchers.IO) {
+            try {
+                val map = mapOf<String, Any>(
+                    "showBanners" to enabled,
+                    "show_banners" to enabled,
+                    "banners_enabled" to enabled,
+                    "bannersEnabled" to enabled,
+                    "isBannersEnabled" to enabled
+                )
+                rtdb.getReference("app_config").updateChildren(map)
+                FirebaseFirestore.getInstance().collection("app_config").document("global")
+                    .set(map, com.google.firebase.firestore.SetOptions.merge())
+
+                _systemConfig.value = _systemConfig.value.copy(showBanners = enabled)
+                Log.d(TAG, "Realtime banner visibility toggled: $enabled")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error toggling banners visibility: ${e.message}")
+            }
+        }
+    }
+
+    suspend fun saveBanner(banner: Banner): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val bId = if (banner.id.isNotBlank()) banner.id else UUID.randomUUID().toString()
+                val bannerToSave = banner.copy(id = bId)
+
+                val map = mapOf<String, Any?>(
+                    "id" to bannerToSave.id,
+                    "title" to bannerToSave.title,
+                    "subtitle" to bannerToSave.subtitle,
+                    "imageUrl" to bannerToSave.imageUrl,
+                    "image_url" to bannerToSave.imageUrl,
+                    "badgeText" to bannerToSave.badgeText,
+                    "badge_text" to bannerToSave.badgeText,
+                    "actionType" to bannerToSave.actionType,
+                    "action_type" to bannerToSave.actionType,
+                    "targetId" to bannerToSave.targetId,
+                    "target_id" to bannerToSave.targetId,
+                    "order" to bannerToSave.order,
+                    "active" to bannerToSave.active,
+                    "ctaText" to bannerToSave.ctaText,
+                    "cta_text" to bannerToSave.ctaText,
+                    "gradientTheme" to bannerToSave.gradientTheme,
+                    "gradient_theme" to bannerToSave.gradientTheme,
+                    "description" to bannerToSave.description,
+                    "terms" to bannerToSave.terms,
+                    "validUntil" to bannerToSave.validUntil,
+                    "valid_until" to bannerToSave.validUntil,
+                    "category" to bannerToSave.category,
+                    "updatedAt" to System.currentTimeMillis()
+                )
+
+                bannersRef.child(bId).setValue(map).await()
+                try {
+                    FirebaseFirestore.getInstance().collection("banners").document(bId)
+                        .set(map, com.google.firebase.firestore.SetOptions.merge()).await()
+                } catch (e: Exception) {
+                    Log.w(TAG, "Firestore banner set notice: ${e.message}")
+                }
+
+                db.bannerDao().insert(bannerToSave)
+                Result.success(Unit)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to save banner: ${e.message}")
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun deleteBanner(bannerId: String): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                bannersRef.child(bannerId).removeValue().await()
+                try {
+                    FirebaseFirestore.getInstance().collection("banners").document(bannerId).delete().await()
+                } catch (e: Exception) {
+                    Log.w(TAG, "Firestore banner delete notice: ${e.message}")
+                }
+                db.bannerDao().delete(bannerId)
+                Result.success(Unit)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to delete banner: ${e.message}")
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun publishAnnouncementNotification(title: String, message: String, bannerId: String = ""): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val notifId = UUID.randomUUID().toString()
+                val notif = com.example.data.model.AppNotification(
+                    id = notifId,
+                    title = title,
+                    message = message,
+                    type = "PRIZE_ANNOUNCEMENT",
+                    timestamp = System.currentTimeMillis(),
+                    isRead = false,
+                    tournamentId = bannerId
+                )
+                insertNotification(notif)
+                Result.success(Unit)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to publish announcement notification: ${e.message}")
+                Result.failure(e)
+            }
+        }
     }
 
     suspend fun updateMaintenanceMode(enabled: Boolean, title: String = "", message: String = "", eta: String = "") {

@@ -198,6 +198,52 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    fun toggleShowBanners(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.toggleShowBanners(enabled)
+            showToast(if (enabled) "In-App Banners ENABLED" else "In-App Banners DISABLED (Hidden)")
+        }
+    }
+
+    fun saveBanner(banner: Banner, onResult: (Boolean) -> Unit = {}) {
+        viewModelScope.launch {
+            val res = repository.saveBanner(banner)
+            if (res.isSuccess) {
+                _toastMessage.emit("Banner published to Cloud successfully!")
+                onResult(true)
+            } else {
+                _toastMessage.emit("Failed to publish banner: ${res.exceptionOrNull()?.message}")
+                onResult(false)
+            }
+        }
+    }
+
+    fun deleteBanner(bannerId: String, onResult: (Boolean) -> Unit = {}) {
+        viewModelScope.launch {
+            val res = repository.deleteBanner(bannerId)
+            if (res.isSuccess) {
+                _toastMessage.emit("Banner deleted successfully.")
+                onResult(true)
+            } else {
+                _toastMessage.emit("Failed to delete banner.")
+                onResult(false)
+            }
+        }
+    }
+
+    fun publishAnnouncementNotification(title: String, message: String, bannerId: String = "", onResult: (Boolean) -> Unit = {}) {
+        viewModelScope.launch {
+            val res = repository.publishAnnouncementNotification(title, message, bannerId)
+            if (res.isSuccess) {
+                _toastMessage.emit("Announcement broadcast sent to all users!")
+                onResult(true)
+            } else {
+                _toastMessage.emit("Failed to send announcement notification.")
+                onResult(false)
+            }
+        }
+    }
+
     fun checkVpnStatus() {
         viewModelScope.launch(Dispatchers.IO) {
             val detected = isVpnActive()

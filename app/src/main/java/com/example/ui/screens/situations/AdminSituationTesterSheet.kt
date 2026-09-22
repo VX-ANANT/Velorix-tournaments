@@ -2,6 +2,7 @@ package com.example.ui.screens.situations
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -16,10 +17,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import com.example.data.model.Banner
 import com.example.data.model.SituationPreviewType
 import com.example.data.model.SystemAppConfig
 import com.example.data.model.User
@@ -39,6 +44,18 @@ fun AdminSituationTesterSheet(
     var customMaintMsg by remember { mutableStateOf(systemConfig.maintenanceMessage) }
     var customEta by remember { mutableStateOf(systemConfig.maintenanceUntil) }
     var customBanReason by remember { mutableStateOf(user?.banReason ?: "Anti-Cheat Detection - Integrity Violation") }
+
+    val banners by viewModel.banners.collectAsState()
+    var newBannerTitle by remember { mutableStateOf("") }
+    var newBannerSubtitle by remember { mutableStateOf("") }
+    var newBannerBadge by remember { mutableStateOf("ANNOUNCEMENT") }
+    var newBannerImageUrl by remember { mutableStateOf("") }
+    var newBannerCtaText by remember { mutableStateOf("EXPLORE NOW") }
+    var newBannerActionType by remember { mutableStateOf("ANNOUNCEMENT") }
+    var newBannerTargetId by remember { mutableStateOf("") }
+    var newBannerValidUntil by remember { mutableStateOf("") }
+    var newBannerTheme by remember { mutableStateOf("CYAN_PURPLE") }
+    var isPublishingBanner by remember { mutableStateOf(false) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -95,11 +112,11 @@ fun AdminSituationTesterSheet(
                     Spacer(Modifier.height(10.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        StatusIndicatorPill(label = "Maintenance", isActive = systemConfig.isMaintenance)
-                        StatusIndicatorPill(label = "Account Banned", isActive = user?.isBanned == true)
-                        StatusIndicatorPill(label = "Dev Modal", isActive = systemConfig.showDeveloperModal)
+                        StatusIndicatorPill(label = "Maintenance", isActive = systemConfig.isMaintenance, modifier = Modifier.weight(1f))
+                        StatusIndicatorPill(label = "Banned", isActive = user?.isBanned == true, modifier = Modifier.weight(1f))
+                        StatusIndicatorPill(label = "Banners", isActive = systemConfig.showBanners, modifier = Modifier.weight(1f))
                     }
                 }
             }
@@ -443,33 +460,410 @@ fun AdminSituationTesterSheet(
                     )
                 }
             }
+
+            Spacer(Modifier.height(18.dp))
+
+            // Section: App Banners & Announcements System
+            Text("BANNER & ANNOUNCEMENT SYSTEM", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF94A3B8), letterSpacing = 0.8.sp)
+            Spacer(Modifier.height(8.dp))
+
+            // Master Banner Visibility Toggle Card
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF161A26)),
+                shape = RoundedCornerShape(14.dp),
+                border = BorderStroke(1.dp, if (systemConfig.showBanners) Color(0xFF3B82F6) else Color(0xFF262E42)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Promotional Banners Carousel", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            Spacer(Modifier.width(8.dp))
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = if (systemConfig.showBanners) Color(0x3310B981) else Color(0x3364748B)
+                            ) {
+                                Text(
+                                    text = if (systemConfig.showBanners) "VISIBLE" else "HIDDEN",
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = if (systemConfig.showBanners) Color(0xFF34D399) else Color(0xFF94A3B8),
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            text = if (systemConfig.showBanners) "Banners are currently DISPLAYED on Home screen" else "Banners are completely HIDDEN from all users",
+                            fontSize = 11.sp,
+                            color = Color(0xFF94A3B8)
+                        )
+                    }
+                    Switch(
+                        checked = systemConfig.showBanners,
+                        onCheckedChange = { isChecked ->
+                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                            viewModel.toggleShowBanners(enabled = isChecked)
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = Color(0xFF3B82F6),
+                            uncheckedThumbColor = Color(0xFF64748B),
+                            uncheckedTrackColor = Color(0xFF1E293B)
+                        )
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // Manual Banner & Announcement Creator Card
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF131722)),
+                shape = RoundedCornerShape(14.dp),
+                border = BorderStroke(1.dp, Color(0xFF262E42)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Create Manual Banner / Notice", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Icon(Icons.Rounded.Campaign, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(18.dp))
+                    }
+                    Text("Type custom announcements and attach custom banner images directly", fontSize = 11.sp, color = Color(0xFF94A3B8))
+
+                    Spacer(Modifier.height(12.dp))
+
+                    // Title
+                    OutlinedTextField(
+                        value = newBannerTitle,
+                        onValueChange = { newBannerTitle = it },
+                        label = { Text("Banner / Announcement Title *", fontSize = 12.sp) },
+                        placeholder = { Text("e.g., Sunday Grand BGMI Showdown", fontSize = 12.sp, color = Color(0xFF64748B)) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFF38BDF8),
+                            unfocusedBorderColor = Color(0xFF334155),
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedLabelColor = Color(0xFF38BDF8),
+                            unfocusedLabelColor = Color(0xFF94A3B8)
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    // Subtitle / Description
+                    OutlinedTextField(
+                        value = newBannerSubtitle,
+                        onValueChange = { newBannerSubtitle = it },
+                        label = { Text("Announcement Subtitle / Details", fontSize = 12.sp) },
+                        placeholder = { Text("e.g., Win ₹5,000 VT Prize Pool. Direct slot entry.", fontSize = 12.sp, color = Color(0xFF64748B)) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFF38BDF8),
+                            unfocusedBorderColor = Color(0xFF334155),
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedLabelColor = Color(0xFF38BDF8),
+                            unfocusedLabelColor = Color(0xFF94A3B8)
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        minLines = 2,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    // Image URL
+                    OutlinedTextField(
+                        value = newBannerImageUrl,
+                        onValueChange = { newBannerImageUrl = it },
+                        label = { Text("Banner Image URL (Optional)", fontSize = 12.sp) },
+                        placeholder = { Text("https://... or leave empty for gradient card", fontSize = 12.sp, color = Color(0xFF64748B)) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFF38BDF8),
+                            unfocusedBorderColor = Color(0xFF334155),
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedLabelColor = Color(0xFF38BDF8),
+                            unfocusedLabelColor = Color(0xFF94A3B8)
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    // Row: Badge & CTA Text
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = newBannerBadge,
+                            onValueChange = { newBannerBadge = it },
+                            label = { Text("Badge Label", fontSize = 11.sp) },
+                            placeholder = { Text("HOT / NOTICE", fontSize = 11.sp) },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color(0xFF38BDF8),
+                                unfocusedBorderColor = Color(0xFF334155),
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedLabelColor = Color(0xFF38BDF8),
+                                unfocusedLabelColor = Color(0xFF94A3B8)
+                            ),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        OutlinedTextField(
+                            value = newBannerCtaText,
+                            onValueChange = { newBannerCtaText = it },
+                            label = { Text("Button CTA", fontSize = 11.sp) },
+                            placeholder = { Text("JOIN NOW", fontSize = 11.sp) },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color(0xFF38BDF8),
+                                unfocusedBorderColor = Color(0xFF334155),
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedLabelColor = Color(0xFF38BDF8),
+                                unfocusedLabelColor = Color(0xFF94A3B8)
+                            ),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    // Action Type Selector
+                    Text("Action Destination", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF94A3B8))
+                    Spacer(Modifier.height(4.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        listOf("ANNOUNCEMENT", "MATCH", "WALLET", "SUPPORT", "LEADERBOARD").forEach { action ->
+                            val isSelected = newBannerActionType == action
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (isSelected) Color(0xFF0284C7) else Color(0xFF1E2433),
+                                border = BorderStroke(1.dp, if (isSelected) Color(0xFF38BDF8) else Color(0xFF334155)),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { newBannerActionType = action }
+                            ) {
+                                Box(modifier = Modifier.padding(vertical = 6.dp), contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = action.take(4),
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isSelected) Color.White else Color(0xFF94A3B8)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(14.dp))
+
+                    // Buttons: Publish to Cloud & Broadcast Notification
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = {
+                                if (newBannerTitle.isBlank()) {
+                                    viewModel.showError("Please provide a Banner Title")
+                                    return@Button
+                                }
+                                isPublishingBanner = true
+                                val newBanner = Banner(
+                                    id = java.util.UUID.randomUUID().toString(),
+                                    title = newBannerTitle.trim(),
+                                    subtitle = newBannerSubtitle.trim(),
+                                    badgeText = newBannerBadge.trim().ifBlank { "ANNOUNCEMENT" },
+                                    imageUrl = newBannerImageUrl.trim(),
+                                    ctaText = newBannerCtaText.trim().ifBlank { "EXPLORE" },
+                                    actionType = newBannerActionType,
+                                    targetId = newBannerTargetId.trim(),
+                                    gradientTheme = newBannerTheme,
+                                    active = true
+                                )
+                                viewModel.saveBanner(newBanner) { success ->
+                                    isPublishingBanner = false
+                                    if (success) {
+                                        newBannerTitle = ""
+                                        newBannerSubtitle = ""
+                                        newBannerImageUrl = ""
+                                    }
+                                }
+                            },
+                            enabled = !isPublishingBanner && newBannerTitle.isNotBlank(),
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7)),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.Rounded.CloudUpload, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Publish Banner", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                if (newBannerTitle.isBlank()) {
+                                    viewModel.showError("Please provide a Title for the announcement")
+                                    return@OutlinedButton
+                                }
+                                viewModel.publishAnnouncementNotification(
+                                    title = newBannerTitle.trim(),
+                                    message = newBannerSubtitle.trim().ifBlank { "Check the latest announcement in VeloRix Tournaments!" }
+                                )
+                            },
+                            enabled = newBannerTitle.isNotBlank(),
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF38BDF8)),
+                            border = BorderStroke(1.dp, Color(0xFF0284C7)),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.Rounded.NotificationsActive, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Push Notice", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(14.dp))
+
+            // Active Banners List
+            Text("ACTIVE PUBLISHED BANNERS (${banners.size})", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF94A3B8), letterSpacing = 0.8.sp)
+            Spacer(Modifier.height(8.dp))
+
+            if (banners.isEmpty()) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF131722)),
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, Color(0xFF1E293B)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                        Text("No active banners published. Add one using the manual creator above.", fontSize = 12.sp, color = Color(0xFF64748B))
+                    }
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    banners.forEach { banner ->
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF161A26)),
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.dp, Color(0xFF262E42)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f).padding(end = 8.dp)
+                                ) {
+                                    if (banner.imageUrl.isNotBlank()) {
+                                        AsyncImage(
+                                            model = banner.imageUrl,
+                                            contentDescription = null,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier
+                                                .size(40.dp)
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(Color(0xFF1E293B))
+                                        )
+                                        Spacer(Modifier.width(10.dp))
+                                    }
+                                    Column {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Surface(
+                                                shape = RoundedCornerShape(4.dp),
+                                                color = Color(0x3338BDF8)
+                                            ) {
+                                                Text(
+                                                    banner.badgeText.ifBlank { "BANNER" },
+                                                    fontSize = 9.sp,
+                                                    fontWeight = FontWeight.Black,
+                                                    color = Color(0xFF38BDF8),
+                                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                                )
+                                            }
+                                            Spacer(Modifier.width(6.dp))
+                                            Text(
+                                                banner.title,
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                        if (banner.subtitle.isNotBlank()) {
+                                            Spacer(Modifier.height(2.dp))
+                                            Text(
+                                                banner.subtitle,
+                                                fontSize = 11.sp,
+                                                color = Color(0xFF94A3B8),
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
+                                }
+
+                                IconButton(
+                                    onClick = {
+                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                        viewModel.deleteBanner(banner.id)
+                                    },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(Icons.Rounded.DeleteOutline, contentDescription = "Delete Banner", tint = Color(0xFFEF4444), modifier = Modifier.size(18.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun StatusIndicatorPill(label: String, isActive: Boolean) {
+private fun StatusIndicatorPill(label: String, isActive: Boolean, modifier: Modifier = Modifier) {
     Surface(
         shape = RoundedCornerShape(8.dp),
-        color = if (isActive) Color(0x33EF4444) else Color(0x2210B981),
-        border = BorderStroke(1.dp, if (isActive) Color(0xFFEF4444) else Color(0xFF10B981))
+        color = if (isActive) Color(0x2210B981) else Color(0x2264748B),
+        border = BorderStroke(1.dp, if (isActive) Color(0xFF10B981) else Color(0xFF334155)),
+        modifier = modifier
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
         ) {
             Box(
                 modifier = Modifier
                     .size(6.dp)
                     .clip(CircleShape)
-                    .background(if (isActive) Color(0xFFEF4444) else Color(0xFF10B981))
+                    .background(if (isActive) Color(0xFF10B981) else Color(0xFF64748B))
             )
             Spacer(Modifier.width(6.dp))
             Text(
                 text = if (isActive) "$label: ON" else "$label: OFF",
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (isActive) Color(0xFFFCA5A5) else Color(0xFFA7F3D0)
+                color = if (isActive) Color(0xFFA7F3D0) else Color(0xFF94A3B8)
             )
         }
     }

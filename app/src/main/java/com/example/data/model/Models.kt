@@ -323,7 +323,10 @@ data class SystemAppConfig(
     var vpnRestrictionEnabled: Boolean = true,
 
     @JsonNames("showDeveloperModal", "show_developer_modal", "developer_modal_visible", "dev_window_enabled")
-    var showDeveloperModal: Boolean = true
+    var showDeveloperModal: Boolean = true,
+
+    @JsonNames("showBanners", "show_banners", "banners_enabled", "bannersEnabled", "isBannersEnabled")
+    var showBanners: Boolean = false
 )
 
 enum class SituationPreviewType {
