@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,6 +20,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Color
@@ -338,8 +341,11 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // Global Background
-                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                // Global Background - Clean Vercel Dark Canvas
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         if (activeSituation != SituationPreviewType.NONE) {
                             when (activeSituation) {
@@ -468,44 +474,29 @@ class MainActivity : ComponentActivity() {
                     }
                     composable("main") {
                         val hazeState = remember { HazeState() }
-                        Scaffold(
+                        val homeIcon = androidx.compose.ui.graphics.vector.ImageVector.vectorResource(id = R.drawable.ic_iconsax_home)
+                        val matchesIcon = androidx.compose.ui.graphics.vector.ImageVector.vectorResource(id = R.drawable.ic_iconsax_matches)
+                        val ranksIcon = androidx.compose.material.icons.Icons.Rounded.Leaderboard
+                        val walletIcon = androidx.compose.ui.graphics.vector.ImageVector.vectorResource(id = R.drawable.ic_iconsax_wallet)
+                        val profileIcon = androidx.compose.ui.graphics.vector.ImageVector.vectorResource(id = R.drawable.ic_iconsax_profile)
+
+                        val mainTabs = remember(homeIcon, matchesIcon, ranksIcon, walletIcon) {
+                            listOf(
+                                com.example.ui.components.BottomTab("home", "Home", homeIcon),
+                                com.example.ui.components.BottomTab("matches", "Matches", matchesIcon),
+                                com.example.ui.components.BottomTab("leaderboard", "Ranks", ranksIcon),
+                                com.example.ui.components.BottomTab("wallet", "Wallet", walletIcon)
+                            )
+                        }
+                        val profileTab = remember(profileIcon) {
+                            com.example.ui.components.BottomTab("profile", "Profile", profileIcon)
+                        }
+
+                        Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .statusBarsPadding(),
-                            contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
-                            containerColor = Color.Transparent,
-                            bottomBar = {
-                                if (currentTabState != "support") {
-                                    val homeIcon = androidx.compose.ui.graphics.vector.ImageVector.vectorResource(id = R.drawable.ic_iconsax_home)
-                                    val matchesIcon = androidx.compose.ui.graphics.vector.ImageVector.vectorResource(id = R.drawable.ic_iconsax_matches)
-                                    val ranksIcon = androidx.compose.material.icons.Icons.Rounded.Leaderboard
-                                    val walletIcon = androidx.compose.ui.graphics.vector.ImageVector.vectorResource(id = R.drawable.ic_iconsax_wallet)
-                                    val profileIcon = androidx.compose.ui.graphics.vector.ImageVector.vectorResource(id = R.drawable.ic_iconsax_profile)
-
-                                    val mainTabs = remember(homeIcon, matchesIcon, ranksIcon, walletIcon) {
-                                        listOf(
-                                            com.example.ui.components.BottomTab("home", "Home", homeIcon),
-                                            com.example.ui.components.BottomTab("matches", "Matches", matchesIcon),
-                                            com.example.ui.components.BottomTab("leaderboard", "Ranks", ranksIcon),
-                                            com.example.ui.components.BottomTab("wallet", "Wallet", walletIcon)
-                                        )
-                                    }
-                                    val profileTab = remember(profileIcon) {
-                                        com.example.ui.components.BottomTab("profile", "Profile", profileIcon)
-                                    }
-
-                                    com.example.ui.components.FloatingBottomBar(
-                                        tabs = mainTabs,
-                                        profileTab = profileTab,
-                                        currentRoute = currentTabState,
-                                        onTabSelected = { route ->
-                                            currentTabState = route
-                                        },
-                                        hazeState = hazeState
-                                    )
-                                }
-                            }
-                        ) { innerPadding ->
+                                .statusBarsPadding()
+                        ) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -516,10 +507,6 @@ class MainActivity : ComponentActivity() {
                                             blurRadius = 8.dp, // BitChord BLUR_RADIUS_DP = 8f for subtle frosted glass
                                             noiseFactor = 0f
                                         )
-                                    )
-                                    .padding(
-                                        top = innerPadding.calculateTopPadding(),
-                                        bottom = 80.dp // Allow scrollable lists to scroll fully above the floating glass bar
                                     )
                             ) {
                                 androidx.compose.animation.AnimatedContent(
@@ -602,6 +589,20 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                 }
+                            }
+
+                            // Floating Bottom Bar floats over content seamlessly (No black bars/strips)
+                            if (currentTabState != "support") {
+                                com.example.ui.components.FloatingBottomBar(
+                                    tabs = mainTabs,
+                                    profileTab = profileTab,
+                                    currentRoute = currentTabState,
+                                    onTabSelected = { route ->
+                                        currentTabState = route
+                                    },
+                                    hazeState = hazeState,
+                                    modifier = Modifier.align(Alignment.BottomCenter)
+                                )
                             }
                         }
                     }

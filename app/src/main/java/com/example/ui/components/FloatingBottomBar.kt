@@ -16,9 +16,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -39,11 +42,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -68,14 +70,12 @@ data class BottomTab(
 )
 
 /**
- * Optimized BitChord metrics for an elongated horizontal pill capsule
+ * Standard BitChord metrics for sleek rounded stadium pill dock
  */
-// Elongated horizontal pill capsule (smooth sleek pill shape instead of circle)
-internal val PILL_CORNER_RADIUS = 20.dp
 internal val PILL_INSET = 4.dp
-internal val TAB_VERTICAL_PADDING = 3.dp
-internal val TAB_ICON_LABEL_GAP = 1.dp
-internal val PAGE_GUTTER = 8.dp
+internal val TAB_VERTICAL_PADDING = 4.dp
+internal val TAB_ICON_LABEL_GAP = 2.dp
+internal val PAGE_GUTTER = 12.dp
 
 /**
  * BitChord Damped Spring: Damping 0.72f, Stiffness 320f
@@ -94,7 +94,7 @@ internal val GLASS_EDGE_COLOR = Color.White.copy(alpha = 0.16f)
 private val SpecularHighlightBrush = Brush.verticalGradient(
     colors = listOf(
         Color.White.copy(alpha = 0.32f),
-        Color.White.copy(alpha = 0.06f)
+        Color.White.copy(alpha = 0.05f)
     )
 )
 
@@ -107,13 +107,12 @@ fun FloatingBottomBar(
     hazeState: HazeState,
     modifier: Modifier = Modifier,
 ) {
-    val barShape = RoundedCornerShape(26.dp)
-    val activePillShape = RoundedCornerShape(16.dp)
+    val barShape = CircleShape // Fully rounded stadium capsule
+    val activePillShape = CircleShape // Fully rounded smooth stadium capsule pill (no blockiness)
     val circleShape = CircleShape
     val density = LocalDensity.current
     val haptic = LocalHapticFeedback.current
 
-    // Determine if one of the 4 main tabs is selected
     val selectedIndex = tabs.indexOfFirst { it.route == currentRoute }
     val isProfileSelected = currentRoute == profileTab.route
 
@@ -158,9 +157,9 @@ fun FloatingBottomBar(
         modifier = modifier
             .navigationBarsPadding()
             .padding(horizontal = PAGE_GUTTER)
-            .padding(bottom = 2.dp) // Sits low right above the system navigation bar
+            .padding(bottom = 6.dp)
             .fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // -------------------------------------------------------------
@@ -171,13 +170,18 @@ fun FloatingBottomBar(
                 .weight(1f)
                 .clip(barShape)
                 .hazeChild(state = hazeState, shape = barShape)
+                .lensRefraction(
+                    refractionIndex = 1.45f,
+                    lensCurvature = 0.85f,
+                    chromaticSplit = 0.035f
+                )
                 .background(Color(0x2B111827))
                 .border(GLASS_EDGE_WIDTH, GLASS_EDGE_COLOR, barShape)
                 .border(GLASS_EDGE_WIDTH, SpecularHighlightBrush, barShape)
                 .padding(horizontal = PILL_INSET, vertical = PILL_INSET),
             contentAlignment = Alignment.CenterStart,
         ) {
-            // Active Tab Indicator: Elongated horizontal pill capsule
+            // Active Tab Indicator: Smooth fully rounded stadium capsule pill
             if (tabWidthPx > 0f && selectedIndex >= 0) {
                 Box(
                     modifier = Modifier
@@ -185,23 +189,28 @@ fun FloatingBottomBar(
                         .height(with(density) { rowSize.height.toDp() })
                         .graphicsLayer {
                             translationX = animatedPillOffset
-                            // BitChord Fluid Momentum Math:
+                            // Fluid Momentum Math:
                             scaleX = 1f + lag * STRETCH
                             scaleY = 1f - lag * STRETCH * SQUASH
                         }
                         .padding(horizontal = 2.dp, vertical = 2.dp)
                         .clip(activePillShape)
+                        .lensRefraction(
+                            refractionIndex = 1.48f,
+                            lensCurvature = 0.9f,
+                            chromaticSplit = 0.035f
+                        )
                         .background(Color.White.copy(alpha = 0.14f))
                         .border(
-                            GLASS_EDGE_WIDTH,
-                            Brush.verticalGradient(
+                            width = GLASS_EDGE_WIDTH,
+                            brush = Brush.verticalGradient(
                                 colors = listOf(
                                     Color.White.copy(alpha = 0.35f),
                                     Color.White.copy(alpha = 0.08f)
                                 )
                             ),
-                            activePillShape
-                        ),
+                            shape = activePillShape
+                        )
                 )
             }
 
@@ -292,6 +301,11 @@ fun FloatingBottomBar(
                 }
                 .clip(circleShape)
                 .hazeChild(state = hazeState, shape = circleShape)
+                .lensRefraction(
+                    refractionIndex = 1.45f,
+                    lensCurvature = 0.9f,
+                    chromaticSplit = 0.035f
+                )
                 .background(Color(0x2B111827))
                 .border(GLASS_EDGE_WIDTH, GLASS_EDGE_COLOR, circleShape)
                 .border(GLASS_EDGE_WIDTH, SpecularHighlightBrush, circleShape)
@@ -363,7 +377,7 @@ private fun BottomBarItem(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(CircleShape)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
