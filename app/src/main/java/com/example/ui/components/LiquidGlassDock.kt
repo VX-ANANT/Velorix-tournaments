@@ -155,6 +155,11 @@ fun LiquidGlassDock(
                     state = hazeState,
                     shape = RoundedCornerShape(36.dp)
                 )
+                .lensRefraction(
+                    refractionIndex = 1.45f,
+                    lensCurvature = 0.85f,
+                    chromaticSplit = 0.035f
+                )
                 // Multi-layered Realtime Frosted Glass Refraction Tint
                 .background(
                     brush = Brush.linearGradient(
@@ -430,6 +435,11 @@ fun LiquidGlassDock(
                 .hazeChild(
                     state = hazeState,
                     shape = CircleShape
+                )
+                .lensRefraction(
+                    refractionIndex = 1.45f,
+                    lensCurvature = 0.9f,
+                    chromaticSplit = 0.035f
                 )
                 .background(
                     brush = Brush.linearGradient(

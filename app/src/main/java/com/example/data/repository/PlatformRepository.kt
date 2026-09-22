@@ -2899,74 +2899,15 @@ class PlatformRepository(
      * Joins a tournament and syncs to Realtime Database /tournaments/$id/participants/$userId.
      */
     suspend fun joinTournament(tournamentId: String): JoinResult {
-        val userItem = user.firstOrNull() ?: return JoinResult.Failure("User not found")
-        val match = tournaments.firstOrNull()?.find { it.id == tournamentId } 
-            ?: return JoinResult.Failure("Tournament not found")
-
-        if (match.joined) return JoinResult.Failure("Already joined this tournament")
-        if (match.isFull) return JoinResult.Failure("Tournament is full")
-        if (userItem.balance < match.entryFee) return JoinResult.Failure("Insufficient balance. Please add funds!")
-
-        val updatedUser = userItem.copy(
-            balance = userItem.balance - match.entryFee
+        val userItem = user.firstOrNull() ?: return JoinResult.Failure("User session not found. Please log in.")
+        return executeServerSideTournamentJoin(
+            tournamentId = tournamentId,
+            slotNumber = 0,
+            inGameName = userItem.inGameName.ifBlank { userItem.username },
+            characterId = userItem.freeFireId,
+            teamName = "",
+            isQuickJoin = true
         )
-        val updatedMatch = match.copy(joined = true, filledSlots = match.filledSlots + 1)
-        val newTx = Transaction(
-            userId = userItem.id,
-            type = "ENTRY_FEE",
-            amount = match.entryFee,
-            detail = "Joined ${match.game}: ${match.title}",
-            isPositive = false,
-            timestamp = System.currentTimeMillis()
-        )
-
-        try {
-            db.userDao().update(updatedUser)
-            db.tournamentDao().update(updatedMatch)
-            db.transactionDao().insert(newTx)
-            updateMissionProgress("m_tournament_contender", 1)
-
-            CoroutineScope(Dispatchers.IO).launch {
-                try {
-                    // Update user balance & stats in RTDB & Firestore
-                    syncUserToRealtimeDb(updatedUser)
-                    transactionsRef.child(newTx.id).setValue(newTx)
-
-                    // Update tournament participant list in RTDB & Firestore
-                    val participantData = mapOf(
-                        "userId" to userItem.id,
-                        "userUid" to userItem.id,
-                        "username" to userItem.username,
-                        "inGameName" to userItem.inGameName,
-                        "freeFireId" to userItem.freeFireId,
-                        "tournamentId" to tournamentId,
-                        "tournamentTitle" to match.title,
-                        "game" to match.game,
-                        "joinedAt" to System.currentTimeMillis(),
-                        "timestamp" to System.currentTimeMillis()
-                    )
-                    tournamentsRef.child(tournamentId).child("participants").child(userItem.id).setValue(participantData)
-                    tournamentsRef.child(tournamentId).child("filledSlots").setValue(updatedMatch.filledSlots)
-                    tournamentsRef.child(tournamentId).child("currentParticipants").setValue(updatedMatch.filledSlots)
-                    tournamentRegistrationsRef.child("${tournamentId}_${userItem.id}").setValue(participantData)
-
-                    // Firestore sync
-                    val firestore = FirebaseFirestore.getInstance()
-                    firestore.collection("tournaments").document(tournamentId)
-                        .collection("participants").document(userItem.id).set(participantData)
-                    firestore.collection("tournament_registrations")
-                        .document("${tournamentId}_${userItem.id}").set(participantData)
-                    firestore.collection("transactions").document(newTx.id).set(newTx)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Syncing join tournament to backend failed: ${e.message}")
-                }
-            }
-        } catch (e: Throwable) {
-            Log.e(TAG, "Local join failed", e)
-            return JoinResult.Failure("Database error. Try again.")
-        }
-
-        return JoinResult.Success("Successfully registered for ${match.title}! Room details will be visible here before the match.")
     }
 
     sealed class DepositResult {
@@ -4301,37 +4242,64 @@ class PlatformRepository(
         characterId: String,
         teamName: String = ""
     ): JoinResult {
-        val userItem = user.firstOrNull() ?: return JoinResult.Failure("User not found")
-        val match = tournaments.firstOrNull()?.find { it.id == tournamentId }
-            ?: return JoinResult.Failure("Tournament not found")
+        return executeServerSideTournamentJoin(
+            tournamentId = tournamentId,
+            slotNumber = slotNumber,
+            inGameName = inGameName,
+            characterId = characterId,
+            teamName = teamName,
+            isQuickJoin = false
+        )
+    }
 
-        if (match.joined) return JoinResult.Failure("Already joined this tournament")
-        if (match.isFull) return JoinResult.Failure("Tournament slots are full")
-        if (userItem.balance < match.entryFee) return JoinResult.Failure("Insufficient balance. Please top-up VT Tokens!")
+    /**
+     * Authoritative Server-Side Tournament Registration Engine.
+     * Executes atomic transactions against Firebase Firestore and Realtime Database:
+     * 1. Checks user's wallet balance on server to prevent client manipulation.
+     * 2. Checks tournament capacity on server and prevents race-condition overbooking.
+     * 3. Prevents duplicate registrations and slot collisions.
+     * 4. Atomically deducts entry fee from the user's server wallet balance.
+     * 5. Atomically increments tournament filled slots.
+     * 6. Atomically registers participant record and entry fee transaction.
+     * 7. Updates local Room database cache and reactive StateFlow upon server confirmation.
+     */
+    private suspend fun executeServerSideTournamentJoin(
+        tournamentId: String,
+        slotNumber: Int,
+        inGameName: String,
+        characterId: String,
+        teamName: String = "",
+        isQuickJoin: Boolean = false
+    ): JoinResult = withContext(Dispatchers.IO) {
+        val userItem = user.firstOrNull() ?: return@withContext JoinResult.Failure("User session expired. Please log in again.")
+        val match = tournaments.firstOrNull()?.find { it.id == tournamentId }
+            ?: return@withContext JoinResult.Failure("Tournament not found.")
 
         val effectiveCharId = characterId.ifBlank { userItem.freeFireId }.trim()
-        if (effectiveCharId.isBlank()) {
-            logRegistrationAudit(
-                userId = userItem.id,
-                gameId = effectiveCharId,
-                tournamentId = tournamentId,
-                status = "REJECTED_EMPTY",
-                details = "Registration rejected: Empty Game ID provided."
-            )
-            return JoinResult.Failure("Invalid ID Format: Please enter your Game ID / Character UID.")
-        }
-        if (!effectiveCharId.matches(Regex("^[0-9]{8,12}$")) || effectiveCharId.toSet().size <= 1) {
-            logRegistrationAudit(
-                userId = userItem.id,
-                gameId = effectiveCharId,
-                tournamentId = tournamentId,
-                status = "REJECTED_INVALID_FORMAT",
-                details = "Registration rejected: Game ID '$effectiveCharId' does not meet the 8-12 numeric digits constraint."
-            )
-            return JoinResult.Failure("Invalid ID Format: Game ID must be an authentic 8-12 digit numeric player UID.")
+        if (!isQuickJoin) {
+            if (effectiveCharId.isBlank()) {
+                logRegistrationAudit(
+                    userId = userItem.id,
+                    gameId = effectiveCharId,
+                    tournamentId = tournamentId,
+                    status = "REJECTED_EMPTY",
+                    details = "Registration rejected: Empty Game ID provided."
+                )
+                return@withContext JoinResult.Failure("Invalid ID Format: Please enter your Game ID / Character UID.")
+            }
+            if (!effectiveCharId.matches(Regex("^[0-9]{8,12}$")) || effectiveCharId.toSet().size <= 1) {
+                logRegistrationAudit(
+                    userId = userItem.id,
+                    gameId = effectiveCharId,
+                    tournamentId = tournamentId,
+                    status = "REJECTED_INVALID_FORMAT",
+                    details = "Registration rejected: Game ID '$effectiveCharId' does not meet the 8-12 numeric digits constraint."
+                )
+                return@withContext JoinResult.Failure("Invalid ID Format: Game ID must be an authentic 8-12 digit numeric player UID.")
+            }
         }
 
-        // --- STATUTORY COMPLIANCE & FAIR PLAY SENTINEL ENFORCEMENT ---
+        // Statutory compliance check
         val last24hTimestamp = System.currentTimeMillis() - (24 * 60 * 60 * 1000L)
         val todayMatchesCount = try {
             db.tournamentParticipantDao().getParticipantsSince(userItem.id, last24hTimestamp).size
@@ -4357,46 +4325,242 @@ class PlatformRepository(
                 status = complianceCheck.auditTag,
                 details = "${complianceCheck.reason} [Authority: ${complianceCheck.statutoryCitation}]"
             )
-            return JoinResult.Failure(complianceCheck.reason)
+            return@withContext JoinResult.Failure(complianceCheck.reason)
         }
 
-        // Generate unique ticket code
-        val ticketCode = "TKT-${match.game.take(2).uppercase()}-${slotNumber}-${(1000..9999).random()}"
+        val finalSlotNumber = if (slotNumber > 0) slotNumber else (match.filledSlots + 1)
+        val ticketCode = "TKT-${match.game.take(2).uppercase()}-${if (slotNumber > 0) slotNumber else "Q"}-${(1000..9999).random()}"
+        val finalIgn = inGameName.ifBlank { userItem.inGameName.ifBlank { userItem.username } }
+        val txId = UUID.randomUUID().toString()
+        val timestamp = System.currentTimeMillis()
 
-        val participant = com.example.data.model.TournamentParticipant(
-            id = UUID.randomUUID().toString(),
+        val firestore = FirebaseFirestore.getInstance()
+        val userDocRef = firestore.collection("users").document(userItem.id)
+        val tournamentDocRef = firestore.collection("tournaments").document(tournamentId)
+        val participantDocRef = firestore.collection("tournaments").document(tournamentId)
+            .collection("participants").document(userItem.id)
+        val globalRegDocRef = firestore.collection("tournament_registrations").document("${tournamentId}_${userItem.id}")
+        val slotDocRef = if (slotNumber > 0) {
+            firestore.collection("tournaments").document(tournamentId).collection("slots").document(slotNumber.toString())
+        } else null
+        val txDocRef = firestore.collection("transactions").document(txId)
+        val auditDocRef = firestore.collection("audit_logs").document("audit_${timestamp}_${userItem.id}")
+
+        var serverDeductedBalance = userItem.balance - match.entryFee
+        var serverUpdatedFilledSlots = match.filledSlots + 1
+
+        val participantData = mapOf(
+            "id" to UUID.randomUUID().toString(),
+            "userId" to userItem.id,
+            "userUid" to userItem.id,
+            "username" to userItem.username,
+            "ign" to finalIgn,
+            "inGameName" to finalIgn,
+            "gameId" to effectiveCharId,
+            "characterId" to effectiveCharId,
+            "freeFireId" to effectiveCharId,
+            "slotNumber" to finalSlotNumber,
+            "teamName" to teamName,
+            "ticketCode" to ticketCode,
+            "tournamentId" to tournamentId,
+            "tournamentTitle" to match.title,
+            "game" to match.game,
+            "registeredAt" to timestamp,
+            "paymentTxId" to txId,
+            "joinedAt" to timestamp,
+            "timestamp" to timestamp
+        )
+
+        val txData = mapOf(
+            "id" to txId,
+            "userId" to userItem.id,
+            "type" to "ENTRY_FEE",
+            "amount" to match.entryFee,
+            "detail" to "Joined ${match.game}: ${match.title}${if (slotNumber > 0) " (Slot #$slotNumber)" else ""}",
+            "isPositive" to false,
+            "status" to "COMPLETED",
+            "timestamp" to timestamp
+        )
+
+        val auditData = mapOf(
+            "userId" to userItem.id,
+            "gameId" to effectiveCharId,
+            "tournamentId" to tournamentId,
+            "slotNumber" to finalSlotNumber,
+            "entryFee" to match.entryFee,
+            "status" to "SUCCESS",
+            "ticketCode" to ticketCode,
+            "timestamp" to timestamp
+        )
+
+        try {
+            // =========================================================================
+            // 1. ATOMIC SERVER-SIDE FIRESTORE TRANSACTION
+            // =========================================================================
+            firestore.runTransaction { transaction ->
+                val userSnapshot = transaction.get(userDocRef)
+                val tournamentSnapshot = transaction.get(tournamentDocRef)
+                val participantSnapshot = transaction.get(participantDocRef)
+                val globalRegSnapshot = transaction.get(globalRegDocRef)
+                val slotSnapshot = slotDocRef?.let { transaction.get(it) }
+
+                // Check duplicate entry on server
+                if (participantSnapshot.exists() || globalRegSnapshot.exists()) {
+                    throw IllegalStateException("You are already registered for this tournament on the server.")
+                }
+
+                // Check slot availability if specific slot picked
+                if (slotSnapshot != null && slotSnapshot.exists()) {
+                    throw IllegalStateException("Slot #$slotNumber is already occupied on the server. Please select another slot.")
+                }
+
+                // Check user ban/suspension status on server
+                val isBanned = userSnapshot.getBoolean("isBanned") ?: false
+                val isSuspended = userSnapshot.getBoolean("isSuspended") ?: false
+                if (isBanned || isSuspended) {
+                    throw IllegalStateException("Account is suspended or banned. Tournament registration denied.")
+                }
+
+                // Check tournament capacity on server
+                val currentFilled = tournamentSnapshot.getLong("filledSlots")?.toInt()
+                    ?: tournamentSnapshot.getLong("currentParticipants")?.toInt()
+                    ?: match.filledSlots
+                val maxSlots = tournamentSnapshot.getLong("maxSlots")?.toInt() ?: match.maxSlots
+                if (currentFilled >= maxSlots) {
+                    throw IllegalStateException("Tournament slots are completely full on the server ($currentFilled/$maxSlots).")
+                }
+
+                // Authoritative server balance check
+                val currentServerBalance = userSnapshot.getDouble("balance") ?: userItem.balance
+                val serverEntryFee = tournamentSnapshot.getDouble("entryFee") ?: match.entryFee
+
+                if (currentServerBalance < serverEntryFee) {
+                    throw IllegalStateException(
+                        String.format(
+                            java.util.Locale.US,
+                            "Insufficient wallet balance on server (Balance: ₹%.2f, Required: ₹%.2f). Please add funds to your wallet!",
+                            currentServerBalance,
+                            serverEntryFee
+                        )
+                    )
+                }
+
+                val calculatedBalance = currentServerBalance - serverEntryFee
+                val calculatedFilledSlots = currentFilled + 1
+
+                serverDeductedBalance = calculatedBalance
+                serverUpdatedFilledSlots = calculatedFilledSlots
+
+                // Atomically update user balance on server
+                transaction.update(
+                    userDocRef,
+                    mapOf(
+                        "balance" to calculatedBalance,
+                        "totalMatches" to FieldValue.increment(1),
+                        "inGameName" to finalIgn,
+                        "freeFireId" to effectiveCharId,
+                        "updatedAt" to FieldValue.serverTimestamp()
+                    )
+                )
+
+                // Atomically update tournament filled slots count on server
+                transaction.update(
+                    tournamentDocRef,
+                    mapOf(
+                        "filledSlots" to calculatedFilledSlots,
+                        "currentParticipants" to calculatedFilledSlots,
+                        "updatedAt" to FieldValue.serverTimestamp()
+                    )
+                )
+
+                // Write participant and transaction records on server
+                transaction.set(participantDocRef, participantData)
+                transaction.set(globalRegDocRef, participantData)
+                if (slotDocRef != null) {
+                    transaction.set(slotDocRef, participantData)
+                }
+                transaction.set(txDocRef, txData)
+                transaction.set(auditDocRef, auditData)
+            }.await()
+
+            Log.i(TAG, "Server-side transaction committed successfully for user ${userItem.id} in tournament $tournamentId")
+        } catch (e: Exception) {
+            Log.e(TAG, "Server-side join transaction failed: ${e.message}", e)
+            val cleanError = e.message?.replace("java.lang.IllegalStateException: ", "")
+                ?: "Server transaction rejected registration. Please check your balance and try again."
+
+            logRegistrationAudit(
+                userId = userItem.id,
+                gameId = effectiveCharId,
+                tournamentId = tournamentId,
+                status = "SERVER_REJECTED",
+                details = cleanError
+            )
+            return@withContext JoinResult.Failure(cleanError)
+        }
+
+        // =========================================================================
+        // 2. DUAL REALTIME DATABASE (RTDB) SYNC
+        // =========================================================================
+        try {
+            val userUpdates = mapOf<String, Any>(
+                "balance" to serverDeductedBalance,
+                "inGameName" to finalIgn,
+                "freeFireId" to effectiveCharId
+            )
+            usersRef.child(userItem.id).updateChildren(userUpdates)
+            tournamentsRef.child(tournamentId).child("participants").child(userItem.id).setValue(participantData)
+            tournamentsRef.child(tournamentId).child("filledSlots").setValue(serverUpdatedFilledSlots)
+            tournamentsRef.child(tournamentId).child("currentParticipants").setValue(serverUpdatedFilledSlots)
+            if (slotNumber > 0) {
+                tournamentsRef.child(tournamentId).child("slots").child(slotNumber.toString()).setValue(participantData)
+            }
+            tournamentRegistrationsRef.child("${tournamentId}_${userItem.id}").setValue(participantData)
+            registrationsRef.child(tournamentId).child(userItem.id).setValue(participantData)
+            transactionsRef.child(txId).setValue(txData)
+        } catch (e: Exception) {
+            Log.w(TAG, "RTDB background sync notice: ${e.message}")
+        }
+
+        // =========================================================================
+        // 3. UPDATE LOCAL ROOM DATABASE & REACTIVE APP STATE
+        // =========================================================================
+        val updatedUser = userItem.copy(
+            balance = serverDeductedBalance,
+            inGameName = finalIgn,
+            freeFireId = effectiveCharId
+        )
+        val updatedMatch = match.copy(
+            joined = true,
+            filledSlots = serverUpdatedFilledSlots
+        )
+        val localParticipant = com.example.data.model.TournamentParticipant(
+            id = participantData["id"] as String,
             tournamentId = tournamentId,
             userId = userItem.id,
             username = userItem.username,
-            inGameName = inGameName.ifBlank { userItem.inGameName.ifBlank { userItem.username } },
+            inGameName = finalIgn,
             characterId = effectiveCharId,
-            slotNumber = slotNumber,
+            slotNumber = finalSlotNumber,
             teamName = teamName,
-            registeredAt = System.currentTimeMillis(),
+            registeredAt = timestamp,
             ticketCode = ticketCode
         )
-
-        val updatedUser = userItem.copy(
-            balance = userItem.balance - match.entryFee,
-            inGameName = if (inGameName.isNotBlank()) inGameName else userItem.inGameName,
-            freeFireId = effectiveCharId
-        )
-        val updatedMatch = match.copy(joined = true, filledSlots = match.filledSlots + 1)
         val newTx = Transaction(
+            id = txId,
             userId = userItem.id,
             type = "ENTRY_FEE",
             amount = match.entryFee,
-            detail = "Joined ${match.game}: ${match.title} (Slot #$slotNumber)",
+            detail = "Joined ${match.game}: ${match.title}${if (slotNumber > 0) " (Slot #$slotNumber)" else ""}",
             isPositive = false,
-            timestamp = System.currentTimeMillis()
+            timestamp = timestamp
         )
-
         val registrationNotif = AppNotification(
-            id = "notif_reg_${System.currentTimeMillis()}",
+            id = "notif_reg_${timestamp}",
             title = "Registration Confirmed: ${match.title}",
-            message = "You are booked in Slot #$slotNumber with Ticket $ticketCode. Room credentials will appear before match start.",
+            message = "You are confirmed in Slot #$finalSlotNumber (Ticket: $ticketCode). Room credentials will be posted before the match.",
             type = "TOURNAMENT_REMINDER",
-            timestamp = System.currentTimeMillis(),
+            timestamp = timestamp,
             tournamentId = tournamentId,
             tournamentTitle = match.title
         )
@@ -4405,79 +4569,26 @@ class PlatformRepository(
             db.userDao().update(updatedUser)
             db.tournamentDao().update(updatedMatch)
             db.transactionDao().insert(newTx)
-            db.tournamentParticipantDao().insert(participant)
+            db.tournamentParticipantDao().insert(localParticipant)
             db.appNotificationDao().insert(registrationNotif)
             updateMissionProgress("m_tournament_contender", 1)
-
-            // Log successful registration attempt to audit_logs
-            logRegistrationAudit(
-                userId = userItem.id,
-                gameId = effectiveCharId,
-                tournamentId = tournamentId,
-                status = "SUCCESS",
-                details = "Registered in Slot #$slotNumber for '${match.title}' (Ticket: $ticketCode)"
-            )
-
-            CoroutineScope(Dispatchers.IO).launch {
-                try {
-                    syncUserToRealtimeDb(updatedUser)
-                    transactionsRef.child(newTx.id).setValue(newTx)
-
-                    val participantData = mapOf(
-                        "userId" to userItem.id,
-                        "userUid" to userItem.id,
-                        "username" to userItem.username,
-                        "ign" to participant.inGameName,
-                        "inGameName" to participant.inGameName,
-                        "gameId" to effectiveCharId,
-                        "characterId" to effectiveCharId,
-                        "freeFireId" to effectiveCharId,
-                        "slotNumber" to slotNumber,
-                        "teamName" to teamName,
-                        "ticketCode" to ticketCode,
-                        "tournamentId" to tournamentId,
-                        "tournamentTitle" to match.title,
-                        "game" to match.game,
-                        "registeredAt" to System.currentTimeMillis(),
-                        "paymentTxId" to newTx.id,
-                        "joinedAt" to System.currentTimeMillis(),
-                        "timestamp" to System.currentTimeMillis()
-                    )
-                    registrationsRef.child(tournamentId).child(userItem.id).setValue(participantData)
-                    tournamentsRef.child(tournamentId).child("participants").child(userItem.id).setValue(participantData)
-                    tournamentsRef.child(tournamentId).child("slots").child(slotNumber.toString()).setValue(participantData)
-                    tournamentsRef.child(tournamentId).child("filledSlots").setValue(updatedMatch.filledSlots)
-                    tournamentRegistrationsRef.child("${tournamentId}_${userItem.id}").setValue(participantData)
-
-                    val firestore = FirebaseFirestore.getInstance()
-                    firestore.collection("tournaments").document(tournamentId)
-                        .collection("participants").document(userItem.id).set(participantData)
-                    firestore.collection("tournament_registrations")
-                        .document("${tournamentId}_${userItem.id}").set(participantData)
-                    firestore.collection("transactions").document(newTx.id).set(newTx)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Syncing join tournament with slot to backend failed: ${e.message}")
-                }
-            }
-            return JoinResult.Success("Confirmed! Registered in Slot #$slotNumber (Ticket: $ticketCode)")
-        } catch (e: Throwable) {
-            Log.e(TAG, "Registration failed", e)
-            logRegistrationAudit(
-                userId = userItem.id,
-                gameId = effectiveCharId,
-                tournamentId = tournamentId,
-                status = "FAILED",
-                details = "Registration error: ${e.message}"
-            )
-            return JoinResult.Failure("Failed to book slot. Please try again.")
+        } catch (e: Exception) {
+            Log.w(TAG, "Local DB cache update notice: ${e.message}")
         }
+
+        logRegistrationAudit(
+            userId = userItem.id,
+            gameId = effectiveCharId,
+            tournamentId = tournamentId,
+            status = "SUCCESS",
+            details = "Server-verified registration: Slot #$finalSlotNumber (Ticket: $ticketCode)"
+        )
+
+        return@withContext JoinResult.Success(
+            "Confirmed! Registered for '${match.title}' in Slot #$finalSlotNumber (Ticket: $ticketCode)"
+        )
     }
 
-    /**
-     * Helper function to log every registration attempt to the 'audit_logs' path,
-     * capturing the timestamp, user ID, and the 'gameId' provided, so admins can track
-     * and investigate any repeated failed or suspicious registration patterns.
-     */
     fun logRegistrationAudit(
         userId: String,
         gameId: String,

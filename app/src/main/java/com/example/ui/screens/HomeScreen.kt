@@ -82,6 +82,12 @@ fun HomeScreen(
     val user by viewModel.userState.collectAsState()
     val transactions by viewModel.transactions.collectAsState()
     var showWalletQuickPopup by remember { mutableStateOf(false) }
+    val isAnyPopupOpen = showWalletQuickPopup
+    val bgBlurRadius by androidx.compose.animation.core.animateDpAsState(
+        targetValue = if (isAnyPopupOpen) 22.dp else 0.dp,
+        animationSpec = androidx.compose.animation.core.tween(durationMillis = 280, easing = androidx.compose.animation.core.LinearOutSlowInEasing),
+        label = "home_bg_blur"
+    )
     val unreadNotifCount by viewModel.unreadNotificationCount.collectAsState()
     val tournaments by viewModel.tournaments.collectAsState()
     val missions by viewModel.missions.collectAsState()
@@ -143,6 +149,7 @@ fun HomeScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
+                    .blur(radius = bgBlurRadius)
                     .stretchOverscroll()
                     .padding(horizontal = 16.dp),
                 contentPadding = PaddingValues(bottom = 90.dp)
