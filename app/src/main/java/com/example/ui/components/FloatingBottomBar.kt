@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -42,7 +41,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -70,31 +68,33 @@ data class BottomTab(
 )
 
 /**
- * Standard BitChord metrics for sleek rounded stadium pill dock
+ * Standard metrics for sleek floating glass bottom bar
  */
+internal val BAR_CORNER_RADIUS = 24.dp
+internal val PILL_CORNER_RADIUS = 18.dp
 internal val PILL_INSET = 4.dp
 internal val TAB_VERTICAL_PADDING = 4.dp
 internal val TAB_ICON_LABEL_GAP = 2.dp
-internal val PAGE_GUTTER = 12.dp
+internal val PAGE_GUTTER = 10.dp
 
 /**
- * BitChord Damped Spring: Damping 0.72f, Stiffness 320f
+ * Fluid spring physics: Damping 0.75f, Stiffness 340f
  */
-internal val GlassSpring = spring<Float>(dampingRatio = 0.72f, stiffness = 320f)
+internal val GlassSpring = spring<Float>(dampingRatio = 0.75f, stiffness = 340f)
 
 /**
- * Liquid stretch and squash momentum math from BitChord
+ * Momentum stretch & squash math
  */
-internal const val STRETCH = 0.16f
-internal const val SQUASH = 0.5f
+internal const val STRETCH = 0.14f
+internal const val SQUASH = 0.45f
 
-internal val GLASS_EDGE_WIDTH = 0.5.dp
-internal val GLASS_EDGE_COLOR = Color.White.copy(alpha = 0.16f)
+internal val GLASS_EDGE_WIDTH = 0.75.dp
+internal val GLASS_EDGE_COLOR = Color.White.copy(alpha = 0.12f)
 
 private val SpecularHighlightBrush = Brush.verticalGradient(
     colors = listOf(
-        Color.White.copy(alpha = 0.32f),
-        Color.White.copy(alpha = 0.05f)
+        Color.White.copy(alpha = 0.24f),
+        Color.White.copy(alpha = 0.04f)
     )
 )
 
@@ -107,8 +107,8 @@ fun FloatingBottomBar(
     hazeState: HazeState,
     modifier: Modifier = Modifier,
 ) {
-    val barShape = CircleShape // Fully rounded stadium capsule
-    val activePillShape = CircleShape // Fully rounded smooth stadium capsule pill (no blockiness)
+    val barShape = RoundedCornerShape(BAR_CORNER_RADIUS)
+    val activePillShape = RoundedCornerShape(PILL_CORNER_RADIUS)
     val circleShape = CircleShape
     val density = LocalDensity.current
     val haptic = LocalHapticFeedback.current
@@ -152,6 +152,8 @@ fun FloatingBottomBar(
 
     LaunchedEffect(selectedIndex) { dragOffset = 0f }
 
+    val barHeight = 54.dp
+
     // Floating row: Main Tabs Pill on Left + Standalone Profile Orb on Right
     Row(
         modifier = modifier
@@ -168,25 +170,21 @@ fun FloatingBottomBar(
         Box(
             modifier = Modifier
                 .weight(1f)
+                .height(barHeight)
                 .clip(barShape)
                 .hazeChild(state = hazeState, shape = barShape)
-                .lensRefraction(
-                    refractionIndex = 1.45f,
-                    lensCurvature = 0.85f,
-                    chromaticSplit = 0.035f
-                )
-                .background(Color(0x2B111827))
+                .background(Color(0x33111827))
                 .border(GLASS_EDGE_WIDTH, GLASS_EDGE_COLOR, barShape)
                 .border(GLASS_EDGE_WIDTH, SpecularHighlightBrush, barShape)
                 .padding(horizontal = PILL_INSET, vertical = PILL_INSET),
             contentAlignment = Alignment.CenterStart,
         ) {
-            // Active Tab Indicator: Smooth fully rounded stadium capsule pill
+            // Active Tab Indicator: Smooth rounded capsule pill
             if (tabWidthPx > 0f && selectedIndex >= 0) {
                 Box(
                     modifier = Modifier
                         .width(with(density) { tabWidthPx.toDp() })
-                        .height(with(density) { rowSize.height.toDp() })
+                        .fillMaxHeight()
                         .graphicsLayer {
                             translationX = animatedPillOffset
                             // Fluid Momentum Math:
@@ -195,18 +193,13 @@ fun FloatingBottomBar(
                         }
                         .padding(horizontal = 2.dp, vertical = 2.dp)
                         .clip(activePillShape)
-                        .lensRefraction(
-                            refractionIndex = 1.48f,
-                            lensCurvature = 0.9f,
-                            chromaticSplit = 0.035f
-                        )
-                        .background(Color.White.copy(alpha = 0.14f))
+                        .background(Color.White.copy(alpha = 0.12f))
                         .border(
                             width = GLASS_EDGE_WIDTH,
                             brush = Brush.verticalGradient(
                                 colors = listOf(
-                                    Color.White.copy(alpha = 0.35f),
-                                    Color.White.copy(alpha = 0.08f)
+                                    Color.White.copy(alpha = 0.28f),
+                                    Color.White.copy(alpha = 0.06f)
                                 )
                             ),
                             shape = activePillShape
@@ -217,7 +210,7 @@ fun FloatingBottomBar(
             // Tabs Row with horizontal drag gesture tracking
             Row(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .fillMaxSize()
                     .onSizeChanged { rowSize = it }
                     .pointerInput(Unit) {
                         var totalDrag = 0f
@@ -272,14 +265,16 @@ fun FloatingBottomBar(
                         selectedTint = Color.White,
                         unselectedTint = Color(0xFF94A3B8).copy(alpha = 0.65f),
                         onClick = { onTabSelected(tab.route) },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight(),
                     )
                 }
             }
         }
 
         // -------------------------------------------------------------
-        // 2. RIGHT STANDALONE ORB: Profile Capsule
+        // 2. RIGHT STANDALONE ORB: Profile Button (Matching nav bar height/diameter)
         // -------------------------------------------------------------
         val profileScale by animateFloatAsState(
             targetValue = if (isProfileSelected) 1.06f else 1f,
@@ -294,19 +289,14 @@ fun FloatingBottomBar(
 
         Box(
             modifier = Modifier
-                .size(48.dp)
+                .size(barHeight) // Exact same height and diameter as navigation bar
                 .graphicsLayer {
                     scaleX = profileScale
                     scaleY = profileScale
                 }
                 .clip(circleShape)
                 .hazeChild(state = hazeState, shape = circleShape)
-                .lensRefraction(
-                    refractionIndex = 1.45f,
-                    lensCurvature = 0.9f,
-                    chromaticSplit = 0.035f
-                )
-                .background(Color(0x2B111827))
+                .background(Color(0x33111827))
                 .border(GLASS_EDGE_WIDTH, GLASS_EDGE_COLOR, circleShape)
                 .border(GLASS_EDGE_WIDTH, SpecularHighlightBrush, circleShape)
                 .clickable(
@@ -322,15 +312,15 @@ fun FloatingBottomBar(
             if (isProfileSelected) {
                 Box(
                     modifier = Modifier
-                        .size(38.dp)
+                        .size(barHeight - 12.dp)
                         .clip(circleShape)
-                        .background(Color.White.copy(alpha = 0.14f))
+                        .background(Color.White.copy(alpha = 0.12f))
                         .border(
                             GLASS_EDGE_WIDTH,
                             Brush.verticalGradient(
                                 colors = listOf(
-                                    Color.White.copy(alpha = 0.35f),
-                                    Color.White.copy(alpha = 0.08f)
+                                    Color.White.copy(alpha = 0.28f),
+                                    Color.White.copy(alpha = 0.06f)
                                 )
                             ),
                             circleShape
@@ -342,7 +332,7 @@ fun FloatingBottomBar(
                 imageVector = profileTab.icon,
                 contentDescription = profileTab.label,
                 tint = profileTint,
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(22.dp),
             )
         }
     }
@@ -359,7 +349,7 @@ private fun BottomBarItem(
     unselectedTint: Color? = null,
 ) {
     val scale by animateFloatAsState(
-        targetValue = if (selected) 1.08f else 1f,
+        targetValue = if (selected) 1.06f else 1f,
         animationSpec = glassSpec,
         label = "tabScale",
     )
@@ -376,8 +366,9 @@ private fun BottomBarItem(
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
         modifier = modifier
-            .clip(CircleShape)
+            .clip(RoundedCornerShape(PILL_CORNER_RADIUS))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
