@@ -42,12 +42,51 @@ data class Tournament(
     @JsonNames("rank3Prize", "rank_3_prize") var rank3Prize: Double = 0.0,
     @JsonNames("rank4To10Prize", "rank_4_10_prize") var rank4To10Prize: Double = 0.0,
     @JsonNames("killBounty", "kill_bounty") var killBounty: Double = 0.0,
-    var format: String = "SOLO", // "SOLO", "DUO", "SQUAD"
+    var format: String = "SOLO", // "SOLO", "DUO", "SQUAD", "1v1", "2v2", "3v3", "4v4"
     var status: String = "UPCOMING", // "UPCOMING", "LIVE", "COMPLETED", "CANCELLED"
-    var rules: String = ""
+    var rules: String = "",
+
+    @JsonNames("matchCategory", "match_category", "category")
+    var matchCategory: String = "BATTLE_ROYALE", // "BATTLE_ROYALE", "CLASH_SQUAD", "LONE_WOLF", "SPECIAL_MODE"
+
+    @JsonNames("matchMode", "match_mode", "mode")
+    var matchMode: String = "PER_KILL", // "PER_KILL", "SURVIVAL", "HEADSHOT_ONLY", "BODY_DAMAGE_ON", "SNIPER_ONLY", "LIMITED_AMMO", "UNLIMITED_AMMO", "PISTOL_ONLY"
+
+    @JsonNames("customRuleBadge", "custom_rule_badge", "ruleBadge", "badge", "ruleHighlight")
+    var customRuleBadge: String = "" // e.g. "ONLY HEADSHOT (NO BODY)", "PER KILL ₹50", "1v1 PRO DUEL"
 ) {
     val isFull: Boolean
         get() = filledSlots >= maxSlots
+
+    val displayCategoryBadge: String
+        get() {
+            if (customRuleBadge.isNotBlank()) return customRuleBadge
+            return when (matchCategory.uppercase()) {
+                "CLASH_SQUAD", "CS" -> when (matchMode.uppercase()) {
+                    "HEADSHOT_ONLY", "ONLY_HEAD" -> "HEADSHOT ONLY (NO BODY)"
+                    "BODY_DAMAGE_ON", "ALL_WEAPONS" -> "ALL WEAPONS & BODY DMG"
+                    "SNIPER_ONLY" -> "SNIPER ONLY DUEL"
+                    "LIMITED_AMMO" -> "LIMITED AMMO TACTICAL"
+                    "UNLIMITED_AMMO" -> "UNLIMITED AMMO RUSH"
+                    "PISTOL_ONLY" -> "DESERT EAGLE ONLY"
+                    else -> "CLASH SQUAD $format"
+                }
+                "LONE_WOLF" -> when (format.uppercase()) {
+                    "2V2", "DUO" -> "LONE WOLF 2v2 COMBAT"
+                    else -> "LONE WOLF 1v1 PRO DUEL"
+                }
+                "SPECIAL_MODE", "CUSTOM" -> when (matchMode.uppercase()) {
+                    "RUSHER_VS_SNIPER" -> "RUSHER VS SNIPER"
+                    "SPEED_WAR" -> "SPEED 200% RUSH"
+                    else -> "SPECIAL TACTICAL"
+                }
+                else -> when (matchMode.uppercase()) {
+                    "PER_KILL", "PER_KILL_DOMINATION" -> if (killBounty > 0) "₹${killBounty.toInt()} PER KILL" else "PER-KILL DOMINATION"
+                    "SURVIVAL", "SURVIVAL_WWCD", "WWCD" -> "SURVIVAL / WWCD PRIORITY"
+                    else -> if (killBounty > 0) "₹${killBounty.toInt()} PER KILL" else "$format BATTLE ROYALE"
+                }
+            }
+        }
 }
 
 @OptIn(ExperimentalSerializationApi::class)

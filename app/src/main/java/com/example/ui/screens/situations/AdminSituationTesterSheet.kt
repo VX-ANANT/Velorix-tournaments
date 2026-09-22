@@ -27,6 +27,7 @@ import coil.compose.AsyncImage
 import com.example.data.model.Banner
 import com.example.data.model.SituationPreviewType
 import com.example.data.model.SystemAppConfig
+import com.example.data.model.Tournament
 import com.example.data.model.User
 import com.example.ui.viewmodel.PlatformViewModel
 
@@ -46,6 +47,8 @@ fun AdminSituationTesterSheet(
     var customBanReason by remember { mutableStateOf(user?.banReason ?: "Anti-Cheat Detection - Integrity Violation") }
 
     val banners by viewModel.banners.collectAsState()
+    val tournaments by viewModel.tournaments.collectAsState()
+
     var newBannerTitle by remember { mutableStateOf("") }
     var newBannerSubtitle by remember { mutableStateOf("") }
     var newBannerBadge by remember { mutableStateOf("ANNOUNCEMENT") }
@@ -56,6 +59,20 @@ fun AdminSituationTesterSheet(
     var newBannerValidUntil by remember { mutableStateOf("") }
     var newBannerTheme by remember { mutableStateOf("CYAN_PURPLE") }
     var isPublishingBanner by remember { mutableStateOf(false) }
+
+    // Tournament Creator States
+    var tourneyGame by remember { mutableStateOf("Free Fire") }
+    var tourneyCategory by remember { mutableStateOf("CLASH_SQUAD") } // "BATTLE_ROYALE", "CLASH_SQUAD", "LONE_WOLF", "SPECIAL_MODE"
+    var tourneyFormat by remember { mutableStateOf("1v1") } // "1v1", "2v2", "3v3", "4v4", "SOLO", "DUO", "SQUAD"
+    var tourneyMode by remember { mutableStateOf("HEADSHOT_ONLY") } // "HEADSHOT_ONLY", "BODY_DAMAGE_ON", "SNIPER_ONLY", "PER_KILL", "SURVIVAL", "LIMITED_AMMO", "UNLIMITED_AMMO"
+    var tourneyTitle by remember { mutableStateOf("FF CS 1v1 • Headshot Only Grand Duel") }
+    var tourneyEntryFee by remember { mutableStateOf("50") }
+    var tourneyPrizePool by remember { mutableStateOf("90") }
+    var tourneyKillBounty by remember { mutableStateOf("0") }
+    var tourneyMap by remember { mutableStateOf("Bermuda") }
+    var tourneyPerspective by remember { mutableStateOf("TPP") }
+    var tourneyMaxSlots by remember { mutableStateOf("2") }
+    var isPublishingTourney by remember { mutableStateOf(false) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -830,6 +847,411 @@ fun AdminSituationTesterSheet(
                                 ) {
                                     Icon(Icons.Rounded.DeleteOutline, contentDescription = "Delete Banner", tint = Color(0xFFEF4444), modifier = Modifier.size(18.dp))
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(28.dp))
+
+            // ==========================================
+            // TOURNAMENT MANAGER & INSTANT CLOUD SYNC
+            // ==========================================
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.SportsEsports, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("TOURNAMENT MANAGER & CLOUD SYNC", fontSize = 14.sp, fontWeight = FontWeight.Black, color = Color.White)
+                }
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = Color(0x2210B981),
+                    border = BorderStroke(1.dp, Color(0xFF10B981))
+                ) {
+                    Text(
+                        "LIVE CLOUD SYNC ON",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color(0xFFA7F3D0),
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // Quick Category Presets
+            Text("QUICK CATEGORY PRESETS (1-TAP LOAD):", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF94A3B8))
+            Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = {
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                        tourneyGame = "Free Fire"
+                        tourneyCategory = "CLASH_SQUAD"
+                        tourneyFormat = "1v1"
+                        tourneyMode = "HEADSHOT_ONLY"
+                        tourneyTitle = "FF CS 1v1 • Headshot Only Grand Duel"
+                        tourneyEntryFee = "50"
+                        tourneyPrizePool = "90"
+                        tourneyKillBounty = "0"
+                        tourneyMaxSlots = "2"
+                    },
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7F1D1D)),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("🎯 CS 1v1 HEADSHOT", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Color(0xFFFCA5A5))
+                }
+                Button(
+                    onClick = {
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                        tourneyGame = "BGMI"
+                        tourneyCategory = "BATTLE_ROYALE"
+                        tourneyFormat = "SOLO"
+                        tourneyMode = "PER_KILL"
+                        tourneyTitle = "BGMI Solo • ₹50 Per Kill Domination"
+                        tourneyEntryFee = "50"
+                        tourneyPrizePool = "4500"
+                        tourneyKillBounty = "50"
+                        tourneyMaxSlots = "100"
+                    },
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF78350F)),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("💀 BR PER-KILL ₹50", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Color(0xFFFDE68A))
+                }
+            }
+            Spacer(Modifier.height(6.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = {
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                        tourneyGame = "Free Fire"
+                        tourneyCategory = "CLASH_SQUAD"
+                        tourneyFormat = "4v4"
+                        tourneyMode = "BODY_DAMAGE_ON"
+                        tourneyTitle = "FF CS 4v4 Squad Clash • All Weapons On"
+                        tourneyEntryFee = "200"
+                        tourneyPrizePool = "360"
+                        tourneyKillBounty = "0"
+                        tourneyMaxSlots = "8"
+                    },
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0C4A6E)),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("⚔️ CS 4v4 SQUAD", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Color(0xFFBAE6FD))
+                }
+                Button(
+                    onClick = {
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                        tourneyGame = "Free Fire"
+                        tourneyCategory = "LONE_WOLF"
+                        tourneyFormat = "2v2"
+                        tourneyMode = "BODY_DAMAGE_ON"
+                        tourneyTitle = "FF Lone Wolf 2v2 Duo Clash Championship"
+                        tourneyEntryFee = "100"
+                        tourneyPrizePool = "180"
+                        tourneyKillBounty = "0"
+                        tourneyMaxSlots = "4"
+                    },
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C2D12)),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("🐺 LONE WOLF 2v2", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Color(0xFFFDBA74))
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // Tournament Creator Form Card
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF161A26)),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, Color(0xFF262E42)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("CREATE & SYNC NEW TOURNAMENT", fontSize = 12.sp, fontWeight = FontWeight.Black, color = Color.White)
+                    Spacer(Modifier.height(10.dp))
+
+                    // Title
+                    OutlinedTextField(
+                        value = tourneyTitle,
+                        onValueChange = { tourneyTitle = it },
+                        label = { Text("Match Title") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFF10B981),
+                            unfocusedBorderColor = Color(0xFF334155),
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White
+                        )
+                    )
+                    Spacer(Modifier.height(8.dp))
+
+                    // Game & Category Selectors
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = tourneyGame,
+                            onValueChange = { tourneyGame = it },
+                            label = { Text("Game (FF / BGMI)") },
+                            modifier = Modifier.weight(1f),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color(0xFF10B981),
+                                unfocusedBorderColor = Color(0xFF334155),
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            )
+                        )
+                        OutlinedTextField(
+                            value = tourneyCategory,
+                            onValueChange = { tourneyCategory = it },
+                            label = { Text("Category (BR/CS/LONE)") },
+                            modifier = Modifier.weight(1f),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color(0xFF10B981),
+                                unfocusedBorderColor = Color(0xFF334155),
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            )
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+
+                    // Format & Mode
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = tourneyFormat,
+                            onValueChange = { tourneyFormat = it },
+                            label = { Text("Format (1v1, 2v2, SOLO, SQUAD)") },
+                            modifier = Modifier.weight(1f),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color(0xFF10B981),
+                                unfocusedBorderColor = Color(0xFF334155),
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            )
+                        )
+                        OutlinedTextField(
+                            value = tourneyMode,
+                            onValueChange = { tourneyMode = it },
+                            label = { Text("Mode (HEADSHOT_ONLY/PER_KILL)") },
+                            modifier = Modifier.weight(1f),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color(0xFF10B981),
+                                unfocusedBorderColor = Color(0xFF334155),
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            )
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+
+                    // Entry Fee & Prize Pool
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = tourneyEntryFee,
+                            onValueChange = { tourneyEntryFee = it },
+                            label = { Text("Entry Fee (₹)") },
+                            modifier = Modifier.weight(1f),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color(0xFF10B981),
+                                unfocusedBorderColor = Color(0xFF334155),
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            )
+                        )
+                        OutlinedTextField(
+                            value = tourneyPrizePool,
+                            onValueChange = { tourneyPrizePool = it },
+                            label = { Text("Prize Pool (₹)") },
+                            modifier = Modifier.weight(1f),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color(0xFF10B981),
+                                unfocusedBorderColor = Color(0xFF334155),
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            )
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+
+                    // Kill Bounty & Max Slots
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = tourneyKillBounty,
+                            onValueChange = { tourneyKillBounty = it },
+                            label = { Text("Kill Bounty (₹)") },
+                            modifier = Modifier.weight(1f),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color(0xFF10B981),
+                                unfocusedBorderColor = Color(0xFF334155),
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            )
+                        )
+                        OutlinedTextField(
+                            value = tourneyMaxSlots,
+                            onValueChange = { tourneyMaxSlots = it },
+                            label = { Text("Max Slots") },
+                            modifier = Modifier.weight(1f),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color(0xFF10B981),
+                                unfocusedBorderColor = Color(0xFF334155),
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            )
+                        )
+                    }
+                    Spacer(Modifier.height(14.dp))
+
+                    Button(
+                        onClick = {
+                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                            isPublishingTourney = true
+                            val fee = tourneyEntryFee.toDoubleOrNull() ?: 50.0
+                            val prize = tourneyPrizePool.toDoubleOrNull() ?: 90.0
+                            val bounty = tourneyKillBounty.toDoubleOrNull() ?: 0.0
+                            val slots = tourneyMaxSlots.toIntOrNull() ?: 2
+
+                            val newTourney = Tournament(
+                                id = java.util.UUID.randomUUID().toString(),
+                                title = tourneyTitle.trim().ifEmpty { "Tactical Match" },
+                                game = tourneyGame.trim().ifEmpty { "Free Fire" },
+                                prizePool = prize,
+                                entryFee = fee,
+                                maxSlots = slots,
+                                filledSlots = 0,
+                                joined = false,
+                                dateTimeStr = "Today at 9:00 PM",
+                                mapType = tourneyMap,
+                                perspective = tourneyPerspective,
+                                format = tourneyFormat,
+                                status = "UPCOMING",
+                                rank1Prize = prize,
+                                killBounty = bounty,
+                                matchCategory = tourneyCategory,
+                                matchMode = tourneyMode,
+                                customRuleBadge = when {
+                                    tourneyMode.contains("HEADSHOT", true) -> "HEADSHOT ONLY (NO BODY)"
+                                    tourneyMode.contains("PER_KILL", true) && bounty > 0 -> "₹${bounty.toInt()} PER KILL BOUNTY"
+                                    tourneyCategory.contains("CS", true) -> "CS $tourneyFormat CLASH"
+                                    tourneyCategory.contains("LONE", true) -> "LONE WOLF $tourneyFormat"
+                                    else -> "$tourneyFormat BATTLE ROYALE"
+                                }
+                            )
+
+                            viewModel.saveTournament(newTourney) {
+                                isPublishingTourney = false
+                            }
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                        modifier = Modifier.fillMaxWidth().height(46.dp),
+                        enabled = !isPublishingTourney
+                    ) {
+                        if (isPublishingTourney) {
+                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        } else {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Rounded.CloudUpload, contentDescription = null, tint = Color.Black, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("PUBLISH LIVE TO CLOUD (SYNC)", fontSize = 13.sp, fontWeight = FontWeight.Black, color = Color.Black)
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            // Active Tournaments list with Instant Delete
+            Text("ACTIVE TOURNAMENTS (${tournaments.size}):", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF94A3B8))
+            Spacer(Modifier.height(8.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                tournaments.forEach { match ->
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF161A26)),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, Color(0xFF262E42)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Surface(
+                                        shape = RoundedCornerShape(4.dp),
+                                        color = Color(0x3310B981)
+                                    ) {
+                                        Text(
+                                            match.displayCategoryBadge,
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Black,
+                                            color = Color(0xFF34D399),
+                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                                        )
+                                    }
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(
+                                        match.title,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                                Spacer(Modifier.height(2.dp))
+                                Text(
+                                    "${match.game} • ${match.format} • Prize: ₹${match.prizePool.toInt()} • Fee: ₹${match.entryFee.toInt()} • Slots: ${match.filledSlots}/${match.maxSlots}",
+                                    fontSize = 10.sp,
+                                    color = Color(0xFF94A3B8)
+                                )
+                            }
+
+                            IconButton(
+                                onClick = {
+                                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                    viewModel.deleteTournament(match.id)
+                                },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(Icons.Rounded.DeleteOutline, contentDescription = "Delete Tournament", tint = Color(0xFFEF4444), modifier = Modifier.size(18.dp))
                             }
                         }
                     }

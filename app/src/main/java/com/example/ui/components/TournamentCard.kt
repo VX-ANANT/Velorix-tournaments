@@ -48,6 +48,11 @@ fun TournamentCard(
     mapType: String,
     perspective: String,
     modifier: Modifier = Modifier,
+    categoryBadge: String = "",
+    format: String = "SOLO",
+    matchCategory: String = "BATTLE_ROYALE",
+    matchMode: String = "PER_KILL",
+    killBounty: Double = 0.0,
     isJoined: Boolean = false,
     joinCooldownSeconds: Int = 0,
     liveUpdate: com.example.data.model.LiveMatchUpdate? = null,
@@ -58,6 +63,61 @@ fun TournamentCard(
     val isFull = filledSlots >= maxSlots
     val rawProgress = if (maxSlots > 0) filledSlots.toFloat() / maxSlots.toFloat() else 0f
     val progress = rawProgress.coerceIn(0f, 1f)
+
+    // Compute tactical badge info
+    val tacticalBadgeText = when {
+        categoryBadge.isNotBlank() -> categoryBadge
+        matchCategory.equals("CLASH_SQUAD", true) || matchCategory.equals("CS", true) -> when (matchMode.uppercase()) {
+            "HEADSHOT_ONLY", "ONLY_HEAD" -> "HEADSHOT ONLY (NO BODY)"
+            "BODY_DAMAGE_ON", "ALL_WEAPONS" -> "ALL WEAPONS & BODY DMG"
+            "SNIPER_ONLY" -> "SNIPER ONLY DUEL"
+            "LIMITED_AMMO" -> "LIMITED AMMO TACTICAL"
+            "UNLIMITED_AMMO" -> "UNLIMITED AMMO RUSH"
+            "PISTOL_ONLY" -> "DESERT EAGLE ONLY"
+            else -> "CLASH SQUAD $format"
+        }
+        matchCategory.equals("LONE_WOLF", true) -> if (format.contains("2", true)) "LONE WOLF 2v2" else "LONE WOLF 1v1 DUEL"
+        matchMode.equals("PER_KILL", true) || matchMode.equals("PER_KILL_DOMINATION", true) -> {
+            if (killBounty > 0) "₹${killBounty.toInt()}/KILL BOUNTY" else "PER-KILL DOMINATION"
+        }
+        matchMode.equals("SURVIVAL", true) || matchMode.equals("SURVIVAL_WWCD", true) -> "SURVIVAL / WWCD"
+        else -> if (killBounty > 0) "₹${killBounty.toInt()}/KILL" else "$format BATTLE ROYALE"
+    }
+
+    // Determine tactical badge color styling
+    val isHeadshotOnly = tacticalBadgeText.contains("HEADSHOT", true) || matchMode.contains("HEAD", true)
+    val isSniperOnly = tacticalBadgeText.contains("SNIPER", true)
+    val isClashSquad = matchCategory.contains("CLASH", true) || matchCategory.contains("CS", true) || format.contains("v", true)
+    val isLoneWolf = matchCategory.contains("LONE", true)
+    val isSurvival = tacticalBadgeText.contains("SURVIVAL", true) || tacticalBadgeText.contains("WWCD", true)
+
+    val badgeBgColor = when {
+        isHeadshotOnly -> Color(0xEE7F1D1D) // Dark Crimson
+        isSniperOnly -> Color(0xEE581C87) // Dark Purple
+        isLoneWolf -> Color(0xEE7C2D12) // Dark Orange
+        isClashSquad -> Color(0xEE0C4A6E) // Dark Cyan/Navy
+        isSurvival -> Color(0xEE064E3B) // Dark Emerald
+        else -> Color(0xEE1E293B) // Dark Slate
+    }
+
+    val badgeBorderColor = when {
+        isHeadshotOnly -> Color(0xFFEF4444)
+        isSniperOnly -> Color(0xFFA855F7)
+        isLoneWolf -> Color(0xFFF97316)
+        isClashSquad -> Color(0xFF38BDF8)
+        isSurvival -> Color(0xFF10B981)
+        else -> Color(0xFFF59E0B)
+    }
+
+    val badgeTextColor = when {
+        isHeadshotOnly -> Color(0xFFFCA5A5)
+        isSniperOnly -> Color(0xFFE9D5FF)
+        isLoneWolf -> Color(0xFFFDBA74)
+        isClashSquad -> Color(0xFFBAE6FD)
+        isSurvival -> Color(0xFF6EE7B7)
+        else -> Color(0xFFFDE68A)
+    }
+
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -95,18 +155,52 @@ fun TournamentCard(
                     .fillMaxSize()
                     .background(
                         androidx.compose.ui.graphics.Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, CardSurfaceLight),
-                            startY = 100f
+                            colors = listOf(Color.Black.copy(alpha = 0.4f), Color.Transparent, CardSurfaceLight),
+                            startY = 0f
                         )
                     )
                 )
-                // Status BADGE
+
+                // Top Badges Row: Left = Heavy Tactical Mode Badge, Right = Match Status
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(12.dp),
-                    horizontalArrangement = Arrangement.End
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // Left: Tactical Category Badge (Unmissable for players)
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = badgeBgColor,
+                        border = BorderStroke(1.5.dp, badgeBorderColor)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = when {
+                                    isHeadshotOnly -> "🎯 "
+                                    isSniperOnly -> "🔭 "
+                                    isLoneWolf -> "🐺 "
+                                    isClashSquad -> "⚔️ "
+                                    isSurvival -> "🏆 "
+                                    else -> "💀 "
+                                },
+                                fontSize = 11.sp
+                            )
+                            Text(
+                                text = tacticalBadgeText.uppercase(),
+                                color = badgeTextColor,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 0.5.sp
+                            )
+                        }
+                    }
+
+                    // Right: Status BADGE
                     if (liveUpdate != null) {
                         Box(
                             modifier = Modifier
@@ -125,12 +219,12 @@ fun TournamentCard(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(50.dp))
-                                .background(Color(0xFF4CAF50).copy(alpha = 0.9f))
+                                .background(Color(0xFF10B981))
                                 .padding(horizontal = 10.dp, vertical = 6.dp)
                         ) {
                             Text(
                                 text = "JOINED",
-                                color = MaterialTheme.colorScheme.onSurface,
+                                color = Color.White,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -139,12 +233,12 @@ fun TournamentCard(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(50.dp))
-                                .background(Color(0xFF9E9E9E).copy(alpha = 0.9f))
+                                .background(Color(0xFF64748B))
                                 .padding(horizontal = 10.dp, vertical = 6.dp)
                         ) {
                             Text(
                                 text = "FULL",
-                                color = MaterialTheme.colorScheme.onSurface,
+                                color = Color.White,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -166,19 +260,39 @@ fun TournamentCard(
                     maxLines = 1
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = androidx.compose.ui.graphics.vector.ImageVector.vectorResource(com.example.R.drawable.ic_iconsax_landscape),
-                        contentDescription = "Map",
-                        modifier = Modifier.size(12.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "$mapType • $perspective",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = androidx.compose.ui.graphics.vector.ImageVector.vectorResource(com.example.R.drawable.ic_iconsax_landscape),
+                            contentDescription = "Map",
+                            modifier = Modifier.size(12.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "$mapType • $perspective • $format",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = badgeBgColor.copy(alpha = 0.5f),
+                        border = BorderStroke(0.8.dp, badgeBorderColor.copy(alpha = 0.8f))
+                    ) {
+                        Text(
+                            text = tacticalBadgeText,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = badgeTextColor,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 // Metadata Stats

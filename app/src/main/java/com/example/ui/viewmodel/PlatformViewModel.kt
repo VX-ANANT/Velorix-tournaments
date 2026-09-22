@@ -1460,6 +1460,34 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    fun saveTournament(tournament: Tournament, onResult: (Boolean) -> Unit = {}) {
+        viewModelScope.launch {
+            val res = repository.saveTournament(tournament)
+            if (res.isSuccess) {
+                _toastMessage.emit("Tournament published live to Cloud!")
+                onResult(true)
+            } else {
+                val err = res.exceptionOrNull()?.localizedMessage ?: "Failed to save tournament"
+                _toastMessage.emit(err)
+                onResult(false)
+            }
+        }
+    }
+
+    fun deleteTournament(tournamentId: String, onResult: (Boolean) -> Unit = {}) {
+        viewModelScope.launch {
+            val res = repository.deleteTournament(tournamentId)
+            if (res.isSuccess) {
+                _toastMessage.emit("Tournament removed from Cloud")
+                onResult(true)
+            } else {
+                val err = res.exceptionOrNull()?.localizedMessage ?: "Failed to delete tournament"
+                _toastMessage.emit(err)
+                onResult(false)
+            }
+        }
+    }
+
     override fun onCleared() {
 
         super.onCleared()

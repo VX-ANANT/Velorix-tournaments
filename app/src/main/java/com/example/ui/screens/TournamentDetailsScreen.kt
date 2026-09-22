@@ -220,6 +220,65 @@ fun TournamentDetailsScreen(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
+                    // Prominent Tactical Category and Match Combat Rules Alert Banner
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        color = when {
+                            t.displayCategoryBadge.contains("HEADSHOT", true) -> Color(0xFF2A0A0A)
+                            t.displayCategoryBadge.contains("SNIPER", true) -> Color(0xFF1E0A2A)
+                            t.displayCategoryBadge.contains("SURVIVAL", true) -> Color(0xFF06281E)
+                            t.displayCategoryBadge.contains("CS", true) || t.displayCategoryBadge.contains("CLASH", true) -> Color(0xFF0A1E2A)
+                            else -> Color(0xFF2A200A)
+                        },
+                        border = BorderStroke(
+                            1.5.dp,
+                            when {
+                                t.displayCategoryBadge.contains("HEADSHOT", true) -> Color(0xFFEF4444)
+                                t.displayCategoryBadge.contains("SNIPER", true) -> Color(0xFFA855F7)
+                                t.displayCategoryBadge.contains("SURVIVAL", true) -> Color(0xFF10B981)
+                                t.displayCategoryBadge.contains("CS", true) || t.displayCategoryBadge.contains("CLASH", true) -> Color(0xFF38BDF8)
+                                else -> Color(0xFFF59E0B)
+                            }
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = when {
+                                    t.displayCategoryBadge.contains("HEADSHOT", true) -> "🎯"
+                                    t.displayCategoryBadge.contains("SNIPER", true) -> "🔭"
+                                    t.displayCategoryBadge.contains("SURVIVAL", true) -> "🏆"
+                                    t.displayCategoryBadge.contains("CS", true) || t.displayCategoryBadge.contains("CLASH", true) -> "⚔️"
+                                    else -> "💀"
+                                },
+                                fontSize = 24.sp
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "OFFICIAL MATCH FORMAT & RULES",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = 1.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = "${t.displayCategoryBadge.uppercase()} • ${t.format} • ${t.mapType} (${t.perspective})",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
                     Row(
                         modifier = Modifier
                             .clip(RoundedCornerShape(16.dp))

@@ -851,6 +851,17 @@ class PlatformRepository(
                 child.getStringSafe("state", defaultValue = "UPCOMING")
             }
             val rules = child.getStringSafe("rules", "matchRules")
+            val matchCategory = child.getStringSafe("matchCategory", "match_category").ifEmpty {
+                child.getStringSafe("category", defaultValue = "BATTLE_ROYALE")
+            }
+            val matchMode = child.getStringSafe("matchMode", "match_mode").ifEmpty {
+                child.getStringSafe("mode", defaultValue = "PER_KILL")
+            }
+            val customRuleBadge = child.getStringSafe("customRuleBadge", "custom_rule_badge").ifEmpty {
+                child.getStringSafe("ruleBadge", "badge").ifEmpty {
+                    child.getStringSafe("ruleHighlight", defaultValue = "")
+                }
+            }
             val rank1Prize = child.getDoubleSafe("rank1Prize", "rank_1_prize", defaultValue = 0.0)
             val rank2Prize = child.getDoubleSafe("rank2Prize", "rank_2_prize", defaultValue = 0.0)
             val rank3Prize = child.getDoubleSafe("rank3Prize", "rank_3_prize", defaultValue = 0.0)
@@ -879,7 +890,10 @@ class PlatformRepository(
                 killBounty = killBounty,
                 format = format,
                 status = status,
-                rules = rules
+                rules = rules,
+                matchCategory = matchCategory,
+                matchMode = matchMode,
+                customRuleBadge = customRuleBadge
             )
         } catch (e: Exception) {
             Log.w(TAG, "Error parsing tournament from RTDB: ${e.message}")
@@ -1008,6 +1022,10 @@ class PlatformRepository(
             val format = doc.getString("format") ?: doc.getString("matchFormat") ?: doc.getString("teamType") ?: "SOLO"
             val status = doc.getString("status") ?: doc.getString("matchStatus") ?: doc.getString("state") ?: "UPCOMING"
             val rules = doc.getString("rules") ?: doc.getString("matchRules") ?: ""
+            val matchCategory = doc.getString("matchCategory") ?: doc.getString("match_category") ?: doc.getString("category") ?: "BATTLE_ROYALE"
+            val matchMode = doc.getString("matchMode") ?: doc.getString("match_mode") ?: doc.getString("mode") ?: "PER_KILL"
+            val customRuleBadge = doc.getString("customRuleBadge") ?: doc.getString("custom_rule_badge") ?: doc.getString("ruleBadge") ?: doc.getString("badge") ?: doc.getString("ruleHighlight") ?: ""
+
             val rank1Prize = when (val v = doc.get("rank1Prize") ?: doc.get("rank_1_prize")) {
                 is Number -> v.toDouble()
                 is String -> v.toDoubleOrNull() ?: 0.0
@@ -1056,7 +1074,10 @@ class PlatformRepository(
                 killBounty = killBounty,
                 format = format,
                 status = status,
-                rules = rules
+                rules = rules,
+                matchCategory = matchCategory,
+                matchMode = matchMode,
+                customRuleBadge = customRuleBadge
             )
         } catch (e: Exception) {
             Log.w(TAG, "Error parsing Firestore tournament: ${e.message}")
@@ -4891,6 +4912,80 @@ class PlatformRepository(
                 Result.success(Unit)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to publish announcement notification: ${e.message}")
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun saveTournament(tournament: Tournament): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val tId = if (tournament.id.isNotBlank()) tournament.id else UUID.randomUUID().toString()
+                val tournamentToSave = tournament.copy(id = tId)
+
+                val map = mapOf<String, Any?>(
+                    "id" to tournamentToSave.id,
+                    "title" to tournamentToSave.title,
+                    "game" to tournamentToSave.game,
+                    "prizePool" to tournamentToSave.prizePool,
+                    "entryFee" to tournamentToSave.entryFee,
+                    "maxSlots" to tournamentToSave.maxSlots,
+                    "filledSlots" to tournamentToSave.filledSlots,
+                    "dateTimeStr" to tournamentToSave.dateTimeStr,
+                    "mapType" to tournamentToSave.mapType,
+                    "perspective" to tournamentToSave.perspective,
+                    "format" to tournamentToSave.format,
+                    "status" to tournamentToSave.status,
+                    "rules" to tournamentToSave.rules,
+                    "rank1Prize" to tournamentToSave.rank1Prize,
+                    "rank2Prize" to tournamentToSave.rank2Prize,
+                    "rank3Prize" to tournamentToSave.rank3Prize,
+                    "rank4To10Prize" to tournamentToSave.rank4To10Prize,
+                    "killBounty" to tournamentToSave.killBounty,
+                    "roomId" to tournamentToSave.roomId,
+                    "roomPassword" to tournamentToSave.roomPassword,
+                    "matchCategory" to tournamentToSave.matchCategory,
+                    "matchMode" to tournamentToSave.matchMode,
+                    "customRuleBadge" to tournamentToSave.customRuleBadge,
+                    "updatedAt" to System.currentTimeMillis()
+                )
+
+                // Write to Realtime Database
+                tournamentsRef.child(tId).setValue(map).await()
+
+                // Write to Firestore tournaments & matches
+                try {
+                    FirebaseFirestore.getInstance().collection("tournaments").document(tId)
+                        .set(map, com.google.firebase.firestore.SetOptions.merge()).await()
+                } catch (e: Exception) {
+                    Log.w(TAG, "Firestore tournament write note: ${e.message}")
+                }
+
+                // Insert into local cache
+                db.tournamentDao().insert(tournamentToSave)
+                Log.i(TAG, "Tournament successfully published and synced: $tId (${tournamentToSave.title})")
+                Result.success(Unit)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to save tournament: ${e.message}")
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun deleteTournament(tournamentId: String): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            try {
+                tournamentsRef.child(tournamentId).removeValue().await()
+                try {
+                    FirebaseFirestore.getInstance().collection("tournaments").document(tournamentId).delete().await()
+                } catch (e: Exception) {
+                    Log.w(TAG, "Firestore tournament delete note: ${e.message}")
+                }
+                db.tournamentDao().delete(tournamentId)
+                Log.i(TAG, "Tournament successfully removed from cloud: $tournamentId")
+                Result.success(Unit)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to delete tournament: ${e.message}")
                 Result.failure(e)
             }
         }
