@@ -74,13 +74,19 @@ fun NotificationCenterScreen(
     val filteredList = remember(notifications, selectedFilter) {
         when (selectedFilter) {
             "REMINDERS" -> notifications.filter {
-                it.type == "TOURNAMENT_REMINDER" || it.type == "TOURNAMENT_START" || it.type == "START_TIME" || it.type == "ROOM_ALERT"
+                it.type in listOf(
+                    "TOURNAMENT_REMINDER", "TOURNAMENT_START", "START_TIME", "ROOM_ALERT",
+                    "TOURNAMENT_JOINED", "ROOM_CREDENTIALS", "REGISTRATION_OPEN"
+                )
             }
             "RESULTS" -> notifications.filter {
-                it.type == "MATCH_RESULT" || it.type == "RESULT" || it.type == "WINNER_ANNOUNCEMENT"
+                it.type in listOf("MATCH_RESULT", "RESULT", "WINNER_ANNOUNCEMENT")
             }
             "SYSTEM" -> notifications.filter {
-                it.type == "MATCH_UPDATE" || it.type == "PRIZE_ANNOUNCEMENT" || it.type == "PRIZE_PAYOUT" || it.type == "GENERAL"
+                it.type in listOf(
+                    "MATCH_UPDATE", "TOURNAMENT_UPDATED", "TOURNAMENT_CANCELLED",
+                    "PRIZE_ANNOUNCEMENT", "PRIZE_PAYOUT", "ENGAGEMENT", "GENERAL"
+                )
             }
             else -> notifications
         }
@@ -299,18 +305,46 @@ fun NotificationItemCard(
 
     val config = remember(notification.type, primaryColor) {
         when (notification.type.uppercase()) {
+            "TOURNAMENT_JOINED", "JOIN_CONFIRMED" -> {
+                NotificationVisualConfig(
+                    drawableRes = com.example.R.drawable.ic_pin_ok,
+                    accentColor = Color(0xFF10B981),
+                    categoryLabel = "REGISTRATION CONFIRMED"
+                )
+            }
+            "ROOM_CREDENTIALS", "ROOM_ALERT", "ALERT" -> {
+                NotificationVisualConfig(
+                    drawableRes = com.example.R.drawable.ic_alert,
+                    accentColor = Color(0xFFEF4444),
+                    categoryLabel = "ROOM ID & PASSWORD"
+                )
+            }
+            "REGISTRATION_OPEN", "UPCOMING_TOURNAMENT" -> {
+                NotificationVisualConfig(
+                    drawableRes = com.example.R.drawable.ic_iconsax_matches,
+                    accentColor = Color(0xFF8B5CF6),
+                    categoryLabel = "REGISTRATION OPEN"
+                )
+            }
+            "TOURNAMENT_CANCELLED" -> {
+                NotificationVisualConfig(
+                    drawableRes = com.example.R.drawable.ic_alert,
+                    accentColor = Color(0xFFEF4444),
+                    categoryLabel = "CANCELLED & REFUNDED"
+                )
+            }
+            "ENGAGEMENT", "DAILY_REWARD" -> {
+                NotificationVisualConfig(
+                    drawableRes = com.example.R.drawable.ic_bag_ok,
+                    accentColor = Color(0xFFF59E0B),
+                    categoryLabel = "DAILY ARENA"
+                )
+            }
             "TOURNAMENT_REMINDER", "TOURNAMENT_START", "START_TIME" -> {
                 NotificationVisualConfig(
                     drawableRes = com.example.R.drawable.ic_iconsax_matches,
                     accentColor = Color(0xFFF59E0B),
                     categoryLabel = "TOURNAMENT START"
-                )
-            }
-            "ROOM_ALERT", "ALERT" -> {
-                NotificationVisualConfig(
-                    drawableRes = com.example.R.drawable.ic_alert,
-                    accentColor = Color(0xFFEF4444),
-                    categoryLabel = "ROOM ALERT"
                 )
             }
             "MATCH_RESULT", "RESULT" -> {
@@ -327,7 +361,7 @@ fun NotificationItemCard(
                     categoryLabel = "PRIZE REWARD"
                 )
             }
-            "MATCH_UPDATE", "ROOM_READY", "SCHEDULE_UPDATE" -> {
+            "MATCH_UPDATE", "ROOM_READY", "SCHEDULE_UPDATE", "TOURNAMENT_UPDATED" -> {
                 NotificationVisualConfig(
                     drawableRes = com.example.R.drawable.ic_mail_send,
                     accentColor = Color(0xFF06B6D4),

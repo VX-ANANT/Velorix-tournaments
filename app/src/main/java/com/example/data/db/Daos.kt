@@ -19,6 +19,9 @@ interface TournamentDao {
     @Query("SELECT * FROM tournaments")
     suspend fun getAllSync(): List<Tournament>
 
+    @Query("SELECT * FROM tournaments WHERE id = :id LIMIT 1")
+    suspend fun getById(id: String): Tournament?
+
     @Query("SELECT COUNT(*) FROM tournaments")
     suspend fun getCount(): Int
 

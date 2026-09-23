@@ -58,6 +58,11 @@ class RepositoryManager private constructor(context: Context) {
         PlatformRepository(database, this)
     }
 
+    // Cross-Panel Realtime Synchronization Coordinator
+    val syncManager: com.example.data.sync.SyncManager by lazy {
+        com.example.data.sync.SyncManager.getInstance(applicationContext)
+    }
+
     /**
      * Internal Data Holder for an active listener registration.
      */

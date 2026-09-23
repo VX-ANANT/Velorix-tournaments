@@ -512,6 +512,13 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    val isAutoRefreshing = com.example.data.sync.AutoRefreshManager.getInstance(getApplication<Application>()).isAutoRefreshing
+    val lastAutoRefreshedAt = com.example.data.sync.AutoRefreshManager.getInstance(getApplication<Application>()).lastRefreshTimestamp
+
+    fun triggerAutoRefresh(force: Boolean = true, source: String = "manual") {
+        com.example.data.sync.AutoRefreshManager.getInstance(getApplication<Application>()).triggerManualRefresh(force = force, source = source)
+    }
+
     private val _isVpnBanned = MutableStateFlow(prefs.getBoolean("is_vpn_banned", false))
     val isVpnBanned: StateFlow<Boolean> = _isVpnBanned.asStateFlow()
     
@@ -1238,18 +1245,23 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun applyReferralCode(code: String) {
+    fun applyReferralCode(code: String, onResult: (Boolean, String) -> Unit = { _, _ -> }) {
         val trimmedCode = code.trim().uppercase()
         if (trimmedCode.isBlank()) {
-            viewModelScope.launch { _toastMessage.emit("Please enter a valid referral code.") }
+            val msg = "Please enter a valid referral code."
+            viewModelScope.launch { _toastMessage.emit(msg) }
+            onResult(false, msg)
             return
         }
         viewModelScope.launch {
             val result = repository.applyReferralCode(trimmedCode)
             result.onSuccess { msg ->
                 _toastMessage.emit(msg)
+                onResult(true, msg)
             }.onFailure { err ->
-                _toastMessage.emit(err.message ?: "Failed to apply referral code. Please try again.")
+                val errMsg = err.message ?: "Failed to apply referral code. Please try again."
+                _toastMessage.emit(errMsg)
+                onResult(false, errMsg)
             }
         }
     }

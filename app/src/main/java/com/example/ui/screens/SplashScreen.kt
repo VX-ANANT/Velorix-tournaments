@@ -58,14 +58,14 @@ fun SplashScreen(
     }
     val velorixRed = Color(0xFFC70039) // Deep crimson red for the theme
     val darkRed = Color(0xFF420012)
-    val almostBlack = Color(0xFF070505)
+    val almostBlack = Color(0xFF000000)
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
                 Brush.radialGradient(
                     colors = listOf(
-                        darkRed,
+                        darkRed.copy(alpha = 0.4f),
                         almostBlack
                     ),
                     radius = 1200f

@@ -70,7 +70,7 @@ fun ForceUpdateScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF070B12))
+            .background(Color(0xFF000000))
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {

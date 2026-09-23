@@ -79,10 +79,10 @@ fun AdminSituationTesterSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF10131B),
+        containerColor = Color(0xFF000000),
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         dragHandle = {
-            BottomSheetDefaults.DragHandle(color = Color(0xFF334155))
+            BottomSheetDefaults.DragHandle(color = Color(0xFF27272A))
         }
     ) {
         Column(
@@ -259,6 +259,528 @@ fun AdminSituationTesterSheet(
                             Icon(Icons.Rounded.CloudUpload, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(8.dp))
                             Text("Log Non-Fatal Exception to Crashlytics", fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(14.dp))
+
+                // DEDICATED FCM & REAL-TIME NOTIFICATION LAB (Visible only to velorixtest@gmail.com)
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF0D0D0D)),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, Color(0xFF262626)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0x333B82F6)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.NotificationsActive,
+                                        contentDescription = null,
+                                        tint = Color(0xFF60A5FA),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                                Spacer(Modifier.width(10.dp))
+                                Column {
+                                    Text(
+                                        "FCM & Real-Time Notification Lab",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                    Text(
+                                        "From: service.veloxyra@gmail.com",
+                                        fontSize = 10.sp,
+                                        color = Color(0xFF93C5FD)
+                                    )
+                                }
+                            }
+
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = Color(0x333B82F6),
+                                border = BorderStroke(1.dp, Color(0x663B82F6))
+                            ) {
+                                Text(
+                                    "FCM SENDER",
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = Color(0xFF60A5FA),
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "Simulate live FCM push notifications & in-app alerts sent from service.veloxyra@gmail.com across all critical tournament lifecycle events.",
+                            fontSize = 11.sp,
+                            color = Color(0xFF94A3B8),
+                            lineHeight = 15.sp
+                        )
+
+                        Spacer(Modifier.height(12.dp))
+
+                        // Test 1: Tournament Joined
+                        Button(
+                            onClick = {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                com.example.service.NotificationHelper.showTournamentJoinedNotification(
+                                    context = context,
+                                    tournamentTitle = "FF Pro Elite Scrims #104",
+                                    slotNumber = 12,
+                                    startTime = "08:30 PM Today",
+                                    entryFee = 50.0,
+                                    tournamentId = "tourney_test_104"
+                                )
+                                Toast.makeText(context, "Tournament Joined notification dispatched!", Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF059669)),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.Rounded.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("1. Test Tournament Joined (Slot Confirmed)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        Spacer(Modifier.height(6.dp))
+
+                        // Test 2: Room ID & Password Release
+                        Button(
+                            onClick = {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                com.example.service.NotificationHelper.showRoomCredentialsNotification(
+                                    context = context,
+                                    tournamentTitle = "FF Pro Elite Scrims #104",
+                                    roomId = "982341",
+                                    roomPass = "8899",
+                                    tournamentId = "tourney_test_104"
+                                )
+                                Toast.makeText(context, "Room ID & Pass notification dispatched!", Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFDC2626)),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.Rounded.VpnKey, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("2. Test Room ID & Pass Released Alert", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        Spacer(Modifier.height(6.dp))
+
+                        // Test 3: Tournament 15-Minute Reminder
+                        Button(
+                            onClick = {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                com.example.service.NotificationHelper.showTournamentStartingNotification(
+                                    context = context,
+                                    tournamentTitle = "FF Pro Elite Scrims #104",
+                                    roomId = "982341",
+                                    roomPass = "8899",
+                                    timeRemaining = "15 minutes",
+                                    tournamentId = "tourney_test_104"
+                                )
+                                Toast.makeText(context, "Tournament Reminder dispatched!", Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706)),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.Rounded.Alarm, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("3. Test Tournament Reminder (15 Mins)", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        Spacer(Modifier.height(6.dp))
+
+                        // Test 4: Tournament Cancelled & Refund
+                        Button(
+                            onClick = {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                com.example.service.NotificationHelper.showTournamentCancelledNotification(
+                                    context = context,
+                                    tournamentTitle = "FF Flash Scrims #102",
+                                    refundAmount = 50.0,
+                                    reason = "Technical maintenance on custom lobby servers",
+                                    tournamentId = "tourney_test_102"
+                                )
+                                Toast.makeText(context, "Cancellation & Refund notification dispatched!", Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF475569)),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.Rounded.Cancel, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("4. Test Tournament Cancelled & Refund", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        Spacer(Modifier.height(6.dp))
+
+                        // Test 5: Upcoming Registration Open
+                        Button(
+                            onClick = {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                com.example.service.NotificationHelper.showUpcomingRegistrationNotification(
+                                    context = context,
+                                    tournamentTitle = "Midnight Mega Grand Championship",
+                                    gameMode = "Free Fire Squad",
+                                    prizePoolText = "₹10,000",
+                                    entryFee = 100.0,
+                                    tournamentId = "tourney_test_mega"
+                                )
+                                Toast.makeText(context, "Upcoming Registration alert dispatched!", Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED)),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.Rounded.EmojiEvents, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("5. Test Upcoming Tournament Open Alert", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        Spacer(Modifier.height(6.dp))
+
+                        // Test 6: Periodic Engagement Alert (Every 1-2 Hours)
+                        Button(
+                            onClick = {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                com.example.service.NotificationHelper.showPeriodicEngagementNotification(context = context)
+                                Toast.makeText(context, "1-2 Hour In-App Engagement alert triggered!", Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB)),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.Rounded.TouchApp, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("6. Test 1-2 Hour Periodic Engagement Alert", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(14.dp))
+
+                // SyncManager Single Source of Truth Lab
+                val syncManager = remember { com.example.data.sync.SyncManager.getInstance(context) }
+                val globalState by syncManager.globalAppState.collectAsState()
+                val isRtdbConnected by syncManager.isConnected.collectAsState()
+
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF0D0D0D)),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, Color(0xFF262626)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF171717)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Sync,
+                                        contentDescription = null,
+                                        tint = Color(0xFF38BDF8),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                                Spacer(Modifier.width(10.dp))
+                                Column {
+                                    Text(
+                                        "SyncManager: Single Source of Truth",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                    Text(
+                                        "Firebase RTDB: 'global_app_state'",
+                                        fontSize = 10.sp,
+                                        color = Color(0xFF94A3B8)
+                                    )
+                                }
+                            }
+
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = if (isRtdbConnected) Color(0x2210B981) else Color(0x22EF4444),
+                                border = BorderStroke(1.dp, if (isRtdbConnected) Color(0x4410B981) else Color(0x44EF4444))
+                            ) {
+                                Text(
+                                    if (isRtdbConnected) "LIVE SYNCED" else "CONNECTING",
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isRtdbConnected) Color(0xFF34D399) else Color(0xFFF87171),
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.height(12.dp))
+
+                        // Current Global State Details
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFF000000),
+                            border = BorderStroke(1.dp, Color(0xFF262626)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Event: ${globalState.eventType}", fontSize = 11.sp, color = Color(0xFFE2E8F0), fontWeight = FontWeight.SemiBold)
+                                    Text("v${globalState.version}", fontSize = 10.sp, color = Color(0xFF38BDF8), fontWeight = FontWeight.Bold)
+                                }
+                                Spacer(Modifier.height(4.dp))
+                                Text("Source: ${globalState.source} | Event ID: ${globalState.eventId.take(16)}...", fontSize = 10.sp, color = Color(0xFF94A3B8))
+                                if (globalState.tournamentId != null) {
+                                    Text("Tournament ID: ${globalState.tournamentId}", fontSize = 10.sp, color = Color(0xFF94A3B8))
+                                }
+                            }
+                        }
+
+                        Spacer(Modifier.height(10.dp))
+                        Text("SIMULATE CROSS-PANEL UPDATES", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF64748B), letterSpacing = 0.5.sp)
+                        Spacer(Modifier.height(8.dp))
+
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            // Action 1: Simulate Admin Schedule Change
+                            OutlinedButton(
+                                onClick = {
+                                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                    val tourney = tournaments.firstOrNull()
+                                    val tid = tourney?.id ?: "ff_clash_squad_01"
+                                    val tTitle = tourney?.title ?: "FF Grand Clash Squad #101"
+                                    syncManager.pushScheduleChange(
+                                        tournamentId = tid,
+                                        newScheduleTime = "Today at 09:30 PM",
+                                        tournamentTitle = tTitle
+                                    )
+                                    Toast.makeText(context, "Pushed schedule update to 'global_app_state'", Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFE2E8F0)),
+                                border = BorderStroke(1.dp, Color(0xFF334155)),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("Admin: Revise Time", fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                            }
+
+                            // Action 2: Simulate Admin Room ID / Pass Release
+                            OutlinedButton(
+                                onClick = {
+                                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                    val tourney = tournaments.firstOrNull()
+                                    val tid = tourney?.id ?: "ff_clash_squad_01"
+                                    val tTitle = tourney?.title ?: "FF Grand Clash Squad #101"
+                                    syncManager.pushRoomCredentials(
+                                        tournamentId = tid,
+                                        roomId = "982341",
+                                        roomPass = "8899",
+                                        tournamentTitle = tTitle
+                                    )
+                                    Toast.makeText(context, "Pushed Room ID/Pass to 'global_app_state'", Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF38BDF8)),
+                                border = BorderStroke(1.dp, Color(0xFF0284C7)),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("Admin: Room & Pass", fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+
+                        Spacer(Modifier.height(8.dp))
+
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            // Action 3: Simulate User Panel Joined Tournament
+                            OutlinedButton(
+                                onClick = {
+                                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                    val tourney = tournaments.firstOrNull()
+                                    val tid = tourney?.id ?: "ff_clash_squad_01"
+                                    val tTitle = tourney?.title ?: "FF Grand Clash Squad #101"
+                                    syncManager.pushTournamentUpdate(
+                                        tournamentId = tid,
+                                        eventType = com.example.data.sync.SyncManager.EVENT_TOURNAMENT_JOINED,
+                                        tournamentTitle = tTitle,
+                                        metadata = mapOf(
+                                            "slotNumber" to 7,
+                                            "userId" to (user?.id ?: "usr_demo"),
+                                            "username" to (user?.username ?: "ProGamer")
+                                        )
+                                    )
+                                    Toast.makeText(context, "Pushed tournament join event to 'global_app_state'", Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF34D399)),
+                                border = BorderStroke(1.dp, Color(0xFF059669)),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("User: Join Match", fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                            }
+
+                            // Action 4: Simulate Admin Cancel Match
+                            OutlinedButton(
+                                onClick = {
+                                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                    val tourney = tournaments.firstOrNull()
+                                    val tid = tourney?.id ?: "ff_clash_squad_01"
+                                    val tTitle = tourney?.title ?: "FF Grand Clash Squad #101"
+                                    syncManager.pushTournamentUpdate(
+                                        tournamentId = tid,
+                                        eventType = com.example.data.sync.SyncManager.EVENT_TOURNAMENT_CANCELLED,
+                                        tournamentTitle = tTitle,
+                                        metadata = mapOf(
+                                            "entryFee" to (tourney?.entryFee ?: 50.0),
+                                            "reason" to "Server Maintenance Refund"
+                                        )
+                                    )
+                                    Toast.makeText(context, "Pushed tournament cancellation to 'global_app_state'", Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFF87171)),
+                                border = BorderStroke(1.dp, Color(0xFFDC2626)),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("Admin: Cancel Match", fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(14.dp))
+
+                // Auto-Refresh Engine Monitor Card (AMOLED Black, subtle)
+                val autoRefreshManager = remember { com.example.data.sync.AutoRefreshManager.getInstance(context) }
+                val isAutoRefreshing by autoRefreshManager.isAutoRefreshing.collectAsState()
+                val lastRefreshedTime by autoRefreshManager.lastRefreshTimestamp.collectAsState()
+
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF0D0D0D)),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, Color(0xFF262626)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF171717)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Autorenew,
+                                        contentDescription = null,
+                                        tint = Color(0xFF38BDF8),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                                Spacer(Modifier.width(10.dp))
+                                Column {
+                                    Text(
+                                        "Lifecycle & Periodic Auto-Refresh",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                    Text(
+                                        "Interval: 35s | On App Open & Resume",
+                                        fontSize = 10.sp,
+                                        color = Color(0xFF71717A)
+                                    )
+                                }
+                            }
+
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = if (isAutoRefreshing) Color(0x2238BDF8) else Color(0x2210B981),
+                                border = BorderStroke(1.dp, if (isAutoRefreshing) Color(0x4438BDF8) else Color(0x4410B981))
+                            ) {
+                                Text(
+                                    if (isAutoRefreshing) "SYNCING..." else "ACTIVE",
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isAutoRefreshing) Color(0xFF38BDF8) else Color(0xFF34D399),
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(Modifier.height(10.dp))
+
+                        val secondsAgo = remember(lastRefreshedTime) {
+                            val diff = (System.currentTimeMillis() - lastRefreshedTime) / 1000
+                            if (diff < 5) "Just now" else "${diff}s ago"
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFF000000),
+                            border = BorderStroke(1.dp, Color(0xFF262626)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("Last Auto-Sync", fontSize = 11.sp, color = Color(0xFF71717A))
+                                Text(secondsAgo, fontSize = 11.sp, color = Color(0xFFE4E4E7), fontWeight = FontWeight.Medium)
+                            }
+                        }
+
+                        Spacer(Modifier.height(10.dp))
+
+                        OutlinedButton(
+                            onClick = {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                autoRefreshManager.triggerManualRefresh(force = true, source = "admin_lab_test")
+                                Toast.makeText(context, "Auto-refresh triggered manually!", Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF38BDF8)),
+                            border = BorderStroke(1.dp, Color(0xFF262626)),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(14.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Test Immediate Auto-Refresh Cycle", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }

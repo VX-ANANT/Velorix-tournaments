@@ -79,6 +79,8 @@ fun ProfileScreen(
     var showReportDialog by remember { mutableStateOf(false) }
     var showMyReportsDialog by remember { mutableStateOf(false) }
     var showAboutDeveloperModal by remember { mutableStateOf(false) }
+    var profileReferralInput by remember { mutableStateOf("") }
+    var isApplyingReferral by remember { mutableStateOf(false) }
 
     val isAnyPopupOpen = showAvatarDialog || showDeleteDialog || showConvertDialog || showReportDialog || showMyReportsDialog || showAboutDeveloperModal
     val bgBlurRadius by animateDpAsState(
@@ -911,6 +913,58 @@ fun ProfileScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     lineHeight = 16.sp
                                 )
+                            }
+                        }
+
+                        if (currentUser.referredBy.isBlank()) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                "HAVE A FRIEND'S INVITE CODE?",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                letterSpacing = 1.sp
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                OutlinedTextField(
+                                    value = profileReferralInput,
+                                    onValueChange = { profileReferralInput = it.uppercase().filter { ch -> ch.isLetterOrDigit() || ch == '-' } },
+                                    placeholder = { Text("e.g. VT7890", fontSize = 12.sp) },
+                                    singleLine = true,
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(10.dp)
+                                )
+                                Button(
+                                    onClick = {
+                                        if (profileReferralInput.isNotBlank()) {
+                                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                            isApplyingReferral = true
+                                            viewModel.applyReferralCode(profileReferralInput.trim()) { success, msg ->
+                                                isApplyingReferral = false
+                                                android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+                                                if (success) {
+                                                    profileReferralInput = ""
+                                                }
+                                            }
+                                        }
+                                    },
+                                    enabled = profileReferralInput.isNotBlank() && !isApplyingReferral,
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp)
+                                ) {
+                                    Text(
+                                        if (isApplyingReferral) "..." else "Claim +50",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.background
+                                    )
+                                }
                             }
                         }
                     }

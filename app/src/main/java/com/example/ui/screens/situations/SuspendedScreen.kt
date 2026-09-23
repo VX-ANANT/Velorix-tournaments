@@ -65,7 +65,7 @@ fun SuspendedScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF090A0E))
+            .background(Color(0xFF000000))
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {
