@@ -322,12 +322,16 @@ fun MatchPassDialog(
                                 }
 
                                 if (tournament.roomId.isNotBlank()) {
+                                    androidx.compose.runtime.LaunchedEffect(tournament.roomId) {
+                                        com.example.audio.SoundEffectManager.getInstance(context).playSmoothStab(0.75f)
+                                    }
                                     TextButton(
                                         onClick = {
                                             haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                             val clip = ClipData.newPlainText("Room Details", "Room ID: ${tournament.roomId}\nPassword: ${tournament.roomPassword}")
                                             clipboard.setPrimaryClip(clip)
+                                            com.example.audio.SoundEffectManager.getInstance(context).playBadSnap()
                                             Toast.makeText(context, "Room ID & Password copied!", Toast.LENGTH_SHORT).show()
                                         },
                                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)

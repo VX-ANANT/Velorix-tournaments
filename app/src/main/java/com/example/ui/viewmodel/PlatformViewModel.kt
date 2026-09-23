@@ -519,6 +519,13 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
         com.example.data.sync.AutoRefreshManager.getInstance(getApplication<Application>()).triggerManualRefresh(force = force, source = source)
     }
 
+    val isSyncManagerSyncing = com.example.data.sync.SyncManager.getInstance(getApplication<Application>()).isSyncing
+    val lastSyncManagerTimestamp = com.example.data.sync.SyncManager.getInstance(getApplication<Application>()).lastSyncTimestamp
+
+    fun triggerSyncManagerSync(force: Boolean = true, source: String = "manual") {
+        com.example.data.sync.SyncManager.getInstance(getApplication<Application>()).triggerDataSynchronization(force = force, source = source)
+    }
+
     private val _isVpnBanned = MutableStateFlow(prefs.getBoolean("is_vpn_banned", false))
     val isVpnBanned: StateFlow<Boolean> = _isVpnBanned.asStateFlow()
     
@@ -1164,6 +1171,7 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
                 joinMutex.withLock {
                     when (val result = repository.joinTournament(id)) {
                         is JoinResult.Success -> {
+                            com.example.audio.SoundEffectManager.getInstance(getApplication()).playBillieGroove()
                             _toastMessage.emit(result.message)
                             onResult(true)
                         }
@@ -1197,6 +1205,7 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
                 depositMutex.withLock {
                     when (val result = repository.submitDepositRequest(amount, utrNumber, paymentRef)) {
                         is PlatformRepository.DepositResult.Success -> {
+                            com.example.audio.SoundEffectManager.getInstance(getApplication()).playBeatItPower()
                             _toastMessage.emit(result.message)
                         }
                         is PlatformRepository.DepositResult.Failure -> {
@@ -1217,6 +1226,7 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
             try {
                 val success = repository.registerFounderPass(tierId, tokensReward, priceInr, paymentRef)
                 if (success) {
+                    com.example.audio.SoundEffectManager.getInstance(getApplication()).playSmoothStab()
                     _toastMessage.emit("Founder Pass Activated! Tier $tierId confirmed.")
                     onComplete()
                 }
@@ -1361,6 +1371,7 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
                 joinMutex.withLock {
                     when (val result = repository.joinTournamentWithSlot(tournamentId, slotNumber, inGameName, characterId, teamName)) {
                         is JoinResult.Success -> {
+                            com.example.audio.SoundEffectManager.getInstance(getApplication()).playBillieGroove()
                             _toastMessage.emit(result.message)
                             _showConfetti.value = true
                             delay(3000)

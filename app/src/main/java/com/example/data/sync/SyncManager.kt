@@ -1,7 +1,11 @@
 package com.example.data.sync
 
+import android.app.Activity
+import android.app.Application
 import android.content.Context
+import android.os.Bundle
 import android.util.Log
+import com.example.data.repository.RepositoryManager
 import com.example.service.NotificationHelper
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -11,12 +15,18 @@ import com.google.firebase.database.ServerValue
 import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArraySet
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Data class representing the centralized state synchronized across Admin and User panels.
@@ -64,6 +74,10 @@ class SyncManager private constructor(private val context: Context) {
         const val SOURCE_USER_PANEL = "USER_PANEL"
         const val SOURCE_ADMIN_PANEL = "ADMIN_PANEL"
 
+        // Periodic Polling Interval: 5 minutes
+        const val PERIODIC_POLL_INTERVAL_MS = 5 * 60 * 1000L // 5 minutes periodic polling
+        private const val DEBOUNCE_SYNC_INTERVAL_MS = 3_000L  // 3s debounce between rapid foreground switches
+
         // Standard Event Types
         const val EVENT_TOURNAMENT_UPDATED = "TOURNAMENT_UPDATED"
         const val EVENT_SCHEDULE_CHANGED = "SCHEDULE_CHANGED"
@@ -93,6 +107,17 @@ class SyncManager private constructor(private val context: Context) {
 
     private val observers = CopyOnWriteArraySet<SyncObserver>()
     private val scope = CoroutineScope(Dispatchers.IO)
+    private val schedulerScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    private var periodicPollingJob: Job? = null
+    private val isForeground = AtomicBoolean(false)
+    private val activeActivityCount = AtomicInteger(0)
+
+    private val _isSyncing = MutableStateFlow(false)
+    val isSyncing: StateFlow<Boolean> = _isSyncing.asStateFlow()
+
+    private val _lastSyncTimestamp = MutableStateFlow(System.currentTimeMillis())
+    val lastSyncTimestamp: StateFlow<Long> = _lastSyncTimestamp.asStateFlow()
 
     private val _globalAppState = MutableStateFlow(GlobalAppState())
     val globalAppState: StateFlow<GlobalAppState> = _globalAppState.asStateFlow()
@@ -107,6 +132,140 @@ class SyncManager private constructor(private val context: Context) {
     init {
         monitorConnection()
         startGlobalStateListener()
+        setupLifecycleScheduler()
+    }
+
+    /**
+     * Installs application lifecycle callbacks to automatically detect
+     * when the app enters the foreground or resumes from the background,
+     * triggering instant data synchronization and driving the 5-minute periodic polling scheduler.
+     */
+    private fun setupLifecycleScheduler() {
+        val app = context.applicationContext as? Application
+        if (app != null) {
+            app.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
+                override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {}
+
+                override fun onActivityStarted(activity: Activity) {
+                    val count = activeActivityCount.incrementAndGet()
+                    if (count == 1) {
+                        Log.d(TAG, "SyncManager: App entered foreground (${activity.javaClass.simpleName}) -> triggering sync")
+                        onAppForeground(source = "app_start")
+                    }
+                }
+
+                override fun onActivityResumed(activity: Activity) {
+                    if (!isForeground.get()) {
+                        Log.d(TAG, "SyncManager: App resumed from background (${activity.javaClass.simpleName}) -> triggering sync")
+                        onAppForeground(source = "activity_resume")
+                    }
+                }
+
+                override fun onActivityPaused(activity: Activity) {}
+
+                override fun onActivityStopped(activity: Activity) {
+                    val count = activeActivityCount.decrementAndGet()
+                    if (count <= 0) {
+                        activeActivityCount.set(0)
+                        Log.d(TAG, "SyncManager: App entered background")
+                        onAppBackground(source = "app_stop")
+                    }
+                }
+
+                override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
+
+                override fun onActivityDestroyed(activity: Activity) {
+                    if (activeActivityCount.get() <= 0) {
+                        onAppBackground(source = "app_destroy")
+                    }
+                }
+            })
+            Log.i(TAG, "SyncManager lifecycle scheduler attached to Application successfully.")
+        }
+        // Launch the initial 5-minute periodic polling loop
+        startPeriodicPolling()
+    }
+
+    /**
+     * Called when the application enters the foreground or resumes from the background.
+     * Triggers data synchronization immediately and restarts the 5-minute periodic polling loop.
+     */
+    fun onAppForeground(source: String = "foreground") {
+        isForeground.set(true)
+        val now = System.currentTimeMillis()
+        if (now - _lastSyncTimestamp.value >= DEBOUNCE_SYNC_INTERVAL_MS) {
+            triggerDataSynchronization(force = true, source = source)
+        }
+        startPeriodicPolling()
+    }
+
+    /**
+     * Called when the application enters the background.
+     */
+    fun onAppBackground(source: String = "background") {
+        isForeground.set(false)
+        Log.d(TAG, "SyncManager: App transitioned to background [$source]")
+    }
+
+    /**
+     * Starts the Coroutine-based 5-minute periodic polling scheduler.
+     * Periodically queries the backend every 5 minutes while active.
+     */
+    fun startPeriodicPolling() {
+        periodicPollingJob?.cancel()
+        periodicPollingJob = schedulerScope.launch {
+            while (isActive) {
+                delay(PERIODIC_POLL_INTERVAL_MS)
+                Log.d(TAG, "SyncManager: 5-minute periodic polling timer triggered")
+                triggerDataSynchronization(force = false, source = "periodic_5min_poll")
+            }
+        }
+        Log.d(TAG, "SyncManager: 5-minute periodic polling scheduler started.")
+    }
+
+    /**
+     * Stops the periodic polling scheduler.
+     */
+    fun stopPeriodicPolling() {
+        periodicPollingJob?.cancel()
+        periodicPollingJob = null
+        Log.d(TAG, "SyncManager: Periodic polling scheduler stopped.")
+    }
+
+    /**
+     * Triggers complete data synchronization:
+     * 1. Refreshes Realtime Database 'global_app_state' node (Single Source of Truth)
+     * 2. Refreshes Room SQLite DB & remote repositories (tournaments, room credentials, wallet balance, user status)
+     */
+    fun triggerDataSynchronization(force: Boolean = true, source: String = "manual") {
+        schedulerScope.launch {
+            if (_isSyncing.value) {
+                Log.d(TAG, "SyncManager: Data synchronization already in progress, skipping [$source]")
+                return@launch
+            }
+            _isSyncing.value = true
+            try {
+                Log.i(TAG, "SyncManager: Starting data synchronization [source=$source, force=$force]")
+
+                // 1. Fetch latest 'global_app_state' from Firebase RTDB and dispatch to registered observers
+                refreshGlobalState()
+
+                // 2. Fetch remote updates for user, tournaments, transactions, and banners into Room database
+                try {
+                    val repository = RepositoryManager.getInstance(context).repository
+                    repository.refreshBackendSync(force = force)
+                } catch (e: Throwable) {
+                    Log.w(TAG, "SyncManager: Repository sync notice [$source]: ${e.message}")
+                }
+
+                _lastSyncTimestamp.value = System.currentTimeMillis()
+                Log.i(TAG, "SyncManager: Data synchronization completed successfully [source=$source]")
+            } catch (e: Throwable) {
+                Log.e(TAG, "SyncManager: Data synchronization error [$source]: ${e.message}", e)
+            } finally {
+                _isSyncing.value = false
+            }
+        }
     }
 
     /**

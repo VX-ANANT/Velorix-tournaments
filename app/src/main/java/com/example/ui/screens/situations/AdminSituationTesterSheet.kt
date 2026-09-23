@@ -565,6 +565,50 @@ fun AdminSituationTesterSheet(
                             }
                         }
 
+                        Spacer(Modifier.height(8.dp))
+
+                        // SyncManager Scheduler Status (Foreground & 5-min Polling)
+                        val isSyncManagerSyncing by syncManager.isSyncing.collectAsState()
+                        val lastSyncManagerTimestamp by syncManager.lastSyncTimestamp.collectAsState()
+                        val syncSecondsAgo = remember(lastSyncManagerTimestamp) {
+                            val diff = (System.currentTimeMillis() - lastSyncManagerTimestamp) / 1000
+                            if (diff < 5) "Just now" else "${diff}s ago"
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFF000000),
+                            border = BorderStroke(1.dp, Color(0xFF262626)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text("5-Min Coroutine Scheduler", fontSize = 11.sp, color = Color(0xFFE4E4E7), fontWeight = FontWeight.Medium)
+                                    Text("Triggers on Resume + Every 5m", fontSize = 9.sp, color = Color(0xFF71717A))
+                                }
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(if (isSyncManagerSyncing) "Syncing..." else syncSecondsAgo, fontSize = 10.sp, color = if (isSyncManagerSyncing) Color(0xFF38BDF8) else Color(0xFF34D399), fontWeight = FontWeight.SemiBold)
+                                    Spacer(Modifier.width(8.dp))
+                                    IconButton(
+                                        onClick = {
+                                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                            syncManager.triggerDataSynchronization(force = true, source = "admin_sheet")
+                                            Toast.makeText(context, "SyncManager 5-min sync triggered", Toast.LENGTH_SHORT).show()
+                                        },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(Icons.Rounded.Refresh, contentDescription = "Sync", tint = Color(0xFF38BDF8), modifier = Modifier.size(16.dp))
+                                    }
+                                }
+                            }
+                        }
+
                         Spacer(Modifier.height(10.dp))
                         Text("SIMULATE CROSS-PANEL UPDATES", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF64748B), letterSpacing = 0.5.sp)
                         Spacer(Modifier.height(8.dp))
@@ -781,6 +825,323 @@ fun AdminSituationTesterSheet(
                             Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(14.dp))
                             Spacer(Modifier.width(6.dp))
                             Text("Test Immediate Auto-Refresh Cycle", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(14.dp))
+
+            // Michael Jackson Signature SFX Soundboard Card (AMOLED Black, subtle & polished)
+            val soundEffectManager = remember { com.example.audio.SoundEffectManager.getInstance(context) }
+            var sfxEnabled by remember { mutableStateOf(soundEffectManager.isSoundEnabled()) }
+
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF0D0D0D)),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, Color(0xFF262626)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF171717)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.MusicNote,
+                                    contentDescription = null,
+                                    tint = Color(0xFFA855F7),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            Spacer(Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    "MJ Signature Audio Engine",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Text(
+                                    "Subtle 0.5s–1.2s SFX for Game Events",
+                                    fontSize = 10.sp,
+                                    color = Color(0xFF71717A)
+                                )
+                            }
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = if (sfxEnabled) Color(0x22A855F7) else Color(0x2271717A),
+                            border = BorderStroke(1.dp, if (sfxEnabled) Color(0x55A855F7) else Color(0x5571717A)),
+                            modifier = Modifier.clickable {
+                                val newState = !sfxEnabled
+                                sfxEnabled = newState
+                                soundEffectManager.setSoundEnabled(newState)
+                                Toast.makeText(context, if (newState) "SFX Enabled" else "SFX Muted", Toast.LENGTH_SHORT).show()
+                            }
+                        ) {
+                            Text(
+                                if (sfxEnabled) "SFX: ON" else "MUTED",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (sfxEnabled) Color(0xFFC084FC) else Color(0xFFA1A1AA),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+
+                    // Sound 1: Billie Jean Groove
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFF000000),
+                        border = BorderStroke(1.dp, Color(0xFF262626)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                soundEffectManager.playBillieGroove()
+                                Toast.makeText(context, "Playing: Billie Jean Groove (1.05s)", Toast.LENGTH_SHORT).show()
+                            }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("Billie Jean Groove", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFFF4F4F5))
+                                    Spacer(Modifier.width(6.dp))
+                                    Surface(
+                                        shape = RoundedCornerShape(4.dp),
+                                        color = Color(0x2238BDF8)
+                                    ) {
+                                        Text("1.05s", fontSize = 8.sp, color = Color(0xFF38BDF8), fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp))
+                                    }
+                                }
+                                Spacer(Modifier.height(2.dp))
+                                Text("Kick, acoustic snare crack & 116 BPM shuffle", fontSize = 10.sp, color = Color(0xFF71717A))
+                                Text("Situation: Match Join / Registration Confirmation", fontSize = 9.sp, color = Color(0xFF34D399), fontWeight = FontWeight.Medium)
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF18181B)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Rounded.PlayArrow, contentDescription = "Play", tint = Color(0xFF38BDF8), modifier = Modifier.size(16.dp))
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    // Sound 2: Smooth Criminal Brass & Slap Bass
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFF000000),
+                        border = BorderStroke(1.dp, Color(0xFF262626)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                soundEffectManager.playSmoothStab()
+                                Toast.makeText(context, "Playing: Smooth Criminal Brass Stab (1.15s)", Toast.LENGTH_SHORT).show()
+                            }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("Smooth Criminal Brass", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFFF4F4F5))
+                                    Spacer(Modifier.width(6.dp))
+                                    Surface(
+                                        shape = RoundedCornerShape(4.dp),
+                                        color = Color(0x22F43F5E)
+                                    ) {
+                                        Text("1.15s", fontSize = 8.sp, color = Color(0xFFFB7185), fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp))
+                                    }
+                                }
+                                Spacer(Modifier.height(2.dp))
+                                Text("Staccato horn stab & punchy funk slap bass", fontSize = 10.sp, color = Color(0xFF71717A))
+                                Text("Situation: Room Credentials Unlocked & Rewards", fontSize = 9.sp, color = Color(0xFFFB7185), fontWeight = FontWeight.Medium)
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF18181B)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Rounded.PlayArrow, contentDescription = "Play", tint = Color(0xFFFB7185), modifier = Modifier.size(16.dp))
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    // Sound 3: Beat It Power Synth
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFF000000),
+                        border = BorderStroke(1.dp, Color(0xFF262626)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                soundEffectManager.playBeatItPower()
+                                Toast.makeText(context, "Playing: Beat It Power Synth (0.85s)", Toast.LENGTH_SHORT).show()
+                            }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("Beat It Power Synth", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFFF4F4F5))
+                                    Spacer(Modifier.width(6.dp))
+                                    Surface(
+                                        shape = RoundedCornerShape(4.dp),
+                                        color = Color(0x22EAB308)
+                                    ) {
+                                        Text("0.85s", fontSize = 8.sp, color = Color(0xFFFACC15), fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp))
+                                    }
+                                }
+                                Spacer(Modifier.height(2.dp))
+                                Text("Analog power chord swell & transient sub-punch", fontSize = 10.sp, color = Color(0xFF71717A))
+                                Text("Situation: Wallet Deposit & Payment Success", fontSize = 9.sp, color = Color(0xFFFACC15), fontWeight = FontWeight.Medium)
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF18181B)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Rounded.PlayArrow, contentDescription = "Play", tint = Color(0xFFFACC15), modifier = Modifier.size(16.dp))
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    // Sound 4: Bad Funky Snap
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFF000000),
+                        border = BorderStroke(1.dp, Color(0xFF262626)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                soundEffectManager.playBadSnap()
+                                Toast.makeText(context, "Playing: Bad Funky Snap (0.45s)", Toast.LENGTH_SHORT).show()
+                            }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("Bad Funky Snap", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFFF4F4F5))
+                                    Spacer(Modifier.width(6.dp))
+                                    Surface(
+                                        shape = RoundedCornerShape(4.dp),
+                                        color = Color(0x2210B981)
+                                    ) {
+                                        Text("0.45s", fontSize = 8.sp, color = Color(0xFF34D399), fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp))
+                                    }
+                                }
+                                Spacer(Modifier.height(2.dp))
+                                Text("Tight acoustic finger snap & woody rimshot", fontSize = 10.sp, color = Color(0xFF71717A))
+                                Text("Situation: Copy Room ID/Password & Micro-Taps", fontSize = 9.sp, color = Color(0xFF34D399), fontWeight = FontWeight.Medium)
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF18181B)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Rounded.PlayArrow, contentDescription = "Play", tint = Color(0xFF34D399), modifier = Modifier.size(16.dp))
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    // Sound 5: Thriller Funk Chime
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFF000000),
+                        border = BorderStroke(1.dp, Color(0xFF262626)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                soundEffectManager.playThrillerChime()
+                                Toast.makeText(context, "Playing: Thriller Funk Chime (0.95s)", Toast.LENGTH_SHORT).show()
+                            }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("Thriller Funk Chime", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFFF4F4F5))
+                                    Spacer(Modifier.width(6.dp))
+                                    Surface(
+                                        shape = RoundedCornerShape(4.dp),
+                                        color = Color(0x22A855F7)
+                                    ) {
+                                        Text("0.95s", fontSize = 8.sp, color = Color(0xFFC084FC), fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp))
+                                    }
+                                }
+                                Spacer(Modifier.height(2.dp))
+                                Text("Vintage analog chime & shimmer reverb", fontSize = 10.sp, color = Color(0xFF71717A))
+                                Text("Situation: In-App Alerts & Announcements", fontSize = 9.sp, color = Color(0xFFC084FC), fontWeight = FontWeight.Medium)
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF18181B)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Rounded.PlayArrow, contentDescription = "Play", tint = Color(0xFFC084FC), modifier = Modifier.size(16.dp))
+                            }
                         }
                     }
                 }

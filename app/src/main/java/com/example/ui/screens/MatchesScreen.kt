@@ -524,6 +524,7 @@ fun UpcomingJoinedRow(match: Tournament, onClick: () -> Unit) {
                                     haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                     clipboard.setPrimaryClip(ClipData.newPlainText("Room Password", match.roomPassword))
+                                    com.example.audio.SoundEffectManager.getInstance(context).playBadSnap()
                                     Toast.makeText(context, "Room Password copied!", Toast.LENGTH_SHORT).show()
                                 },
                                 modifier = Modifier.size(32.dp)

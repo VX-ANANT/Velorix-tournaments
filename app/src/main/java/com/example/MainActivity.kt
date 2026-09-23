@@ -102,11 +102,13 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         enforceHighRefreshRate()
         com.example.service.EngagementNotificationScheduler.checkAndTriggerInAppEngagement(this)
+        com.example.data.sync.SyncManager.getInstance(this).onAppForeground(source = "main_activity_resume")
         com.example.data.sync.AutoRefreshManager.getInstance(this).onAppForeground(source = "main_activity_resume")
     }
 
     override fun onPause() {
         super.onPause()
+        com.example.data.sync.SyncManager.getInstance(this).onAppBackground(source = "main_activity_pause")
         com.example.data.sync.AutoRefreshManager.getInstance(this).onAppBackground(source = "main_activity_pause")
     }
 

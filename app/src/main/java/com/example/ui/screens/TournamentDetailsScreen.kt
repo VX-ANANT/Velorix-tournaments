@@ -593,6 +593,9 @@ fun RoomDetailsCard(match: Tournament) {
             Spacer(modifier = Modifier.height(12.dp))
             val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
             if (match.roomId.isNotBlank() && match.roomPassword.isNotBlank()) {
+                androidx.compose.runtime.LaunchedEffect(match.roomId, match.roomPassword) {
+                    com.example.audio.SoundEffectManager.getInstance(context).playSmoothStab(0.75f)
+                }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -617,6 +620,7 @@ fun RoomDetailsCard(match: Tournament) {
                                 onClick = {
                                     haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                                     clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(match.roomId))
+                                    com.example.audio.SoundEffectManager.getInstance(context).playBadSnap()
                                     Toast.makeText(context, "Room ID Copied: ${match.roomId}", Toast.LENGTH_SHORT).show()
                                 },
                                 modifier = Modifier.size(32.dp)
@@ -651,6 +655,7 @@ fun RoomDetailsCard(match: Tournament) {
                                 onClick = {
                                     haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                                     clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(match.roomPassword))
+                                    com.example.audio.SoundEffectManager.getInstance(context).playBadSnap()
                                     Toast.makeText(context, "Password Copied: ${match.roomPassword}", Toast.LENGTH_SHORT).show()
                                 },
                                 modifier = Modifier.size(32.dp)
