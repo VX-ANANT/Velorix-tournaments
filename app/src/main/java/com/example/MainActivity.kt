@@ -317,6 +317,7 @@ class MainActivity : ComponentActivity() {
                 val situationPreview by viewModel.situationPreview.collectAsStateWithLifecycle()
                 val isVpnDetected by viewModel.isVpnDetected.collectAsStateWithLifecycle()
                 val showDailyDeveloperPopup by viewModel.showDailyDeveloperPopup.collectAsStateWithLifecycle()
+                val liquidGlassConfig by viewModel.liquidGlassConfig.collectAsStateWithLifecycle()
                 var showAdminSituationSheet by remember { mutableStateOf(false) }
                 var showExplicitDeveloperPopup by remember { mutableStateOf(false) }
 
@@ -621,6 +622,7 @@ class MainActivity : ComponentActivity() {
                                         currentTabState = route
                                     },
                                     hazeState = hazeState,
+                                    config = liquidGlassConfig,
                                     modifier = Modifier.align(Alignment.BottomCenter)
                                 )
                             }
@@ -746,6 +748,45 @@ class MainActivity : ComponentActivity() {
                             },
                             onNavigateToLegal = { tab ->
                                 navController.navigate("legal_compliance/${tab.name}")
+                            },
+                            onNavigateToLiquidGlass = {
+                                navController.navigate("liquid_glass_settings")
+                            }
+                        )
+                    }
+
+                    // 6.5. DEDICATED LIQUID GLASS (BETA) ADVANCED CUSTOMIZATION
+                    composable(
+                        "liquid_glass_settings",
+                        enterTransition = {
+                            slideIntoContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                                animationSpec = tween(350, easing = FastOutSlowInEasing)
+                            ) + fadeIn(tween(300))
+                        },
+                        exitTransition = {
+                            slideOutOfContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                                animationSpec = tween(300, easing = FastOutSlowInEasing)
+                            ) + fadeOut(tween(250))
+                        },
+                        popEnterTransition = {
+                            slideIntoContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                                animationSpec = tween(350, easing = FastOutSlowInEasing)
+                            ) + fadeIn(tween(300))
+                        },
+                        popExitTransition = {
+                            slideOutOfContainer(
+                                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                                animationSpec = tween(300, easing = FastOutSlowInEasing)
+                            ) + fadeOut(tween(250))
+                        }
+                    ) {
+                        com.example.ui.screens.LiquidGlassSettingsScreen(
+                            viewModel = viewModel,
+                            onNavigateBack = {
+                                navController.navigateUp()
                             }
                         )
                     }

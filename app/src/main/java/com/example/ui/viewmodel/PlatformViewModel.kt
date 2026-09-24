@@ -23,9 +23,12 @@ import com.example.data.db.AppDatabase
 import com.example.data.model.Banner
 import com.example.data.model.LeaderboardPlayer
 import com.example.data.model.Tournament
+import com.example.data.model.LiquidGlassConfig
 import com.example.data.model.Transaction
 import com.example.data.model.User
 import com.example.data.model.UserReport
+import com.example.data.model.TournamentChatMessage
+import com.example.data.repository.TournamentChatRepository
 import com.example.data.repository.JoinResult
 import com.example.data.repository.PlatformRepository
 import com.example.data.repository.WithdrawResult
@@ -437,6 +440,68 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
 
     private val _themeMode = MutableStateFlow(prefs.getString("theme_mode", "system") ?: "system")
     val themeMode: StateFlow<String> = _themeMode.asStateFlow()
+
+    // -------------------------------------------------------------
+    // Apple Liquid Glass (Beta) Real-Time Configuration
+    // -------------------------------------------------------------
+    private val _liquidGlassConfig = MutableStateFlow(
+        LiquidGlassConfig(
+            floatingNavBar = prefs.getBoolean("lg_floating_navbar", true),
+            enableLiquidGlass = prefs.getBoolean("lg_enable_glass", true),
+            vibrancy = prefs.getFloat("lg_vibrancy", 1.0f),
+            blurRadius = prefs.getFloat("lg_blur_radius", 14f),
+            lensRefractionHeight = prefs.getFloat("lg_lens_refraction_height", 0.55f),
+            lensRefractionAmount = prefs.getFloat("lg_lens_refraction_amount", 0.16f),
+            chromaticAberration = prefs.getBoolean("lg_chromatic_aberration", true),
+            depthEffect = prefs.getBoolean("lg_depth_effect", true),
+            surfaceTint = prefs.getString("lg_surface_tint", "obsidian") ?: "obsidian",
+            surfaceOpacity = prefs.getFloat("lg_surface_opacity", 0.28f),
+            glassTextColor = prefs.getString("lg_glass_text_color", "white") ?: "white",
+            glassPlayer = prefs.getBoolean("lg_glass_player", true),
+            glassMiniPlayer = prefs.getBoolean("lg_glass_mini_player", true),
+            glassNavBar = prefs.getBoolean("lg_glass_nav_bar", true),
+            glassCards = prefs.getBoolean("lg_glass_cards", true)
+        )
+    )
+    val liquidGlassConfig: StateFlow<LiquidGlassConfig> = _liquidGlassConfig.asStateFlow()
+
+    fun updateLiquidGlassConfig(updater: (LiquidGlassConfig) -> LiquidGlassConfig) {
+        val newConfig = updater(_liquidGlassConfig.value)
+        _liquidGlassConfig.value = newConfig
+        prefs.edit()
+            .putBoolean("lg_floating_navbar", newConfig.floatingNavBar)
+            .putBoolean("lg_enable_glass", newConfig.enableLiquidGlass)
+            .putFloat("lg_vibrancy", newConfig.vibrancy)
+            .putFloat("lg_blur_radius", newConfig.blurRadius)
+            .putFloat("lg_lens_refraction_height", newConfig.lensRefractionHeight)
+            .putFloat("lg_lens_refraction_amount", newConfig.lensRefractionAmount)
+            .putBoolean("lg_chromatic_aberration", newConfig.chromaticAberration)
+            .putBoolean("lg_depth_effect", newConfig.depthEffect)
+            .putString("lg_surface_tint", newConfig.surfaceTint)
+            .putFloat("lg_surface_opacity", newConfig.surfaceOpacity)
+            .putString("lg_glass_text_color", newConfig.glassTextColor)
+            .putBoolean("lg_glass_player", newConfig.glassPlayer)
+            .putBoolean("lg_glass_mini_player", newConfig.glassMiniPlayer)
+            .putBoolean("lg_glass_nav_bar", newConfig.glassNavBar)
+            .putBoolean("lg_glass_cards", newConfig.glassCards)
+            .apply()
+    }
+
+    fun setFloatingNavBar(enabled: Boolean) = updateLiquidGlassConfig { it.copy(floatingNavBar = enabled) }
+    fun setEnableLiquidGlass(enabled: Boolean) = updateLiquidGlassConfig { it.copy(enableLiquidGlass = enabled) }
+    fun setVibrancy(vibrancy: Float) = updateLiquidGlassConfig { it.copy(vibrancy = vibrancy) }
+    fun setBlurRadius(blurRadius: Float) = updateLiquidGlassConfig { it.copy(blurRadius = blurRadius) }
+    fun setLensRefractionHeight(height: Float) = updateLiquidGlassConfig { it.copy(lensRefractionHeight = height) }
+    fun setLensRefractionAmount(amount: Float) = updateLiquidGlassConfig { it.copy(lensRefractionAmount = amount) }
+    fun setChromaticAberration(enabled: Boolean) = updateLiquidGlassConfig { it.copy(chromaticAberration = enabled) }
+    fun setDepthEffect(enabled: Boolean) = updateLiquidGlassConfig { it.copy(depthEffect = enabled) }
+    fun setSurfaceTint(tint: String) = updateLiquidGlassConfig { it.copy(surfaceTint = tint) }
+    fun setSurfaceOpacity(opacity: Float) = updateLiquidGlassConfig { it.copy(surfaceOpacity = opacity) }
+    fun setGlassTextColor(color: String) = updateLiquidGlassConfig { it.copy(glassTextColor = color) }
+    fun setGlassPlayer(enabled: Boolean) = updateLiquidGlassConfig { it.copy(glassPlayer = enabled) }
+    fun setGlassMiniPlayer(enabled: Boolean) = updateLiquidGlassConfig { it.copy(glassMiniPlayer = enabled) }
+    fun setGlassNavBar(enabled: Boolean) = updateLiquidGlassConfig { it.copy(glassNavBar = enabled) }
+    fun setGlassCards(enabled: Boolean) = updateLiquidGlassConfig { it.copy(glassCards = enabled) }
 
     private val _hasCompletedOnboarding = MutableStateFlow(prefs.getBoolean("has_completed_onboarding", false))
     val hasCompletedOnboarding: StateFlow<Boolean> = _hasCompletedOnboarding.asStateFlow()
@@ -1493,6 +1558,51 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
                 val err = res.exceptionOrNull()?.localizedMessage ?: "Failed to save tournament"
                 _toastMessage.emit(err)
                 onResult(false)
+            }
+        }
+    }
+
+    private val chatRepository = TournamentChatRepository()
+
+    /**
+     * Observes real-time chat messages for a specific tournament lobby from Firestore.
+     */
+    fun getTournamentChatMessages(tournamentId: String): Flow<List<TournamentChatMessage>> {
+        return chatRepository.observeMessages(tournamentId)
+    }
+
+    /**
+     * Sends a real-time chat message to the tournament lobby in Firestore.
+     */
+    fun sendTournamentChatMessage(
+        tournamentId: String,
+        text: String,
+        messageType: String = "TEXT",
+        onResult: (Boolean, String?) -> Unit = { _, _ -> }
+    ) {
+        val currentUser = userState.value
+        val senderId = currentUser?.id ?: "anonymous_${System.currentTimeMillis() % 10000}"
+        val senderName = currentUser?.inGameName?.ifBlank { currentUser.username }?.ifBlank { currentUser.fullName }?.ifBlank { "Competitor" } ?: "Player"
+        val senderAvatar = currentUser?.avatarUrl ?: ""
+        val senderTeam = ""
+
+        viewModelScope.launch {
+            val result = chatRepository.sendMessage(
+                tournamentId = tournamentId,
+                senderId = senderId,
+                senderName = senderName,
+                senderAvatar = senderAvatar,
+                senderTeam = senderTeam,
+                senderSlotNumber = null,
+                text = text,
+                messageType = messageType
+            )
+            if (result.isSuccess) {
+                onResult(true, result.getOrNull())
+            } else {
+                val err = result.exceptionOrNull()?.localizedMessage ?: "Failed to send message"
+                _toastMessage.emit(err)
+                onResult(false, err)
             }
         }
     }

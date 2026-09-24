@@ -1,14 +1,14 @@
 package com.example.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,7 +16,6 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -29,17 +28,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Leaderboard
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -47,12 +43,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
@@ -61,25 +57,51 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
+import com.example.ui.theme.GffDevanagariFontFamily
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeChild
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-/**
- * High-performance, GPU accelerated Liquid Glass Floating Dock with Apple-like
- * interactive draggable physics, rubberband stretch dynamics, and spring overshoot bounce.
- * Inspired by BitChord & Apple fluid design systems.
- */
 data class DockTabItem(
     val route: String,
     val label: String,
     val icon: ImageVector
+)
+
+private val DOCK_HEIGHT = 56.dp
+private val DOCK_SHAPE = CircleShape
+
+private val AppleLiquidGlassBackground = Brush.verticalGradient(
+    colors = listOf(
+        Color(0x350E121E), // ~21% translucent obsidian glass
+        Color(0x55090C16)  // ~33% translucent deep glass tint
+    )
+)
+
+private val AppleSpecularRimGradient = Brush.verticalGradient(
+    0.0f to Color.White.copy(alpha = 0.55f), // Crisp top light catcher
+    0.18f to Color.White.copy(alpha = 0.20f), // Smooth transmission
+    0.75f to Color.White.copy(alpha = 0.05f), // Subdued body rim
+    1.0f to Color.White.copy(alpha = 0.22f)  // Ambient bottom bounce reflection
+)
+
+private val ActivePillGlassBackground = Brush.verticalGradient(
+    colors = listOf(
+        Color.White.copy(alpha = 0.18f),
+        Color.White.copy(alpha = 0.07f)
+    )
+)
+
+private val ActivePillSpecularGradient = Brush.verticalGradient(
+    0.0f to Color.White.copy(alpha = 0.50f),
+    0.4f to Color.White.copy(alpha = 0.18f),
+    1.0f to Color.White.copy(alpha = 0.12f)
 )
 
 @Composable
@@ -96,7 +118,6 @@ fun LiquidGlassDock(
     val homeIcon = ImageVector.vectorResource(id = R.drawable.ic_iconsax_home)
     val matchesIcon = ImageVector.vectorResource(id = R.drawable.ic_iconsax_matches)
     val walletIcon = ImageVector.vectorResource(id = R.drawable.ic_iconsax_wallet)
-    val profileIcon = ImageVector.vectorResource(id = R.drawable.ic_iconsax_profile)
 
     val tabs = remember(homeIcon, matchesIcon, walletIcon) {
         listOf(
@@ -109,20 +130,16 @@ fun LiquidGlassDock(
 
     val selectedIndex = tabs.indexOfFirst { it.route == currentTab }.let { if (it == -1) 0 else it }
 
-    // Physical measurements for fluid spring tracking
     var containerWidthPx by remember { mutableFloatStateOf(0f) }
     val tabCount = tabs.size
 
-    // Indicator animated offset (continuous float in pixels)
     val indicatorOffsetAnim = remember { Animatable(0f) }
-    // Elastic stretch scales
     val indicatorScaleX = remember { Animatable(1f) }
     val indicatorScaleY = remember { Animatable(1f) }
 
     var isDragging by remember { mutableStateOf(false) }
     val velocityTracker = remember { VelocityTracker() }
 
-    // Synchronize indicator when currentTab changes externally (or upon initial layout)
     LaunchedEffect(selectedIndex, containerWidthPx) {
         if (containerWidthPx > 0 && !isDragging) {
             val tabWidthPx = containerWidthPx / tabCount
@@ -130,8 +147,8 @@ fun LiquidGlassDock(
             indicatorOffsetAnim.animateTo(
                 targetValue = targetOffset,
                 animationSpec = spring(
-                    dampingRatio = 0.68f, // Apple-style fluid overshoot bounce
-                    stiffness = 380f
+                    dampingRatio = 0.82f,
+                    stiffness = 420f
                 )
             )
         }
@@ -141,52 +158,50 @@ fun LiquidGlassDock(
         modifier = modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // --- 1. THE MAIN FLOATING LIQUID GLASS DOCK ---
         Box(
             modifier = Modifier
                 .weight(1f)
-                .height(72.dp)
-                .clip(RoundedCornerShape(36.dp))
+                .height(DOCK_HEIGHT)
+                .shadow(
+                    elevation = 16.dp,
+                    shape = DOCK_SHAPE,
+                    ambientColor = Color.Black.copy(alpha = 0.35f),
+                    spotColor = Color.Black.copy(alpha = 0.55f)
+                )
+                .clip(DOCK_SHAPE)
                 .hazeChild(
                     state = hazeState,
-                    shape = RoundedCornerShape(36.dp)
+                    shape = DOCK_SHAPE
                 )
-                .lensRefraction(
-                    refractionIndex = 1.45f,
-                    lensCurvature = 0.85f,
-                    chromaticSplit = 0.035f
-                )
-                // Multi-layered Realtime Frosted Glass Refraction Tint
-                .background(
-                    brush = Brush.linearGradient(
-                        colors = listOf(
-                            Color(0xCC090D14), // Deep subtle obsidian-blue glass tint
-                            Color(0x99121824)
-                        )
+                .background(brush = AppleLiquidGlassBackground)
+                .drawBehind {
+                    drawRoundRect(
+                        brush = Brush.verticalGradient(
+                            0.0f to Color.White.copy(alpha = 0.12f),
+                            0.5f to Color.White.copy(alpha = 0.02f),
+                            1.0f to Color.Transparent
+                        ),
+                        size = androidx.compose.ui.geometry.Size(size.width, size.height * 0.55f),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2f, size.height / 2f)
                     )
-                )
-                // 1px Specular Rim Light Gradient (Subtle top sheen highlight)
+                }
                 .border(
                     width = 1.dp,
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = 0.22f), // High specular light reflection
-                            Color.White.copy(alpha = 0.05f),
-                            Color.Transparent
-                        )
-                    ),
-                    shape = RoundedCornerShape(36.dp)
+                    brush = AppleSpecularRimGradient,
+                    shape = DOCK_SHAPE
                 )
+                .padding(horizontal = 5.dp, vertical = 5.dp)
                 .onGloballyPositioned { coordinates ->
                     containerWidthPx = coordinates.size.width.toFloat()
                 }
                 .pointerInput(tabCount) {
                     detectHorizontalDragGestures(
-                        onDragStart = { offset ->
+                        onDragStart = {
                             isDragging = true
                             velocityTracker.resetTracking()
                         },
@@ -195,10 +210,8 @@ fun LiquidGlassDock(
                             if (containerWidthPx > 0) {
                                 val tabWidthPx = containerWidthPx / tabCount
                                 val velocity = velocityTracker.calculateVelocity().x
-
-                                // Calculate which tab to snap to, accounting for fling momentum
                                 val currentOffset = indicatorOffsetAnim.value
-                                val estimatedTargetOffset = currentOffset + (velocity * 0.12f)
+                                val estimatedTargetOffset = currentOffset + (velocity * 0.10f)
                                 val rawTargetIndex = (estimatedTargetOffset / tabWidthPx).roundToInt()
                                 val targetIndex = rawTargetIndex.coerceIn(0, tabCount - 1)
 
@@ -207,25 +220,15 @@ fun LiquidGlassDock(
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
 
                                 coroutineScope.launch {
-                                    // Elastic spring snap back with squish-release bounce
                                     launch {
-                                        indicatorScaleX.animateTo(
-                                            1f,
-                                            spring(dampingRatio = 0.58f, stiffness = 420f)
-                                        )
+                                        indicatorScaleX.animateTo(1f, spring(dampingRatio = 0.82f, stiffness = 420f))
                                     }
                                     launch {
-                                        indicatorScaleY.animateTo(
-                                            1f,
-                                            spring(dampingRatio = 0.58f, stiffness = 420f)
-                                        )
+                                        indicatorScaleY.animateTo(1f, spring(dampingRatio = 0.82f, stiffness = 420f))
                                     }
                                     indicatorOffsetAnim.animateTo(
                                         targetValue = targetIndex * tabWidthPx,
-                                        animationSpec = spring(
-                                            dampingRatio = 0.65f, // Bouncy spring settle
-                                            stiffness = 340f
-                                        )
+                                        animationSpec = spring(dampingRatio = 0.82f, stiffness = 420f)
                                     )
                                 }
                             }
@@ -239,7 +242,7 @@ fun LiquidGlassDock(
                                     indicatorScaleY.snapTo(1f)
                                     indicatorOffsetAnim.animateTo(
                                         targetValue = selectedIndex * tabWidthPx,
-                                        animationSpec = spring(dampingRatio = 0.72f, stiffness = 400f)
+                                        animationSpec = spring(dampingRatio = 0.82f, stiffness = 420f)
                                     )
                                 }
                             }
@@ -254,7 +257,6 @@ fun LiquidGlassDock(
                                 val currentVal = indicatorOffsetAnim.value
                                 val nextVal = currentVal + dragAmount
 
-                                // Rubberband overscroll resistance when dragged past boundaries
                                 val boundedVal = if (nextVal < 0) {
                                     currentVal + (dragAmount * 0.35f)
                                 } else if (nextVal > maxOffset) {
@@ -265,14 +267,11 @@ fun LiquidGlassDock(
 
                                 coroutineScope.launch {
                                     indicatorOffsetAnim.snapTo(boundedVal)
-
-                                    // Dynamic Fluid Stretching Math based on drag magnitude
-                                    val stretchFactor = (abs(dragAmount) / 18f).coerceIn(0f, 0.22f)
+                                    val stretchFactor = (abs(dragAmount) / 24f).coerceIn(0f, 0.12f)
                                     indicatorScaleX.snapTo(1f + stretchFactor)
-                                    indicatorScaleY.snapTo(1f - (stretchFactor * 0.55f))
+                                    indicatorScaleY.snapTo(1f - (stretchFactor * 0.45f))
                                 }
 
-                                // Haptic detent feedback when sliding across tabs
                                 val crossedIndex = (boundedVal / tabWidthPx).roundToInt().coerceIn(0, tabCount - 1)
                                 if (crossedIndex != selectedIndex && crossedIndex in 0 until tabCount) {
                                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -282,7 +281,7 @@ fun LiquidGlassDock(
                     )
                 }
         ) {
-            // --- SLIDING LIQUID PILL CAPSULE & GLOW (BACKGROUND LAYER) ---
+            // --- SLIDING ACTIVE PILL CAPSULE ---
             if (containerWidthPx > 0) {
                 val tabWidthDp = with(density) { (containerWidthPx / tabCount).toDp() }
                 val currentOffsetDp = with(density) { indicatorOffsetAnim.value.toDp() }
@@ -292,80 +291,47 @@ fun LiquidGlassDock(
                         .offset(x = currentOffsetDp)
                         .width(tabWidthDp)
                         .fillMaxHeight()
-                        .padding(horizontal = 6.dp, vertical = 6.dp)
+                        .padding(horizontal = 2.dp, vertical = 1.dp)
                         .graphicsLayer {
                             scaleX = indicatorScaleX.value
                             scaleY = indicatorScaleY.value
                         }
-                ) {
-                    // Radiant Radial Bloom / Neon Glow behind active pill
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .scale(1.18f)
-                            .background(
-                                brush = Brush.radialGradient(
-                                    colors = listOf(
-                                        Color(0xFF0070F3).copy(alpha = 0.55f), // Vercel/Electric Blue liquid bloom
-                                        Color(0xFF38BDF8).copy(alpha = 0.20f),
-                                        Color.Transparent
-                                    )
-                                ),
-                                shape = RoundedCornerShape(30.dp)
-                            )
-                    )
-
-                    // Frosted Liquid Pill Body with Inner Refraction Stroke
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(RoundedCornerShape(30.dp))
-                            .background(
-                                brush = Brush.verticalGradient(
-                                    colors = listOf(
-                                        Color.White.copy(alpha = 0.18f), // Glass top specular sheen
-                                        Color.White.copy(alpha = 0.08f)
-                                    )
-                                )
-                            )
-                            .border(
-                                width = 1.dp,
-                                brush = Brush.verticalGradient(
-                                    colors = listOf(
-                                        Color.White.copy(alpha = 0.35f), // High-clarity refraction rim
-                                        Color.White.copy(alpha = 0.08f)
-                                    )
-                                ),
-                                shape = RoundedCornerShape(30.dp)
-                            )
-                    )
-                }
+                        .clip(CircleShape)
+                        .background(brush = ActivePillGlassBackground)
+                        .border(
+                            width = 1.dp,
+                            brush = ActivePillSpecularGradient,
+                            shape = CircleShape
+                        )
+                )
             }
 
-            // --- TAB ICONS & TYPOGRAPHY ROW (FOREGROUND LAYER) ---
+            // --- TAB ICONS & TYPOGRAPHY ROW ---
             Row(
                 modifier = Modifier.fillMaxSize(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                tabs.forEachIndexed { index, tab ->
+                tabs.forEachIndexed { _, tab ->
                     val isSelected = currentTab == tab.route
 
-                    // Touch down scale bounce for snappy feedback
-                    val itemScale by animateFloatAsState(
-                        targetValue = if (isSelected) 1.04f else 0.96f,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessMediumLow
-                        ),
-                        label = "tabItemScale"
+                    val iconScale by animateFloatAsState(
+                        targetValue = if (isSelected) 1.05f else 0.95f,
+                        animationSpec = spring(dampingRatio = 0.85f, stiffness = 450f),
+                        label = "dockIconScale"
+                    )
+
+                    val tint by animateColorAsState(
+                        targetValue = if (isSelected) Color.White else Color(0xFF94A3B8).copy(alpha = 0.70f),
+                        animationSpec = tween(180),
+                        label = "dockTint"
                     )
 
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
-                            .clip(RoundedCornerShape(36.dp))
+                            .clip(CircleShape)
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
@@ -381,30 +347,35 @@ fun LiquidGlassDock(
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center,
-                            modifier = Modifier.graphicsLayer {
-                                scaleX = itemScale
-                                scaleY = itemScale
-                            }
+                            modifier = Modifier.fillMaxHeight()
                         ) {
                             Icon(
                                 imageVector = tab.icon,
                                 contentDescription = tab.label,
-                                tint = if (isSelected) Color.White else Color(0xFF94A3B8).copy(alpha = 0.82f),
-                                modifier = Modifier.size(if (isSelected) 25.dp else 23.dp)
+                                tint = tint,
+                                modifier = Modifier
+                                    .size(if (isSelected) 21.dp else 22.dp)
+                                    .graphicsLayer {
+                                        scaleX = iconScale
+                                        scaleY = iconScale
+                                    }
                             )
 
                             AnimatedVisibility(
                                 visible = isSelected,
-                                enter = androidx.compose.animation.expandVertically(expandFrom = Alignment.Top) + fadeIn(),
-                                exit = androidx.compose.animation.shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut()
+                                enter = fadeIn(tween(160)),
+                                exit = fadeOut(tween(100))
                             ) {
                                 Text(
                                     text = tab.label,
                                     color = Color.White,
-                                    fontSize = 11.sp,
+                                    fontSize = 10.sp,
+                                    fontFamily = GffDevanagariFontFamily,
                                     fontWeight = FontWeight.Bold,
-                                    letterSpacing = 0.3.sp,
-                                    modifier = Modifier.padding(top = 3.dp)
+                                    letterSpacing = 0.2.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.padding(top = 1.dp)
                                 )
                             }
                         }
@@ -413,51 +384,62 @@ fun LiquidGlassDock(
             }
         }
 
-        // --- 2. THE SATELLITE PROFILE LIQUID ORB ---
+        // --- 2. SATELLITE PROFILE ORB (56dp matching size) ---
         val isProfileSelected = currentTab == "profile"
         val profileScale by animateFloatAsState(
-            targetValue = if (isProfileSelected) 1.06f else 1f,
+            targetValue = if (isProfileSelected) 1.05f else 1f,
             animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessLow
+                dampingRatio = 0.85f,
+                stiffness = 450f
             ),
-            label = "profileScale"
+            label = "dockProfileScale"
+        )
+        val profileTint by animateColorAsState(
+            targetValue = if (isProfileSelected) Color.White else Color(0xFF94A3B8).copy(alpha = 0.70f),
+            animationSpec = tween(180),
+            label = "dockProfileTint"
         )
 
         Box(
             modifier = Modifier
-                .size(72.dp)
+                .size(DOCK_HEIGHT)
                 .graphicsLayer {
                     scaleX = profileScale
                     scaleY = profileScale
                 }
+                .shadow(
+                    elevation = 16.dp,
+                    shape = CircleShape,
+                    ambientColor = Color.Black.copy(alpha = 0.35f),
+                    spotColor = Color.Black.copy(alpha = 0.55f)
+                )
                 .clip(CircleShape)
                 .hazeChild(
                     state = hazeState,
                     shape = CircleShape
                 )
-                .lensRefraction(
-                    refractionIndex = 1.45f,
-                    lensCurvature = 0.9f,
-                    chromaticSplit = 0.035f
-                )
-                .background(
-                    brush = Brush.linearGradient(
-                        colors = listOf(
-                            Color(0xCC090D14),
-                            Color(0x99121824)
-                        )
+                .background(brush = AppleLiquidGlassBackground)
+                .drawBehind {
+                    drawRoundRect(
+                        brush = Brush.verticalGradient(
+                            0.0f to Color.White.copy(alpha = 0.14f),
+                            0.5f to Color.White.copy(alpha = 0.02f),
+                            1.0f to Color.Transparent
+                        ),
+                        size = androidx.compose.ui.geometry.Size(size.width, size.height * 0.55f),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2f, size.height / 2f)
                     )
-                )
+                }
                 .border(
                     width = 1.dp,
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            if (isProfileSelected) Color(0xFF0070F3).copy(alpha = 0.8f) else Color.White.copy(alpha = 0.22f),
-                            Color.White.copy(alpha = 0.05f),
-                            Color.Transparent
+                    brush = if (isProfileSelected) {
+                        Brush.verticalGradient(
+                            0.0f to Color.White.copy(alpha = 0.65f),
+                            0.2f to Color.White.copy(alpha = 0.30f),
+                            0.8f to Color.White.copy(alpha = 0.10f),
+                            1.0f to Color.White.copy(alpha = 0.35f)
                         )
-                    ),
+                    } else AppleSpecularRimGradient,
                     shape = CircleShape
                 )
                 .clickable(
@@ -470,25 +452,15 @@ fun LiquidGlassDock(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            // Radiant Bloom around Profile Orb when selected
-            val bloomAlpha by animateFloatAsState(
-                targetValue = if (isProfileSelected) 1f else 0f,
-                animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-                label = "profileBloomAlpha"
-            )
-            if (bloomAlpha > 0.01f) {
+            if (isProfileSelected) {
                 Box(
                     modifier = Modifier
-                        .size(56.dp)
-                        .graphicsLayer { alpha = bloomAlpha }
-                        .background(
-                            brush = Brush.radialGradient(
-                                colors = listOf(
-                                    Color(0xFF0070F3).copy(alpha = 0.65f),
-                                    Color(0xFF38BDF8).copy(alpha = 0.25f),
-                                    Color.Transparent
-                                )
-                            ),
+                        .size(DOCK_HEIGHT - 12.dp)
+                        .clip(CircleShape)
+                        .background(brush = ActivePillGlassBackground)
+                        .border(
+                            width = 1.dp,
+                            brush = ActivePillSpecularGradient,
                             shape = CircleShape
                         )
                 )
@@ -497,8 +469,8 @@ fun LiquidGlassDock(
             Icon(
                 imageVector = ImageVector.vectorResource(id = R.drawable.ic_iconsax_profile),
                 contentDescription = "Profile",
-                tint = if (isProfileSelected) Color.White else Color(0xFF94A3B8).copy(alpha = 0.82f),
-                modifier = Modifier.size(if (isProfileSelected) 28.dp else 24.dp)
+                tint = profileTint,
+                modifier = Modifier.size(if (isProfileSelected) 24.dp else 22.dp)
             )
         }
     }

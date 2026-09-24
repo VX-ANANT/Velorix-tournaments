@@ -99,6 +99,21 @@
 
 ---
 
+## SYSTEM SPECIFICATIONS & DETAILED WORKFLOW DOCUMENTATION
+
+Comprehensive deep-dive architecture, design systems, synchronization pipelines, and operational guidelines:
+
+| DOCUMENTATION MODULE | DESCRIPTION & SCOPE | KEY TECH & INVARIANTS | DIRECT LINK |
+| :--- | :--- | :--- | :---: |
+| **🎨 Design System Specification** | Pure AMOLED Black (`#000000`) theme, M3 design tokens, typography scale, Michael Jackson signature SFX audio catalog, accessibility, and high refresh-rate enforcement. | Jetpack Compose M3, SoundPool, WCAG AAA, Orbitron/Inter Fonts | [`DESIGN.md`](./DESIGN.md) |
+| **⚡ End-to-End Workflow Architecture** | Complete 4-stage operational pipeline: player onboarding, UPI instant escrow & wallet accounting, match lifecycle, and real-time state synchronization. | Android Room 2.6, UPI Intent API, Kotlin Coroutines, Rate Limiters | [`WORKFLOW.md`](./WORKFLOW.md) |
+| **🔄 Admin-to-Client Sync Architecture** | Firebase Realtime Database Single Source of Truth (SSOT), `SyncManager` background lifecycle scheduler, and 5-min periodic polling. | Firebase RTDB, ValueEventListener, SupervisorJob, StateFlow | [`SYNC_ARCHITECTURE.md`](./SYNC_ARCHITECTURE.md) |
+| **🏛️ System Architecture Abstract** | Clean Architecture, domain use-cases, repository contracts, unidirectional data flow, and error boundary models. | Clean MVVM/MVI, Domain Invariants, Dependency Inversion | [`ARCHITECTURE.md`](./ARCHITECTURE.md) |
+| **⚖️ Fair Play & Anti-Cheat Policy** | Anti-cheat integrity detection, emulator/root isolation, ban rules, and tournament conduct policies. | Integrity Sentry, Device Fingerprinting, Watchdog Bot | [`FAIR_PLAY_POLICY.md`](./FAIR_PLAY_POLICY.md) |
+| **📜 Government & Regulatory Compliance** | Skill-based competitive gaming regulatory declarations, tax compliance, and KYC guidelines. | Legal Invariants, Age Verification, Payout Auditing | [`GOVERNMENT_COMPLIANCE.md`](./GOVERNMENT_COMPLIANCE.md) |
+
+---
+
 ## CORE ARCHITECTURAL PILLARS
 
 <table>

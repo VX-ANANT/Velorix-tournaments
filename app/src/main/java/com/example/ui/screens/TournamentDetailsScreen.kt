@@ -47,6 +47,7 @@ import androidx.core.app.NotificationCompat
 import androidx.compose.ui.graphics.drawscope.Stroke
 import android.widget.Toast
 import com.example.ui.components.TournamentLobby
+import com.example.ui.components.TournamentLobbyChat
 import com.example.ui.components.TournamentPrizePieChart
 import com.example.service.NotificationHelper
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
@@ -115,7 +116,7 @@ fun TournamentDetailsScreen(
     var showSuccessAnim by remember { mutableStateOf(false) }
     var showSlotPicker by remember { mutableStateOf(false) }
     var showMatchPass by remember { mutableStateOf(false) }
-    val tabs = listOf("DETAILS", "PRIZE POOL", "RULES")
+    val tabs = listOf("DETAILS", "LOBBY CHAT", "PRIZE POOL", "RULES")
 
     val isAnyPopupOpen = showSlotPicker || showMatchPass
     val bgBlurRadius by animateDpAsState(
@@ -385,9 +386,15 @@ fun TournamentDetailsScreen(
                         label = "TournamentTabContentAnimation"
                     ) { targetTab ->
                         when (targetTab) {
-                            0 -> DetailsTabContent(t)
-                            1 -> PrizePoolTabContent(t)
-                            2 -> RulesTabContent()
+                            0 -> DetailsTabContent(t, onOpenChat = { selectedTabIndex = 1 })
+                            1 -> TournamentLobbyChat(
+                                viewModel = viewModel,
+                                tournament = t,
+                                currentUser = currentUser,
+                                myParticipant = myParticipant
+                            )
+                            2 -> PrizePoolTabContent(t)
+                            3 -> RulesTabContent()
                         }
                     }
                 }
@@ -734,16 +741,17 @@ fun RoomDetailsCard(match: Tournament) {
 }
 
 @Composable
-fun DetailsTabContent(match: Tournament) {
+fun DetailsTabContent(
+    match: Tournament,
+    onOpenChat: (() -> Unit)? = null
+) {
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
-
-
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         if (match.joined) {
             RoomDetailsCard(match)
         }
-        TournamentLobby(tournament = match)
+        TournamentLobby(tournament = match, onOpenChat = onOpenChat)
         
         // Interactive Donut/Pie Chart for Tournament Details
         TournamentPrizePieChart(tournament = match)

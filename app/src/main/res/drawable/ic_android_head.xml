@@ -1,0 +1,32 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="28dp"
+    android:viewportWidth="48"
+    android:viewportHeight="28">
+    <!-- Left Antenna -->
+    <path
+        android:fillColor="#3DDC84"
+        android:strokeColor="#3DDC84"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M14.5,8.5 L10.5,1.5" />
+    <!-- Right Antenna -->
+    <path
+        android:fillColor="#3DDC84"
+        android:strokeColor="#3DDC84"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M33.5,8.5 L37.5,1.5" />
+    <!-- Robot Head Dome -->
+    <path
+        android:fillColor="#3DDC84"
+        android:pathData="M6,27 C6,15.5 14,8 24,8 C34,8 42,15.5 42,27 Z" />
+    <!-- Left Eye -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M16,19 A2,2 0 1,1 16,15 A2,2 0 1,1 16,19 Z" />
+    <!-- Right Eye -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M32,19 A2,2 0 1,1 32,15 A2,2 0 1,1 32,19 Z" />
+</vector>
