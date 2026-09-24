@@ -2,7 +2,7 @@
 
 <div align="center">
 
-<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=0,2,11,20&height=200&section=header&text=ADMIN%20%E2%86%94%20CLIENT%20SYNC%20ENGINE&fontSize=38&fontColor=ffffff&fontAlignY=38&animation=twinkling&desc=CENTRALIZED%20FIREBASE%20REALTIME%20PIPELINE%20%E2%80%A2%20OFFLINE%20ROOM%20CACHE%20%E2%80%A2%20LIFECYCLE%20SCHEDULER&descAlignY=62&descAlign=50&descSize=14" width="100%" alt="VeloRix Sync Banner" />
+<img src="https://capsule-render.vercel.app/api?type=blur&color=gradient&customColorList=0,2,11,20&height=200&section=header&text=ADMIN%20%E2%86%94%20CLIENT%20SYNC%20ENGINE&fontSize=38&fontColor=ffffff&fontAlignY=38&animation=twinkling&desc=CENTRALIZED%20FIREBASE%20REALTIME%20PIPELINE%20%E2%80%A2%20OFFLINE%20ROOM%20CACHE%20%E2%80%A2%20LIFECYCLE%20SCHEDULER&descAlignY=62&descAlign=50&descSize=14" width="100%" alt="VeloRix Sync Banner" />
 
 <p align="center">
   <img src="https://img.shields.io/badge/SYNC_CORE-FIREBASE_REALTIME_DB-FFCA28?style=for-the-badge&logo=firebase&logoColor=black" alt="Firebase RTDB" />

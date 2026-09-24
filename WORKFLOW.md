@@ -2,7 +2,7 @@
 
 <div align="center">
 
-<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=0,2,11,20&height=200&section=header&text=VELORIX%20WORKFLOW%20SPEC&fontSize=40&fontColor=ffffff&fontAlignY=38&animation=twinkling&desc=COMPLETE%20OPERATIONAL%20PIPELINE%20%E2%80%A2%20ADMIN-TO-CLIENT%20LIFECYCLE%20%E2%80%A2%20REAL-TIME%20ENGINE&descAlignY=62&descAlign=50&descSize=14" width="100%" alt="VeloRix Workflow Banner" />
+<img src="https://capsule-render.vercel.app/api?type=blur&color=gradient&customColorList=0,2,11,20&height=200&section=header&text=VELORIX%20WORKFLOW%20SPEC&fontSize=40&fontColor=ffffff&fontAlignY=38&animation=twinkling&desc=COMPLETE%20OPERATIONAL%20PIPELINE%20%E2%80%A2%20ADMIN-TO-CLIENT%20LIFECYCLE%20%E2%80%A2%20REAL-TIME%20ENGINE&descAlignY=62&descAlign=50&descSize=14" width="100%" alt="VeloRix Workflow Banner" />
 
 <p align="center">
   <img src="https://img.shields.io/badge/SYNC_PIPELINE-FIREBASE_REALTIME_DB-FFCA28?style=for-the-badge&logo=firebase&logoColor=black" alt="Firebase Realtime DB" />

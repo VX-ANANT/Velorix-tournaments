@@ -2,7 +2,7 @@
 
 <div align="center">
 
-<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=0,2,11,20&height=200&section=header&text=VELORIX%20DESIGN%20SYSTEM&fontSize=42&fontColor=ffffff&fontAlignY=38&animation=twinkling&desc=PURE%20AMOLED%20BLACK%20•%20SUBTLE%20CYBERNETIC%20•%20M3%20COMPOSE%20SYSTEM&descAlignY=62&descAlign=50&descSize=14" width="100%" alt="VeloRix Design System Banner" />
+<img src="https://capsule-render.vercel.app/api?type=blur&color=gradient&customColorList=0,2,11,20&height=200&section=header&text=VELORIX%20DESIGN%20SYSTEM&fontSize=42&fontColor=ffffff&fontAlignY=38&animation=twinkling&desc=PURE%20AMOLED%20BLACK%20•%20SUBTLE%20CYBERNETIC%20•%20M3%20COMPOSE%20SYSTEM&descAlignY=62&descAlign=50&descSize=14" width="100%" alt="VeloRix Design System Banner" />
 
 <p align="center">
   <img src="https://img.shields.io/badge/CANVAS_FOUNDATION-AMOLED_TRUE_BLACK_%23000000-000000?style=for-the-badge&logo=android&logoColor=white" alt="AMOLED True Black" />

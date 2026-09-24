@@ -1,7 +1,7 @@
 <div align="center">
 
 <!-- High-Throughput Cybernetic Header -->
-<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=0,2,11,20&height=230&section=header&text=VELORIX%20ENGINE&fontSize=46&fontColor=ffffff&fontAlignY=38&animation=twinkling&desc=DISTRIBUTED%20REAL-TIME%20ESPORTS%20INFRASTRUCTURE%20FOR%20ANDROID&descAlignY=62&descAlign=50&descSize=16" width="100%" alt="VeloRix Engine Header" />
+<img src="https://capsule-render.vercel.app/api?type=blur&color=gradient&customColorList=0,2,11,20&height=230&section=header&text=VELORIX%20ENGINE&fontSize=46&fontColor=ffffff&fontAlignY=38&animation=twinkling&desc=DISTRIBUTED%20REAL-TIME%20ESPORTS%20INFRASTRUCTURE%20FOR%20ANDROID&descAlignY=62&descAlign=50&descSize=16" width="100%" alt="VeloRix Engine Header" />
 
 <!-- Dynamic Animated Multi-Line Telemetry Display -->
 <a href="https://github.com/VX-ANANT/Velorix-tournaments">
@@ -295,8 +295,8 @@ VeloRix Engine stands on the shoulders of remarkable open-source engineering and
 
 <br>
 
-<!-- Cybernetic Footer Wave -->
-<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=0,2,11,20&height=120&section=footer" width="100%" alt="VeloRix Footer" />
+<!-- Cybernetic Footer Blur -->
+<img src="https://capsule-render.vercel.app/api?type=blur&color=gradient&customColorList=0,2,11,20&height=120&section=footer" width="100%" alt="VeloRix Footer" />
 
 <sub>Engineered with mathematical precision and uncompromising architecture for the competitive mobile esports ecosystem.</sub><br>
 <sub>Authored and Maintained by <b><a href="https://github.com/VX-ANANT/Velorix-tournaments">VX-ANANT</a></b></sub>
