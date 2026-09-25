@@ -1,0 +1,182 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions for security validation
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.admin == true ||
+        request.auth.token.super_admin == true ||
+        request.auth.token.email == 'service.veloxyra@gmail.com' ||
+        request.auth.token.email == 'anantisback47@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Public / System Config (Readable by all authenticated users, writable only by Admin)
+    match /system_config/{document} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // App Banners (Readable by all, writable only by Admin)
+    match /banners/{bannerId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Tournaments (Readable by all, writable by Admin, participant joins validated)
+    match /tournaments/{tournamentId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+      
+      match /participants/{participantId} {
+        allow read: if isAuthenticated();
+        allow write: if isOwner(participantId) || isAdmin();
+      }
+      
+      match /slots/{slotId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated();
+      }
+    }
+
+    // Users Collection (RLS: Users can only read/update their own profile; balance & tokens are server-controlled)
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId);
+      
+      // Prevent client-side manipulation of financial balances and server-restricted fields
+      allow update: if isOwner(userId) && (
+        // Client can update profile info (avatar, phone, discord, freeFireId, bgmiId, etc.)
+        // But CANNOT inflate balance, tokens, referralEarnings, or referralCount directly
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'balance', 'tokens', 'tokensBalance', 'rewardTokens', 'reward_tokens',
+          'referralEarnings', 'referral_earnings', 'isBanned', 'is_banned',
+          'isSuspended', 'is_suspended'
+        ])
+      ) || isAdmin();
+      
+      allow delete: if isAdmin();
+
+      // User Missions Subcollection (RLS)
+      match /missions/{missionId} {
+        allow read: if isOwner(userId) || isAdmin();
+        // Server Cloud Functions manage completion and claiming
+        allow write: if isOwner(userId) || isAdmin();
+      }
+
+      // User Transactions Subcollection (Read-only for owner, written by server/admin)
+      match /transactions/{txId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow write: if isOwner(userId) || isAdmin();
+      }
+
+      // User Deposit & Withdrawal Requests
+      match /deposit_requests/{reqId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId);
+        allow update, delete: if isAdmin();
+      }
+
+      match /withdraw_requests/{reqId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId);
+        allow update, delete: if isAdmin();
+      }
+    }
+
+    // Global Referral Codes Index
+    match /referral_codes/{code} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+
+    // Global Missions Catalog (Readable by all, writable only by Admin)
+    match /missions/{missionId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Global Transactions Collection (Audit Log)
+    match /transactions/{txId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+
+    // Deposit Requests (Global Queue)
+    match /deposit_requests/{reqId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+
+    // Withdrawal Requests (Global Queue)
+    match /withdraw_requests/{reqId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+
+    // Notifications (RLS: Users can only read & mark their own notifications as read)
+    match /notifications/{userId}/items/{notifId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isOwner(userId) || isAdmin();
+    }
+
+    match /notifications/{notifId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || resource.data.target == 'ALL' || isAdmin()
+      );
+      allow write: if isAdmin() || (isAuthenticated() && request.resource.data.userId == request.auth.uid);
+    }
+
+    // Support Tickets (RLS)
+    match /support_tickets/{ticketId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid || isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    // User Reports / Fair Play Violations
+    match /user_reports/{reportId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+
+    // Security Audit Logs (Append-only by system, readable only by Admins)
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if false; // Immutable audit log
+    }
+
+    // Admins Collection (Strictly protected)
+    match /admins/{adminId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+  }
+}

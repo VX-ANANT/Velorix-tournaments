@@ -84,7 +84,8 @@ fun HomeScreen(
     val user by viewModel.userState.collectAsState()
     val transactions by viewModel.transactions.collectAsState()
     var showWalletQuickPopup by remember { mutableStateOf(false) }
-    val isAnyPopupOpen = showWalletQuickPopup
+    var showMissionsHubModal by remember { mutableStateOf(false) }
+    val isAnyPopupOpen = showWalletQuickPopup || showMissionsHubModal
     val bgBlurRadius by androidx.compose.animation.core.animateDpAsState(
         targetValue = if (isAnyPopupOpen) 22.dp else 0.dp,
         animationSpec = androidx.compose.animation.core.tween(durationMillis = 280, easing = androidx.compose.animation.core.LinearOutSlowInEasing),
@@ -160,7 +161,9 @@ fun HomeScreen(
         ) {
             LazyColumn(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
+                    .widthIn(max = 760.dp)
+                    .align(Alignment.TopCenter)
                     .blur(radius = bgBlurRadius)
                     .stretchOverscroll()
                     .padding(horizontal = 16.dp),
@@ -317,8 +320,9 @@ fun HomeScreen(
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(16.dp)
                             )
-                            Text(
-                                text = "VT ${user?.balance?.toInt() ?: 0}",
+                            com.example.ui.components.AnimatedRollingCounter(
+                                targetValue = user?.balance?.toInt() ?: 0,
+                                prefix = "VT ",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Black,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -351,7 +355,8 @@ fun HomeScreen(
                     onClaimMission = { mission -> viewModel.claimMission(mission) },
                     onNavigateToWallet = onNavigateToWallet,
                     onNavigateToProfile = onNavigateToProfile,
-                    onNavigateToSupport = onNavigateToSupport
+                    onNavigateToSupport = onNavigateToSupport,
+                    onOpenMissionsHub = { showMissionsHubModal = true }
                 )
             }
 
@@ -580,6 +585,30 @@ fun HomeScreen(
                 }
             )
         }
+
+        if (showMissionsHubModal) {
+            com.example.ui.components.MissionsHubModal(
+                missions = missions,
+                user = user,
+                onClaimMission = { mission -> viewModel.claimMission(mission) },
+                onNavigateToMatches = {
+                    showMissionsHubModal = false
+                },
+                onNavigateToWallet = {
+                    showMissionsHubModal = false
+                    onNavigateToWallet()
+                },
+                onNavigateToProfile = {
+                    showMissionsHubModal = false
+                    onNavigateToProfile()
+                },
+                onNavigateToLeaderboard = {
+                    showMissionsHubModal = false
+                    onNavigateToLeaderboard()
+                },
+                onDismiss = { showMissionsHubModal = false }
+            )
+        }
     }
 }
 
@@ -590,7 +619,8 @@ fun InAppMissionsSection(
     onClaimMission: (com.example.data.model.Mission) -> Unit,
     onNavigateToWallet: () -> Unit,
     onNavigateToProfile: () -> Unit,
-    onNavigateToSupport: () -> Unit = {}
+    onNavigateToSupport: () -> Unit = {},
+    onOpenMissionsHub: () -> Unit = {}
 ) {
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val unclaimedCount = missions.count { it.isCompleted && !it.isClaimed }
@@ -632,31 +662,64 @@ fun InAppMissionsSection(
                     }
                 }
             }
-            if (user != null && user.loginStreak > 0) {
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                if (user != null && user.loginStreak > 0) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(3.dp),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xFFF97316).copy(alpha = 0.15f))
+                            .border(1.dp, Color(0xFFF97316).copy(alpha = 0.3f), RoundedCornerShape(10.dp))
+                            .padding(horizontal = 6.dp, vertical = 3.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.LocalFireDepartment,
+                            contentDescription = "Streak",
+                            tint = Color(0xFFF97316),
+                            modifier = Modifier.size(13.dp)
+                        )
+                        Text(
+                            text = "${user.loginStreak}d",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color(0xFFF97316)
+                        )
+                    }
+                }
+
+                // Interactive View All Sideways Arrow Pill
                 Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                        .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
+                        .clickable {
+                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                            onOpenMissionsHub()
+                        }
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                        .testTag("missions_view_all_arrow_button"),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Rounded.LocalFireDepartment,
-                        contentDescription = "Streak",
-                        tint = Color(0xFFF97316),
-                        modifier = Modifier.size(14.dp)
-                    )
                     Text(
-                        text = "${user.loginStreak} Day Streak",
+                        text = "View All",
                         fontSize = 11.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Color(0xFFF97316)
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Icon(
+                        imageVector = Icons.Rounded.ArrowForward,
+                        contentDescription = "View More",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(13.dp)
                     )
                 }
-            } else {
-                Text(
-                    text = "Earn Free VT Tokens",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary
-                )
             }
         }
 
@@ -897,8 +960,9 @@ fun HomeWalletBreakdownPopup(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            Text(
-                                text = "VT ${userBalance.toInt()}",
+                            com.example.ui.components.AnimatedRollingCounter(
+                                targetValue = userBalance.toInt(),
+                                prefix = "VT ",
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = MaterialTheme.colorScheme.onSurface
@@ -976,8 +1040,9 @@ fun HomeWalletBreakdownPopup(
                             letterSpacing = 1.sp
                         )
                         Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = "VT ${depositedBalance.toInt()}",
+                        com.example.ui.components.AnimatedRollingCounter(
+                            targetValue = depositedBalance.toInt(),
+                            prefix = "VT ",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Black,
                             color = MaterialTheme.colorScheme.onSurface
@@ -1019,8 +1084,9 @@ fun HomeWalletBreakdownPopup(
                             letterSpacing = 1.sp
                         )
                         Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = "VT ${winnings.toInt()}",
+                        com.example.ui.components.AnimatedRollingCounter(
+                            targetValue = winnings.toInt(),
+                            prefix = "VT ",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Black,
                             color = Color(0xFF00E676)

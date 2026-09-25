@@ -194,7 +194,8 @@ fun ProfileScreen(
 
                 Column(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .fillMaxWidth()
+                        .widthIn(max = 760.dp)
                         .padding(padding)
                         .blur(radius = bgBlurRadius)
                         .stretchOverscroll()
@@ -235,11 +236,23 @@ fun ProfileScreen(
                     ) {
                         Column {
                             Text("Wallet Balance", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("VT ${currentUser.balance.toInt()}", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = MaterialTheme.colorScheme.primary)
+                            com.example.ui.components.AnimatedRollingCounter(
+                                targetValue = currentUser.balance.toInt(),
+                                prefix = "VT ",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
                         }
                         Column(horizontalAlignment = Alignment.End) {
                             Text("Tokens Balance", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text("${currentUser.tokens} Tokens", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = MaterialTheme.colorScheme.secondary)
+                            com.example.ui.components.AnimatedRollingCounter(
+                                targetValue = currentUser.tokens,
+                                suffix = " Tokens",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
                         }
                     }
 
@@ -365,6 +378,7 @@ fun ProfileScreen(
                                         if (amount >= 10) {
                                             viewModel.convertTokensToVt(amount) { success ->
                                                 if (success) {
+                                                    com.example.audio.SoundEffectManager.getInstance(context).playBeatItPower(0.85f)
                                                     showConvertDialog = false
                                                 }
                                             }
@@ -1604,13 +1618,24 @@ fun StatBox(title: String, value: String, icon: androidx.compose.ui.graphics.vec
             )
         }
         Spacer(modifier = Modifier.height(10.dp))
-        Text(
-            text = value,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Black,
-            color = MaterialTheme.colorScheme.onSurface,
-            letterSpacing = 0.5.sp
-        )
+        val numericVal = value.toIntOrNull()
+        if (numericVal != null) {
+            com.example.ui.components.AnimatedRollingCounter(
+                targetValue = numericVal,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Black,
+                color = MaterialTheme.colorScheme.onSurface,
+                letterSpacing = 0.5.sp
+            )
+        } else {
+            Text(
+                text = value,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Black,
+                color = MaterialTheme.colorScheme.onSurface,
+                letterSpacing = 0.5.sp
+            )
+        }
         Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = title,

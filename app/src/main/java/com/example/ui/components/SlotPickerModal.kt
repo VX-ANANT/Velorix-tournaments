@@ -52,6 +52,7 @@ fun SlotPickerModal(
     onConfirmSlot: (slotNumber: Int, ign: String, characterId: String, teamName: String, onFinished: (Boolean) -> Unit) -> Unit
 ) {
     val haptic = LocalHapticFeedback.current
+    val context = androidx.compose.ui.platform.LocalContext.current
     
     val totalSlots = when {
         tournament.maxSlots <= 25 -> tournament.maxSlots
@@ -270,7 +271,8 @@ fun SlotPickerModal(
                                             shape = RoundedCornerShape(14.dp)
                                         )
                                         .clickable(enabled = !isOccupied && !isSubmitting) {
-                                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                            com.example.util.VeloRixHaptics.slotSelected(context, haptic)
+                                            com.example.audio.SoundEffectManager.getInstance(context).playBadSnap(0.7f)
                                             selectedSlot = slotNum
                                         }
                                         .testTag("slot_item_$slotNum"),

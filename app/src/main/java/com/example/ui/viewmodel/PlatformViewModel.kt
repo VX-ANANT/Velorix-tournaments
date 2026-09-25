@@ -917,6 +917,16 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    /**
+     * Authoritative server-side referral validation query.
+     */
+    fun validateReferralCode(code: String, onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            val result = repository.validateReferralCodeServer(code)
+            onResult(result.first, result.second)
+        }
+    }
+
     fun register(username: String, phoneOrEmail: String, passwordHash: String, loginMethod: String = "email", referralCode: String = "", onComplete: (Boolean) -> Unit = {}) {
         viewModelScope.launch {
             _isAuthLoading.value = true

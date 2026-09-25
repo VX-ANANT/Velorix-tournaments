@@ -312,8 +312,9 @@ fun TournamentDetailsScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontWeight = FontWeight.Bold
                             )
-                            Text(
-                                text = "VT ${t.prizePool.toInt()}",
+                            com.example.ui.components.AnimatedRollingCounter(
+                                targetValue = t.prizePool.toInt(),
+                                prefix = "VT ",
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Black,
                                 color = MaterialTheme.colorScheme.primary
@@ -425,12 +426,22 @@ fun TournamentDetailsScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.Bold
                         )
-                        Text(
-                            text = if (t.entryFee == 0.0) "FREE" else "VT ${t.entryFee.toInt()}",
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Black,
-                            color = MaterialTheme.colorScheme.secondary
-                        )
+                        if (t.entryFee == 0.0) {
+                            Text(
+                                text = "FREE",
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Black,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                        } else {
+                            com.example.ui.components.AnimatedRollingCounter(
+                                targetValue = t.entryFee.toInt(),
+                                prefix = "VT ",
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Black,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                        }
                     }
                     
                     var showRulesModal by remember { mutableStateOf(false) }
@@ -458,6 +469,7 @@ fun TournamentDetailsScreen(
                         Button(
                             onClick = { 
                                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                com.example.audio.SoundEffectManager.getInstance(context).playSmoothStab(0.75f)
                                 showMatchPass = true
                             },
                             modifier = Modifier
@@ -493,6 +505,8 @@ fun TournamentDetailsScreen(
                                 ) { success, _ ->
                                     onFinished(success)
                                     if (success) {
+                                        com.example.util.VeloRixHaptics.tournamentJoinedSuccess(context, haptic)
+                                        com.example.audio.SoundEffectManager.getInstance(context).playTournamentJoinSuccess()
                                         showSlotPicker = false
                                         showSuccessAnim = true
                                     }
@@ -625,7 +639,7 @@ fun RoomDetailsCard(match: Tournament) {
                             }
                             IconButton(
                                 onClick = {
-                                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                    com.example.util.VeloRixHaptics.credentialCopied(context, haptic)
                                     clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(match.roomId))
                                     com.example.audio.SoundEffectManager.getInstance(context).playBadSnap()
                                     Toast.makeText(context, "Room ID Copied: ${match.roomId}", Toast.LENGTH_SHORT).show()
@@ -660,7 +674,7 @@ fun RoomDetailsCard(match: Tournament) {
                             }
                             IconButton(
                                 onClick = {
-                                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                    com.example.util.VeloRixHaptics.credentialCopied(context, haptic)
                                     clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(match.roomPassword))
                                     com.example.audio.SoundEffectManager.getInstance(context).playBadSnap()
                                     Toast.makeText(context, "Password Copied: ${match.roomPassword}", Toast.LENGTH_SHORT).show()

@@ -100,7 +100,9 @@ fun MatchesScreen(
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
+                    .widthIn(max = 760.dp)
+                    .align(Alignment.TopCenter)
                     .padding(horizontal = 16.dp)
             ) {
         // App Header Title

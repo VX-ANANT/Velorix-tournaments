@@ -305,8 +305,9 @@ fun TournamentCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "VT ${prizePool.toInt()}",
+                        com.example.ui.components.AnimatedRollingCounter(
+                            targetValue = prizePool.toInt(),
+                            prefix = "VT ",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.secondary
@@ -320,12 +321,22 @@ fun TournamentCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = if (entryFee == 0.0) "FREE" else "VT ${entryFee.toInt()}",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+                        if (entryFee == 0.0) {
+                            Text(
+                                text = "FREE",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        } else {
+                            com.example.ui.components.AnimatedRollingCounter(
+                                targetValue = entryFee.toInt(),
+                                prefix = "VT ",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                     }
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
@@ -335,12 +346,20 @@ fun TournamentCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "$filledSlots/$maxSlots",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            com.example.ui.components.AnimatedRollingCounter(
+                                targetValue = filledSlots,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "/$maxSlots",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))

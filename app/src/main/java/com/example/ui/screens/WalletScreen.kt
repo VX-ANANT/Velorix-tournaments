@@ -99,7 +99,6 @@ fun WalletScreen(viewModel: PlatformViewModel) {
     var showWithdrawDialog by remember { mutableStateOf(false) }
     var withdrawAmount by remember { mutableStateOf("") }
     var upiId by remember { mutableStateOf("") }
-    var referralInputCode by remember { mutableStateOf("") }
     var showReceiptDialog by remember { mutableStateOf(false) }
     var lastWithdrawnAmount by remember { mutableStateOf("") }
     var showWalletConvertDialog by remember { mutableStateOf(false) }
@@ -131,11 +130,13 @@ fun WalletScreen(viewModel: PlatformViewModel) {
 
     Box(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxSize(),
+        contentAlignment = Alignment.TopCenter
     ) {
         LazyColumn(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
+                .widthIn(max = 760.dp)
                 .blur(radius = bgBlurRadius)
                 .stretchOverscroll()
                 .padding(horizontal = 16.dp),
@@ -253,8 +254,9 @@ fun WalletScreen(viewModel: PlatformViewModel) {
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                                 ) {
-                                    Text(
-                                        text = "VT ${user?.balance?.toInt() ?: 0}",
+                                    com.example.ui.components.AnimatedRollingCounter(
+                                        targetValue = user?.balance?.toInt() ?: 0,
+                                        prefix = "VT ",
                                         fontSize = 38.sp,
                                         fontWeight = FontWeight.Black,
                                         color = Color.White
@@ -307,8 +309,9 @@ fun WalletScreen(viewModel: PlatformViewModel) {
                                             color = Color.White.copy(alpha = 0.65f),
                                             letterSpacing = 0.5.sp
                                         )
-                                        Text(
-                                            text = "VT ${walletBreakdown.deposited.toInt()}",
+                                        com.example.ui.components.AnimatedRollingCounter(
+                                            targetValue = walletBreakdown.deposited.toInt(),
+                                            prefix = "VT ",
                                             fontSize = 13.sp,
                                             fontWeight = FontWeight.ExtraBold,
                                             color = Color.White
@@ -332,8 +335,9 @@ fun WalletScreen(viewModel: PlatformViewModel) {
                                             color = NeonGreen,
                                             letterSpacing = 0.5.sp
                                         )
-                                        Text(
-                                            text = "VT ${walletBreakdown.winnings.toInt()}",
+                                        com.example.ui.components.AnimatedRollingCounter(
+                                            targetValue = walletBreakdown.winnings.toInt(),
+                                            prefix = "VT ",
                                             fontSize = 13.sp,
                                             fontWeight = FontWeight.ExtraBold,
                                             color = NeonGreen
@@ -603,7 +607,11 @@ fun WalletScreen(viewModel: PlatformViewModel) {
                                     val amt = convertInput.toIntOrNull() ?: 0
                                     if (amt >= 10) {
                                         viewModel.convertTokensToVt(amt) { success ->
-                                            if (success) showWalletConvertDialog = false
+                                            if (success) {
+                                                com.example.util.VeloRixHaptics.paymentSuccess(context, haptic)
+                                                com.example.audio.SoundEffectManager.getInstance(context).playBeatItPower()
+                                                showWalletConvertDialog = false
+                                            }
                                         }
                                     }
                                 },
@@ -622,9 +630,16 @@ fun WalletScreen(viewModel: PlatformViewModel) {
                 }
             }
 
-            // REFERRAL SECTION
+            // REFERRAL COMMISSION SECTION
             item {
                 Spacer(modifier = Modifier.height(24.dp))
+                val referralCount = user?.referralCount ?: 0
+                val currentCommissionTier = when {
+                    referralCount <= 1 -> "10%"
+                    referralCount in 2..4 -> "12%"
+                    else -> "15% (MAX)"
+                }
+
                 Card(
                     modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
                     shape = RoundedCornerShape(16.dp),
@@ -636,14 +651,14 @@ fun WalletScreen(viewModel: PlatformViewModel) {
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("INVITE & EARN", fontSize = 12.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSecondaryContainer, letterSpacing = 1.5.sp)
+                            Text("SQUAD REFERRAL REWARDS", fontSize = 12.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSecondaryContainer, letterSpacing = 1.5.sp)
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(6.dp))
                                     .background(NeonGreen.copy(alpha = 0.15f))
                                     .padding(horizontal = 8.dp, vertical = 2.dp)
                             ) {
-                                Text("+50 TOKENS PER INVITE", fontSize = 9.sp, fontWeight = FontWeight.Black, color = NeonGreen)
+                                Text("EARN 10-15% COMMISSION", fontSize = 9.sp, fontWeight = FontWeight.Black, color = NeonGreen)
                             }
                         }
 
@@ -660,8 +675,8 @@ fun WalletScreen(viewModel: PlatformViewModel) {
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f))
                             ) {
                                 Column(modifier = Modifier.padding(10.dp)) {
-                                    Text("FRIENDS INVITED", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Text("${user?.referralCount ?: 0}", fontSize = 16.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
+                                    Text("ACTIVE REFERRALS", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("$referralCount", fontSize = 16.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
                                 }
                             }
 
@@ -671,8 +686,63 @@ fun WalletScreen(viewModel: PlatformViewModel) {
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f))
                             ) {
                                 Column(modifier = Modifier.padding(10.dp)) {
-                                    Text("REFERRAL EARNINGS", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Text("${(user?.referralEarnings ?: 0.0).toInt()} Tokens", fontSize = 16.sp, fontWeight = FontWeight.Black, color = NeonGreen)
+                                    Text("CURRENT TIER", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(currentCommissionTier, fontSize = 16.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+
+                            Card(
+                                modifier = Modifier.weight(1.2f),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f))
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Text("COMMISSION EARNED", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("${(user?.referralEarnings ?: 0.0).toInt()} VT", fontSize = 16.sp, fontWeight = FontWeight.Black, color = NeonGreen)
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Commission Tier Breakdown Table
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.45f),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f))
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp)) {
+                                Text(
+                                    text = "DYNAMIC DEPOSIT COMMISSION TIERS",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    letterSpacing = 1.sp
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("• 1st Referred Squadmate:", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("10% on every deposit", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                }
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("• 2nd - 4th Squadmates:", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("12% on every deposit", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                                }
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("• 5+ Squadmates (Max Limit):", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text("15% MAX CAP", fontSize = 11.sp, fontWeight = FontWeight.Black, color = NeonGreen)
                                 }
                             }
                         }
@@ -681,7 +751,7 @@ fun WalletScreen(viewModel: PlatformViewModel) {
                         
                         val refCode = user?.referralCode?.ifEmpty { "VRX-${(user?.username ?: "USER").take(4).uppercase()}-${(user?.id?.takeLast(4) ?: "7890").uppercase()}" } ?: ""
                         if (refCode.isNotEmpty()) {
-                            Text("Your Unique Referral Code:", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f))
+                            Text("Your Unique Share Code:", fontSize = 12.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f))
                             Spacer(modifier = Modifier.height(4.dp))
                             
                             Box(
@@ -718,7 +788,7 @@ fun WalletScreen(viewModel: PlatformViewModel) {
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 OutlinedButton(
                                     onClick = {
-                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                        com.example.util.VeloRixHaptics.credentialCopied(context, haptic)
                                         val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                                         val clip = android.content.ClipData.newPlainText("Referral Code", refCode)
                                         clipboard.setPrimaryClip(clip)
@@ -738,7 +808,7 @@ fun WalletScreen(viewModel: PlatformViewModel) {
                                         val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                                             type = "text/plain"
                                             putExtra(android.content.Intent.EXTRA_SUBJECT, "Join Velorix Esports")
-                                            putExtra(android.content.Intent.EXTRA_TEXT, "Join Velorix Esports using my unique referral code $refCode during sign-up or in your wallet to get 50 bonus tokens!")
+                                            putExtra(android.content.Intent.EXTRA_TEXT, "Join Velorix Esports using my referral code $refCode during registration to compete in tournaments and earn rewards!")
                                         }
                                         context.startActivity(android.content.Intent.createChooser(shareIntent, "Share Referral Code"))
                                     },
@@ -751,62 +821,32 @@ fun WalletScreen(viewModel: PlatformViewModel) {
                             }
                         }
                         
-                        if (user?.referredBy.isNullOrEmpty()) {
-                            Spacer(modifier = Modifier.height(16.dp))
-                            HorizontalDivider(color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.15f))
-                            Spacer(modifier = Modifier.height(14.dp))
-                            
-                            Text(
-                                text = "HAVE AN INVITE CODE?",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Black,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                letterSpacing = 1.sp
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
-                            
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                OutlinedTextField(
-                                    value = referralInputCode,
-                                    onValueChange = { referralInputCode = it.uppercase() },
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .testTag("referral_code_input"),
-                                    placeholder = { Text("e.g. VRX-NAME-9999", fontSize = 13.sp) },
-                                    shape = RoundedCornerShape(12.dp),
-                                    singleLine = true,
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedContainerColor = MaterialTheme.colorScheme.surface,
-                                        unfocusedContainerColor = MaterialTheme.colorScheme.surface
-                                    )
-                                )
-                                Button(
-                                    onClick = {
-                                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                        if (referralInputCode.isNotBlank()) {
-                                            viewModel.applyReferralCode(referralInputCode)
-                                            referralInputCode = ""
-                                        }
-                                    },
-                                    enabled = referralInputCode.trim().length >= 4,
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = NeonGreen, contentColor = Color.Black)
-                                ) {
-                                    Text("APPLY", fontWeight = FontWeight.Black)
-                                }
-                            }
-                        } else {
-                            Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(14.dp))
+                        if (!user?.referredBy.isNullOrEmpty()) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 Icon(Icons.Default.CheckCircle, contentDescription = null, tint = NeonGreen, modifier = Modifier.size(16.dp))
-                                Text("Referred by: ${user?.referredBy} (+50 signup bonus claimed)", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = NeonGreen)
+                                Text("Referred by: ${user?.referredBy} (Linked on registration)", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = NeonGreen)
+                            }
+                        } else {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.3f))
+                                    .padding(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = ImageVector.vectorResource(com.example.R.drawable.ic_iconsax_lock),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Text("Referral codes can only be linked during initial registration to maintain fair play.", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }

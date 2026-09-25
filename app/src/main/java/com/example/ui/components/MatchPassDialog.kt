@@ -327,7 +327,7 @@ fun MatchPassDialog(
                                     }
                                     TextButton(
                                         onClick = {
-                                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                            com.example.util.VeloRixHaptics.credentialCopied(context, haptic)
                                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                             val clip = ClipData.newPlainText("Room Details", "Room ID: ${tournament.roomId}\nPassword: ${tournament.roomPassword}")
                                             clipboard.setPrimaryClip(clip)

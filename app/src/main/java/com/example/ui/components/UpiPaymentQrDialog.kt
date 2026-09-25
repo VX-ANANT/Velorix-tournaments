@@ -172,6 +172,7 @@ fun UpiPaymentQrDialog(
                 if (isSuccess) {
                     paymentVerifiedSuccessfully = true
                     val confirmedRef = statusRes.bankTxnId?.takeIf { it.isNotBlank() } ?: statusRes.orderId
+                    com.example.util.VeloRixHaptics.paymentSuccess(context, haptic)
                     Toast.makeText(context, "Spacepay: Payment Verified via Automated Gateway!", Toast.LENGTH_SHORT).show()
                     onPaymentSuccess(amount, confirmedRef)
                     break

@@ -733,6 +733,96 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(24.dp))
             }
 
+            // Section 2.5: Tactile Haptics & Sensory Feedback
+            item {
+                var isHapticsOn by remember { mutableStateOf(com.example.util.VeloRixHaptics.isHapticsEnabled(context)) }
+
+                Text(
+                    text = "HAPTICS & TACTILE VIBRATION",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.primary,
+                    letterSpacing = 1.2.sp
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.15f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(38.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            if (isHapticsOn) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Vibration,
+                                        contentDescription = "Vibration Haptics",
+                                        tint = if (isHapticsOn) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column {
+                                    Text(
+                                        text = "Vibration & Sensory Haptics",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = if (isHapticsOn) "Tactile pulse on tournament joins, slot bookings, payments & elastic stretch" else "Vibrations disabled",
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            Switch(
+                                checked = isHapticsOn,
+                                onCheckedChange = { checked ->
+                                    isHapticsOn = checked
+                                    com.example.util.VeloRixHaptics.setHapticsEnabled(context, checked)
+                                    if (checked) {
+                                        com.example.util.VeloRixHaptics.tournamentJoinedSuccess(context, haptic)
+                                        Toast.makeText(context, "Tactile haptics enabled!", Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                    checkedTrackColor = MaterialTheme.colorScheme.primary,
+                                    uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                                )
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+
             // Section 3: App Diagnostics & Build Specifications
             item {
                 Text(

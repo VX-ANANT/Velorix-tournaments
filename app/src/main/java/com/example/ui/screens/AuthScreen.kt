@@ -458,7 +458,7 @@ fun RegistrationScreen(
                 .padding(bottom = 24.dp)
                 .testTag("reg_referral_input"),
             label = { Text("Referral Code (Optional)") },
-            placeholder = { Text("e.g. VT7890 (Get +50 Tokens)") },
+            placeholder = { Text("e.g. VRX-NAME-9999 (Squad Bonus)") },
             leadingIcon = { Icon(Icons.Default.CardGiftcard, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
             shape = RoundedCornerShape(12.dp),
             singleLine = true,

@@ -139,6 +139,12 @@ interface MissionDao {
     @Query("SELECT * FROM missions")
     fun getAllMissions(): Flow<List<com.example.data.model.Mission>>
 
+    @Query("SELECT * FROM missions WHERE category = :category")
+    fun getMissionsByCategory(category: String): Flow<List<com.example.data.model.Mission>>
+
+    @Query("SELECT * FROM missions WHERE id = :id LIMIT 1")
+    suspend fun getMissionById(id: String): com.example.data.model.Mission?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(missions: List<com.example.data.model.Mission>)
 
@@ -147,6 +153,9 @@ interface MissionDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(mission: com.example.data.model.Mission)
+
+    @Query("DELETE FROM missions WHERE id = :id")
+    suspend fun delete(id: String)
 
     @Query("DELETE FROM missions")
     suspend fun deleteAll()

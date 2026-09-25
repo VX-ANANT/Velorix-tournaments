@@ -15,21 +15,25 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.Velocity
+import androidx.compose.ui.platform.LocalContext
+import com.example.util.VeloRixHaptics
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 /**
  * Adds a responsive, elastic stretch & rubber-band bounce overscroll effect
- * when a user scrolls or drags past the top or bottom edges of any list or scrollable page.
+ * with subtle haptic tactile feedback when a user scrolls or drags past edges.
  */
 fun Modifier.stretchOverscroll(
     stretchFactor: Float = 0.35f,
     maxStretch: Float = 140f
 ): Modifier = composed {
+    val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val overscrollOffset = remember { Animatable(0f) }
+    var hasTriggeredBoundaryHaptic = remember { false }
 
-    val nestedScrollConnection = remember {
+    val nestedScrollConnection = remember(context) {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 val current = overscrollOffset.value
@@ -39,6 +43,7 @@ fun Modifier.stretchOverscroll(
                         val newOffset = current + available.y * stretchFactor
                         val consumed = if ((current > 0 && newOffset < 0) || (current < 0 && newOffset > 0)) {
                             coroutineScope.launch { overscrollOffset.snapTo(0f) }
+                            hasTriggeredBoundaryHaptic = false
                             -current / stretchFactor
                         } else {
                             coroutineScope.launch { overscrollOffset.snapTo(newOffset.coerceIn(-maxStretch, maxStretch)) }
@@ -61,6 +66,12 @@ fun Modifier.stretchOverscroll(
                     val resistance = (1f - (abs(current) / (maxStretch * 1.4f))).coerceIn(0.12f, 1f)
                     val delta = available.y * stretchFactor * resistance
                     val target = (current + delta).coerceIn(-maxStretch, maxStretch)
+                    
+                    if (!hasTriggeredBoundaryHaptic && abs(target) > maxStretch * 0.45f) {
+                        hasTriggeredBoundaryHaptic = true
+                        VeloRixHaptics.elasticBoundaryTick(context)
+                    }
+
                     coroutineScope.launch {
                         overscrollOffset.snapTo(target)
                     }
@@ -71,6 +82,7 @@ fun Modifier.stretchOverscroll(
 
             override suspend fun onPreFling(available: Velocity): Velocity {
                 if (overscrollOffset.value != 0f) {
+                    hasTriggeredBoundaryHaptic = false
                     overscrollOffset.animateTo(
                         targetValue = 0f,
                         animationSpec = spring(
@@ -84,6 +96,7 @@ fun Modifier.stretchOverscroll(
 
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
                 if (overscrollOffset.value != 0f) {
+                    hasTriggeredBoundaryHaptic = false
                     overscrollOffset.animateTo(
                         targetValue = 0f,
                         animationSpec = spring(

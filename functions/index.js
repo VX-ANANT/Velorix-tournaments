@@ -1,14 +1,35 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 
-admin.initializeApp();
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
+
 const db = admin.firestore();
 const rtdb = admin.database();
 
+const DAILY_MISSION_REWARD_CAP_TOKENS = 100;
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+
 /**
- * Validates and calculates Daily Login streak securely on the server using Server Timestamps.
- * Prevents client-side manipulation of device clock and enforces consecutive streak calculations in IST/UTC.
+ * Returns the current date in IST format (YYYY-MM-DD) based on server clock.
  */
+function getTodayIstDate(timestampMs = Date.now()) {
+  const d = new Date(timestampMs + IST_OFFSET_MS);
+  return d.toISOString().split("T")[0];
+}
+
+/**
+ * Returns yesterday's date in IST format (YYYY-MM-DD).
+ */
+function getYesterdayIstDate(timestampMs = Date.now()) {
+  const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+  return getTodayIstDate(timestampMs - ONE_DAY_MS);
+}
+
+// ============================================================================
+// 1. SERVER-SIDE DAILY LOGIN & STREAK VALIDATION
+// ============================================================================
 exports.validateDailyLogin = functions.https.onCall(async (data, context) => {
   const uid = context.auth ? context.auth.uid : (data && data.userId);
   if (!uid) {
@@ -20,17 +41,8 @@ exports.validateDailyLogin = functions.https.onCall(async (data, context) => {
 
   const userRef = db.collection("users").document(uid);
   const nowServerMs = Date.now();
-  const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-  const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
-
-  // Convert server timestamp to IST date string (YYYY-MM-DD)
-  const getIstDateString = (timestampMs) => {
-    const d = new Date(timestampMs + IST_OFFSET_MS);
-    return d.toISOString().split("T")[0];
-  };
-
-  const todayIst = getIstDateString(nowServerMs);
-  const yesterdayIst = getIstDateString(nowServerMs - ONE_DAY_MS);
+  const todayIst = getTodayIstDate(nowServerMs);
+  const yesterdayIst = getYesterdayIstDate(nowServerMs);
 
   return await db.runTransaction(async (transaction) => {
     const userDoc = await transaction.get(userRef);
@@ -42,19 +54,30 @@ exports.validateDailyLogin = functions.https.onCall(async (data, context) => {
     const lastClaimDate = userData.lastLoginClaimDate || "";
     const currentStreak = userData.loginStreak || 0;
     const currentTokens = userData.tokens || 0;
+    const lastMissionDate = userData.lastMissionClaimDate || "";
+    const claimedToday = (lastMissionDate === todayIst) ? (userData.dailyMissionsTokensClaimed || 0) : 0;
 
     // Strict check: already claimed today in server IST date
     if (lastClaimDate === todayIst) {
       throw new functions.https.HttpsError(
         "already-exists",
-        "Daily reward already claimed for today (Server Verified)."
+        "Daily check-in reward already claimed for today (Resets at 12:00 AM IST)."
+      );
+    }
+
+    // Daily Cap Check
+    const rewardTokens = 10;
+    if (claimedToday + rewardTokens > DAILY_MISSION_REWARD_CAP_TOKENS) {
+      throw new functions.https.HttpsError(
+        "resource-exhausted",
+        `Daily mission reward limit reached (${claimedToday}/${DAILY_MISSION_REWARD_CAP_TOKENS} Tokens today). Resets at 12:00 AM IST.`
       );
     }
 
     const isConsecutive = lastClaimDate === yesterdayIst;
     const newStreak = isConsecutive ? currentStreak + 1 : 1;
-    const rewardTokens = 20;
     const newTokens = currentTokens + rewardTokens;
+    const newClaimedToday = claimedToday + rewardTokens;
 
     const txId = `TX_DAILY_${uid}_${nowServerMs}`;
     const txRef = db.collection("transactions").document(txId);
@@ -73,9 +96,15 @@ exports.validateDailyLogin = functions.https.onCall(async (data, context) => {
     // Update User Document
     transaction.update(userRef, {
       tokens: newTokens,
+      tokenBalance: newTokens,
+      tokensBalance: newTokens,
+      rewardTokens: newTokens,
       loginStreak: newStreak,
       lastLoginClaimDate: todayIst,
-      lastDailyClaimTimestamp: admin.firestore.FieldValue.serverTimestamp()
+      lastMissionClaimDate: todayIst,
+      dailyMissionsTokensClaimed: newClaimedToday,
+      lastDailyClaimTimestamp: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
     // Record Transaction
@@ -103,8 +132,13 @@ exports.validateDailyLogin = functions.https.onCall(async (data, context) => {
     try {
       await rtdb.ref(`users/${uid}`).update({
         tokens: newTokens,
+        tokenBalance: newTokens,
+        tokensBalance: newTokens,
+        rewardTokens: newTokens,
         loginStreak: newStreak,
         lastLoginClaimDate: todayIst,
+        lastMissionClaimDate: todayIst,
+        dailyMissionsTokensClaimed: newClaimedToday,
         lastLoginAt: nowServerMs
       });
       await rtdb.ref(`transactions/${txId}`).set(txData);
@@ -117,7 +151,7 @@ exports.validateDailyLogin = functions.https.onCall(async (data, context) => {
         serverVerified: true
       });
     } catch (rtdbErr) {
-      console.warn("RTDB mirror failed:", rtdbErr.message);
+      console.warn("RTDB mirror failed for daily login:", rtdbErr.message);
     }
 
     return {
@@ -125,27 +159,31 @@ exports.validateDailyLogin = functions.https.onCall(async (data, context) => {
       rewardTokens: rewardTokens,
       newStreak: newStreak,
       todayIst: todayIst,
-      message: `🎉 Server Verified: Claimed +${rewardTokens} Tokens! Streak: ${newStreak} Days 🔥`
+      dailyClaimedToday: newClaimedToday,
+      dailyCap: DAILY_MISSION_REWARD_CAP_TOKENS,
+      message: `🎉 Server Verified: Claimed +${rewardTokens} Tokens! Streak: ${newStreak} Days 🔥 (Daily Cap: ${newClaimedToday}/${DAILY_MISSION_REWARD_CAP_TOKENS})`
     };
   });
 });
 
-/**
- * Validates and claims a specific mission reward using server-side rules and timestamps.
- */
+// ============================================================================
+// 2. SERVER-SIDE MISSION REWARD CLAIM WITH STRICT ANTI-EXPLOIT LIMITER
+// ============================================================================
 exports.validateMissionClaim = functions.https.onCall(async (data, context) => {
   const uid = context.auth ? context.auth.uid : (data && data.userId);
   const missionId = data && data.missionId;
+  const requestedReward = Number((data && (data.rewardCurrency || data.reward)) || 15);
 
   if (!uid || !missionId) {
     throw new functions.https.HttpsError("invalid-argument", "Missing userId or missionId.");
   }
 
-  if (missionId === "m_daily_checkin") {
+  if (missionId === "m_daily_checkin" || missionId.startsWith("m_daily_login_")) {
     return await exports.validateDailyLogin.run(data, context);
   }
 
   const nowServerMs = Date.now();
+  const todayIst = getTodayIstDate(nowServerMs);
   const userRef = db.collection("users").document(uid);
   const missionRef = userRef.collection("missions").document(missionId);
   const globalMissionRef = db.collection("missions").document(missionId);
@@ -153,28 +191,46 @@ exports.validateMissionClaim = functions.https.onCall(async (data, context) => {
   return await db.runTransaction(async (transaction) => {
     const userDoc = await transaction.get(userRef);
     if (!userDoc.exists) {
-      throw new functions.https.HttpsError("not-found", "User not found on server.");
+      throw new functions.https.HttpsError("not-found", "User record not found on server.");
     }
 
+    const userData = userDoc.data() || {};
+    const lastMissionDate = userData.lastMissionClaimDate || "";
+    const claimedToday = (lastMissionDate === todayIst) ? (userData.dailyMissionsTokensClaimed || 0) : 0;
+
+    // Fetch Mission Metadata
     const globalMissionDoc = await transaction.get(globalMissionRef);
-    const defaultReward = 30;
-    const rewardTokens = globalMissionDoc.exists
-      ? (globalMissionDoc.data().rewardCurrency || globalMissionDoc.data().reward || defaultReward)
-      : defaultReward;
-    const missionTitle = globalMissionDoc.exists
-      ? (globalMissionDoc.data().title || missionId)
-      : missionId;
+    let rewardTokens = Math.min(requestedReward, 80); // Strict upper bounds per single mission
+    let missionTitle = missionId;
+    let missionCategory = "DAILY";
+
+    if (globalMissionDoc.exists) {
+      const gData = globalMissionDoc.data();
+      rewardTokens = Number(gData.rewardCurrency || gData.reward || rewardTokens);
+      missionTitle = gData.title || missionTitle;
+      missionCategory = gData.category || missionCategory;
+    }
+
+    // Check Daily Cap Limiter (Applies to all daily missions)
+    if (missionCategory === "DAILY") {
+      if (claimedToday + rewardTokens > DAILY_MISSION_REWARD_CAP_TOKENS) {
+        throw new functions.https.HttpsError(
+          "resource-exhausted",
+          `Daily mission reward cap reached (${claimedToday}/${DAILY_MISSION_REWARD_CAP_TOKENS} Tokens). Limit resets at 12:00 AM IST.`
+        );
+      }
+    }
 
     const userMissionDoc = await transaction.get(missionRef);
     const userMissionData = userMissionDoc.exists ? userMissionDoc.data() : {};
 
     if (userMissionData.isClaimed) {
-      throw new functions.https.HttpsError("already-exists", "Mission reward has already been claimed.");
+      throw new functions.https.HttpsError("already-exists", "This mission reward has already been claimed on the server.");
     }
 
-    const userData = userDoc.data() || {};
     const currentTokens = userData.tokens || 0;
     const newTokens = currentTokens + rewardTokens;
+    const newClaimedToday = (missionCategory === "DAILY") ? (claimedToday + rewardTokens) : claimedToday;
 
     const txId = `TX_MISSION_${missionId}_${uid}_${nowServerMs}`;
     const txRef = db.collection("transactions").document(txId);
@@ -183,37 +239,58 @@ exports.validateMissionClaim = functions.https.onCall(async (data, context) => {
       userId: uid,
       type: "MISSION_REWARD",
       amount: rewardTokens,
-      detail: `Claimed Mission Reward: ${missionTitle} (+${rewardTokens} Tokens - Server Verified)`,
+      detail: `Claimed ${missionCategory} Mission: ${missionTitle} (+${rewardTokens} Tokens - Server Verified)`,
       isPositive: true,
       timestamp: nowServerMs,
       serverTimestamp: admin.firestore.FieldValue.serverTimestamp(),
       status: "SUCCESS"
     };
 
+    // Update User Balances
     transaction.update(userRef, {
-      tokens: newTokens
+      tokens: newTokens,
+      tokenBalance: newTokens,
+      tokensBalance: newTokens,
+      rewardTokens: newTokens,
+      lastMissionClaimDate: todayIst,
+      dailyMissionsTokensClaimed: newClaimedToday,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
+    // Mark Mission Claimed
     transaction.set(
       missionRef,
       {
         missionId: missionId,
+        title: missionTitle,
+        category: missionCategory,
         isCompleted: true,
         isClaimed: true,
         claimedAt: admin.firestore.FieldValue.serverTimestamp(),
+        claimedDate: todayIst,
         serverVerified: true
       },
       { merge: true }
     );
 
+    // Record Transaction
     transaction.set(txRef, txData);
 
+    // Mirror to Realtime Database
     try {
-      await rtdb.ref(`users/${uid}`).update({ tokens: newTokens });
+      await rtdb.ref(`users/${uid}`).update({
+        tokens: newTokens,
+        tokenBalance: newTokens,
+        tokensBalance: newTokens,
+        rewardTokens: newTokens,
+        lastMissionClaimDate: todayIst,
+        dailyMissionsTokensClaimed: newClaimedToday
+      });
       await rtdb.ref(`transactions/${txId}`).set(txData);
       await rtdb.ref(`user_missions/${uid}/${missionId}`).update({
         isCompleted: true,
         isClaimed: true,
+        claimedDate: todayIst,
         serverVerified: true
       });
     } catch (rtdbErr) {
@@ -224,132 +301,371 @@ exports.validateMissionClaim = functions.https.onCall(async (data, context) => {
       success: true,
       rewardTokens: rewardTokens,
       missionId: missionId,
-      message: `Claimed +${rewardTokens} Tokens for ${missionTitle}!`
+      dailyClaimedToday: newClaimedToday,
+      dailyCap: DAILY_MISSION_REWARD_CAP_TOKENS,
+      message: `🎉 Server Verified: Claimed +${rewardTokens} Tokens for ${missionTitle}!`
     };
   });
 });
 
-/**
- * Verifies one-time referral code on account creation and applies verified bonuses.
- */
+// ============================================================================
+// 3. SERVER-SIDE REGISTRATION REFERRAL LINKING & VALIDATION (ANTI-EXPLOIT)
+// ============================================================================
 exports.verifyReferralOnRegistration = functions.https.onCall(async (data, context) => {
-  const { newUserId, newUsername, referralCode } = data || {};
+  const { newUserId, newUsername, newUserEmail, newUserPhone, referralCode } = data || {};
   if (!newUserId || !referralCode) {
-    return { valid: false, message: "Invalid parameters." };
+    return { valid: false, message: "Missing registration or referral parameters." };
   }
 
   const cleanCode = referralCode.trim().toUpperCase();
-  const usersSnapshot = await db.collection("users")
-    .where("referralCode", "==", cleanCode)
-    .limit(1)
-    .get();
 
-  if (usersSnapshot.empty) {
-    return { valid: false, message: "Referral code not found." };
+  // 1. Look up referrer in Firestore
+  let referrerUid = null;
+  let referrerUsername = "Squadmate";
+  let referrerCount = 0;
+  let referrerEmail = "";
+  let referrerPhone = "";
+
+  const codeDoc = await db.collection("referral_codes").document(cleanCode).get();
+  if (codeDoc.exists) {
+    referrerUid = codeDoc.data().userId;
+    referrerUsername = codeDoc.data().username || "Squadmate";
   }
 
-  const referrerDoc = usersSnapshot.docs[0];
-  const referrerUid = referrerDoc.id;
+  if (!referrerUid) {
+    const usersSnapshot = await db.collection("users")
+      .where("referralCode", "==", cleanCode)
+      .limit(1)
+      .get();
+    if (!usersSnapshot.empty) {
+      const doc = usersSnapshot.docs[0];
+      referrerUid = doc.id;
+      referrerUsername = doc.data().username || "Squadmate";
+      referrerCount = doc.data().referralCount || 0;
+      referrerEmail = doc.data().phoneOrEmail || doc.data().email || "";
+      referrerPhone = doc.data().phoneNumber || "";
+    }
+  }
 
+  // 2. Fallback RTDB lookup
+  if (!referrerUid) {
+    const rtdbSnap = await rtdb.ref(`referral_codes/${cleanCode}`).get();
+    if (rtdbSnap.exists()) {
+      referrerUid = rtdbSnap.child("userId").val();
+      referrerUsername = rtdbSnap.child("username").val() || "Squadmate";
+    }
+  }
+
+  if (!referrerUid) {
+    return { valid: false, message: "Referral code not found on server." };
+  }
+
+  // Anti-fraud: Prevent self-referral
   if (referrerUid === newUserId) {
-    return { valid: false, message: "Cannot redeem your own referral code." };
+    return { valid: false, message: "Anti-Fraud: You cannot redeem your own referral code." };
   }
+
+  // Anti-fraud: Prevent duplicate identity registration (matching email / phone)
+  if (newUserEmail && referrerEmail && newUserEmail.toLowerCase() === referrerEmail.toLowerCase()) {
+    return { valid: false, message: "Anti-Fraud: Cannot use referral between identical registered accounts." };
+  }
+  if (newUserPhone && referrerPhone && newUserPhone === referrerPhone) {
+    return { valid: false, message: "Anti-Fraud: Cannot use referral between identical registered accounts." };
+  }
+
+  // Fetch updated referrer count
+  const refDoc = await db.collection("users").document(referrerUid).get();
+  if (refDoc.exists) {
+    referrerCount = refDoc.data().referralCount || 0;
+  }
+
+  const newReferrerCount = referrerCount + 1;
+  const currentCommissionTier = (newReferrerCount <= 1) ? 10 : (newReferrerCount <= 4 ? 12 : 15);
 
   const batch = db.batch();
-  const BONUS_TOKENS = 50;
-
-  // Credit Referrer
   const referrerRef = db.collection("users").document(referrerUid);
+
+  // Update Referrer Stats on Registration
   batch.update(referrerRef, {
-    tokens: admin.firestore.FieldValue.increment(BONUS_TOKENS)
+    referralCount: admin.firestore.FieldValue.increment(1),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp()
   });
 
-  // Log Referrer Transaction
-  const refTxId = `TX_REF_${referrerUid}_${Date.now()}`;
-  const refTxRef = db.collection("transactions").document(refTxId);
-  batch.set(refTxRef, {
-    id: refTxId,
+  // Create In-App Notification for Referrer
+  const notifId = `NOTIF_REF_${Date.now()}`;
+  const notifRef = referrerRef.collection("items").document(notifId);
+  batch.set(notifRef, {
+    id: notifId,
     userId: referrerUid,
-    type: "REFERRAL_REWARD",
-    amount: BONUS_TOKENS,
-    detail: `Referral Reward: ${newUsername || "New User"} joined with your code (+${BONUS_TOKENS} Tokens)`,
-    isPositive: true,
+    title: "🎉 New Squadmate Joined!",
+    message: `${newUsername || "A new player"} registered using your referral code! You will earn ${currentCommissionTier}% commission on all their wallet deposits.`,
+    type: "REFERRAL",
     timestamp: Date.now(),
-    serverTimestamp: admin.firestore.FieldValue.serverTimestamp(),
-    status: "SUCCESS"
+    isRead: false,
+    serverVerified: true
   });
 
   await batch.commit();
 
+  // Sync to RTDB
+  try {
+    await rtdb.ref(`users/${referrerUid}`).update({
+      referralCount: newReferrerCount
+    });
+    await rtdb.ref(`notifications/${referrerUid}/${notifId}`).set({
+      id: notifId,
+      userId: referrerUid,
+      title: "🎉 New Squadmate Joined!",
+      message: `${newUsername || "A new player"} registered using your referral code! You will earn ${currentCommissionTier}% commission on all their wallet deposits.`,
+      type: "REFERRAL",
+      timestamp: Date.now(),
+      read: false
+    });
+  } catch (rtdbErr) {
+    console.warn("RTDB referral link mirror warning:", rtdbErr.message);
+  }
+
   return {
     valid: true,
     referrerUid: referrerUid,
-    bonusTokens: BONUS_TOKENS,
-    message: `Verified referral code applied: +${BONUS_TOKENS} Bonus Tokens!`
+    referrerUsername: referrerUsername,
+    commissionTier: currentCommissionTier,
+    message: `Referral code linked successfully! Referrer will earn ${currentCommissionTier}% commission on deposits.`
   };
 });
 
 /**
- * Validates gaming UID format and cross-references against external verification service/platform API.
- * Enforces 8-12 digits numeric constraints, checksum, and anti-dummy rules.
+ * Pre-registration instant referral code validator.
  */
-async function verifyExternalGameId(gameId, ign, game = "Free Fire") {
-  if (!gameId || typeof gameId !== "string") {
-    return { valid: false, reason: "Invalid ID Format: Game ID is empty or not a string." };
+exports.validateReferralCode = functions.https.onCall(async (data, context) => {
+  const rawCode = (data && data.referralCode ? data.referralCode : "").trim().toUpperCase();
+  if (!rawCode || rawCode.length < 4) {
+    return { valid: false, message: "Code must be at least 4 characters." };
   }
 
-  const cleanId = gameId.trim();
+  let referrerUid = null;
+  let referrerUsername = "Squadmate";
 
-  // Strict regex check: 8-12 numeric digits
-  const formatRegex = /^[0-9]{8,12}$/;
-  if (!formatRegex.test(cleanId)) {
-    return {
-      valid: false,
-      reason: `Invalid ID Format: Game ID '${cleanId}' must be between 8 and 12 numeric digits.`
-    };
+  const codeDoc = await db.collection("referral_codes").document(rawCode).get();
+  if (codeDoc.exists) {
+    referrerUid = codeDoc.data().userId || null;
+    referrerUsername = codeDoc.data().username || "Squadmate";
   }
 
-  // Reject dummy/repeated sequences (e.g. "00000000", "11111111", "12345678")
-  const uniqueChars = new Set(cleanId.split(""));
-  if (uniqueChars.size <= 1) {
-    return {
-      valid: false,
-      reason: "Invalid ID Format: Game ID cannot be repetitive dummy numbers."
-    };
-  }
-  if (cleanId === "12345678" || cleanId === "123456789" || cleanId === "987654321") {
-    return {
-      valid: false,
-      reason: "Invalid ID Format: Dummy sequential sequence is not a valid player UID."
-    };
-  }
-
-  // Platform Verification API Simulation / Integration:
-  // In production, this cross-references with Garena Free Fire OpenID / Krafton BGMI UID lookup API
-  try {
-    const isAuthenticPrefix = !cleanId.startsWith("000");
-    if (!isAuthenticPrefix) {
-      return { valid: false, reason: "Invalid ID Format: Unrecognized player UID region prefix." };
+  if (!referrerUid) {
+    const usersSnapshot = await db.collection("users")
+      .where("referralCode", "==", rawCode)
+      .limit(1)
+      .get();
+    if (!usersSnapshot.empty) {
+      referrerUid = usersSnapshot.docs[0].id;
+      referrerUsername = usersSnapshot.docs[0].data().username || "Squadmate";
     }
-
-    return {
-      valid: true,
-      gameId: cleanId,
-      playerIgn: ign || "Player_" + cleanId.slice(-4),
-      platformRegion: "IND",
-      verificationToken: `EXT_VERIF_${cleanId}_${Date.now()}`
-    };
-  } catch (err) {
-    return { valid: false, reason: `External Verification Service Error: ${err.message}` };
   }
-}
 
-/**
- * Server-side Cloud Function triggered on 'registrations' onCreate events.
- * Performs a server-side check on the 'gameId' format and, if invalid, flags the registration entry
- * or performs an automatic deletion, providing a secondary layer of security against malformed data.
- * Also logs every registration attempt to 'audit_logs' for security investigations.
- */
+  if (!referrerUid) {
+    const rtdbSnap = await rtdb.ref(`referral_codes/${rawCode}`).get();
+    if (rtdbSnap.exists()) {
+      referrerUid = rtdbSnap.child("userId").val();
+      referrerUsername = rtdbSnap.child("username").val() || "Squadmate";
+    }
+  }
+
+  if (!referrerUid) {
+    return { valid: false, message: "Invalid or inactive referral code." };
+  }
+
+  return {
+    valid: true,
+    referrerUid: referrerUid,
+    referrerUsername: referrerUsername,
+    message: `Verified Squadmate: ${referrerUsername} (10-15% Tier Linked)`
+  };
+});
+
+// ============================================================================
+// 4. SERVER-SIDE DEPOSIT COMMISSION ENGINE (10%, 12%, 15% MAX CAP)
+// ============================================================================
+exports.processReferralDepositCommission = functions.https.onCall(async (data, context) => {
+  const { payerUserId, depositAmount, depositTxId } = data || {};
+  const amt = Number(depositAmount || 0);
+
+  if (!payerUserId || amt <= 0) {
+    return { success: false, message: "Invalid commission parameters." };
+  }
+
+  const payerDoc = await db.collection("users").document(payerUserId).get();
+  if (!payerDoc.exists) {
+    return { success: false, message: "Payer user not found on server." };
+  }
+
+  const payerData = payerDoc.data() || {};
+  const referredByCode = (payerData.referredBy || "").trim().toUpperCase();
+
+  if (!referredByCode) {
+    return { success: false, message: "Payer was not referred by any code." };
+  }
+
+  // Look up referrer UID
+  let referrerUid = null;
+  let referrerUsername = "Squadmate";
+
+  const codeDoc = await db.collection("referral_codes").document(referredByCode).get();
+  if (codeDoc.exists) {
+    referrerUid = codeDoc.data().userId;
+    referrerUsername = codeDoc.data().username || "Squadmate";
+  }
+
+  if (!referrerUid) {
+    const usersSnapshot = await db.collection("users")
+      .where("referralCode", "==", referredByCode)
+      .limit(1)
+      .get();
+    if (!usersSnapshot.empty) {
+      referrerUid = usersSnapshot.docs[0].id;
+      referrerUsername = usersSnapshot.docs[0].data().username || "Squadmate";
+    }
+  }
+
+  if (!referrerUid || referrerUid === payerUserId) {
+    return { success: false, message: "Invalid or self-referrer." };
+  }
+
+  // Calculate Tiered Commission
+  const referrerDoc = await db.collection("users").document(referrerUid).get();
+  if (!referrerDoc.exists) {
+    return { success: false, message: "Referrer record not found." };
+  }
+
+  const refData = referrerDoc.data() || {};
+  const refCount = Number(refData.referralCount || 1);
+
+  // Commission Tiers:
+  // 1 Referral -> 10% (0.10)
+  // 2-4 Referrals -> 12% (0.12)
+  // 5+ Referrals -> 15% STRICT MAX CAP (0.15)
+  const commissionRate = (refCount <= 1) ? 0.10 : (refCount <= 4 ? 0.12 : 0.15);
+  const commissionAmount = Math.round(amt * commissionRate * 100) / 100; // 2 decimals
+  const percentageLabel = Math.round(commissionRate * 100);
+
+  if (commissionAmount <= 0) {
+    return { success: false, message: "Commission amount is zero." };
+  }
+
+  const nowServerMs = Date.now();
+  const txId = `TX_COMMISSION_${referrerUid}_${nowServerMs}`;
+  const payerName = payerData.username || "Squadmate";
+
+  const batch = db.batch();
+  const referrerRef = db.collection("users").document(referrerUid);
+  const txRef = db.collection("transactions").document(txId);
+
+  // Credit Referrer Balance
+  batch.update(referrerRef, {
+    balance: admin.firestore.FieldValue.increment(commissionAmount),
+    referralEarnings: admin.firestore.FieldValue.increment(commissionAmount),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+  });
+
+  // Create Commission Transaction Record
+  const txData = {
+    id: txId,
+    userId: referrerUid,
+    type: "REFERRAL_COMMISSION",
+    amount: commissionAmount,
+    detail: `Squad Referral Commission: ${percentageLabel}% on ₹${amt} deposit by ${payerName}`,
+    isPositive: true,
+    timestamp: nowServerMs,
+    serverTimestamp: admin.firestore.FieldValue.serverTimestamp(),
+    status: "SUCCESS"
+  };
+  batch.set(txRef, txData);
+
+  // Send Notification to Referrer
+  const notifId = `NOTIF_COMMISSION_${nowServerMs}`;
+  const notifRef = referrerRef.collection("items").document(notifId);
+  batch.set(notifRef, {
+    id: notifId,
+    userId: referrerUid,
+    title: "💰 Referral Commission Credited!",
+    message: `You earned +₹${commissionAmount} VT Tokens (${percentageLabel}% Tier) from ${payerName}'s deposit of ₹${amt}.`,
+    type: "WALLET",
+    timestamp: nowServerMs,
+    isRead: false,
+    serverVerified: true
+  });
+
+  await batch.commit();
+
+  // Sync to RTDB
+  try {
+    const currentRefBalance = Number(refData.balance || 0) + commissionAmount;
+    const currentEarnings = Number(refData.referralEarnings || 0) + commissionAmount;
+
+    await rtdb.ref(`users/${referrerUid}`).update({
+      balance: currentRefBalance,
+      referralEarnings: currentEarnings
+    });
+    await rtdb.ref(`transactions/${txId}`).set(txData);
+    await rtdb.ref(`notifications/${referrerUid}/${notifId}`).set({
+      id: notifId,
+      userId: referrerUid,
+      title: "💰 Referral Commission Credited!",
+      message: `You earned +₹${commissionAmount} VT Tokens (${percentageLabel}% Tier) from ${payerName}'s deposit of ₹${amt}.`,
+      type: "WALLET",
+      timestamp: nowServerMs,
+      read: false
+    });
+  } catch (rtdbErr) {
+    console.warn("RTDB commission mirror warning:", rtdbErr.message);
+  }
+
+  return {
+    success: true,
+    referrerUid: referrerUid,
+    commissionAmount: commissionAmount,
+    commissionRate: percentageLabel,
+    message: `Successfully processed ${percentageLabel}% deposit commission (+₹${commissionAmount} VT) for referrer ${referrerUid}.`
+  };
+});
+
+// ============================================================================
+// 5. AUTOMATIC FIRESTORE & RTDB TRIGGERS FOR DEPOSIT COMMISSIONS
+// ============================================================================
+exports.onUserDepositWritten = functions.firestore
+  .document("deposit_requests/{reqId}")
+  .onWrite(async (change, context) => {
+    if (!change.after.exists) return null;
+
+    const data = change.after.data() || {};
+    const beforeData = change.before.exists ? change.before.data() : {};
+
+    // Trigger only when deposit transitions to SUCCESS or APPROVED and has not yet distributed commission
+    const isApprovedNow = (data.status === "SUCCESS" || data.status === "APPROVED");
+    const wasApprovedBefore = (beforeData.status === "SUCCESS" || beforeData.status === "APPROVED");
+
+    if (isApprovedNow && !wasApprovedBefore && !data.referralCommissionProcessed) {
+      const payerUid = data.userId;
+      const amount = Number(data.amount || 0);
+      const reqId = context.params.reqId;
+
+      if (payerUid && amount > 0) {
+        console.log(`[TRIGGER] Processing deposit commission for Deposit Req: ${reqId}, Payer: ${payerUid}, Amount: ${amount}`);
+        await exports.processReferralDepositCommission.run(
+          { payerUserId: payerUid, depositAmount: amount, depositTxId: reqId },
+          { auth: null }
+        );
+
+        // Mark processed to prevent duplicate payouts
+        await change.after.ref.set({ referralCommissionProcessed: true }, { merge: true });
+      }
+    }
+    return null;
+  });
+
+// ============================================================================
+// 6. TOURNAMENT REGISTRATION VALIDATION & SANITIZATION (GAME ID SECURITY)
+// ============================================================================
 exports.onTournamentRegistrationCreate = functions.database
   .ref("/registrations/{tournamentId}/{uid}")
   .onCreate(async (snapshot, context) => {
@@ -363,7 +679,6 @@ exports.onTournamentRegistrationCreate = functions.database
     const uniqueChars = new Set(gameId.split(""));
     const isSuspicious = !isValidFormat || uniqueChars.size <= 1 || gameId === "12345678" || gameId === "123456789";
 
-    // Write audit log entry
     const logId = `audit_reg_${tournamentId}_${uid}_${timestamp}`;
     const auditPayload = {
       id: logId,
@@ -386,21 +701,17 @@ exports.onTournamentRegistrationCreate = functions.database
       console.error("Failed to write to audit_logs:", auditErr.message);
     }
 
-    // Secondary security layer: If invalid or malformed, flag or automatically delete registration
     if (!isValidFormat || isSuspicious) {
       console.warn(`[SECURITY] Malformed gameId '${gameId}' detected in onCreate for User ${uid}, Tournament ${tournamentId}. Triggering auto-deletion.`);
 
-      // 1. Delete the malformed registration from RTDB
       await snapshot.ref.remove();
 
-      // 2. Remove from tournament participants & slots if registered
       const slotNum = regData.slotNumber;
       if (slotNum) {
         await rtdb.ref(`tournaments/${tournamentId}/slots/${slotNum}`).remove().catch(() => {});
       }
       await rtdb.ref(`tournaments/${tournamentId}/participants/${uid}`).remove().catch(() => {});
 
-      // 3. Flag in suspicious attempts log
       await rtdb.ref(`suspicious_registrations/${uid}/${logId}`).set({
         gameId: gameId,
         tournamentId: tournamentId,
@@ -408,299 +719,8 @@ exports.onTournamentRegistrationCreate = functions.database
         timestamp: timestamp
       }).catch(() => {});
 
-      // 4. Send alert notification to user
-      const notifId = `notif_invalid_id_${timestamp}`;
-      await rtdb.ref(`notifications/${uid}/${notifId}`).set({
-        id: notifId,
-        userId: uid,
-        title: "⚠️ Registration Cancelled: Invalid ID Format",
-        message: "Your registration was automatically cancelled because the Game ID provided does not meet the 8-12 digit format constraint.",
-        type: "SECURITY_ALERT",
-        timestamp: timestamp,
-        read: false
-      }).catch(() => {});
-
       return { success: false, action: "DELETED_MALFORMED_REGISTRATION", gameId: gameId };
     }
 
-    console.log(`[SECURITY] Verified onCreate registration for User ${uid}, Tournament ${tournamentId}, Game ID: ${gameId}`);
     return { success: true, action: "ACCEPTED", gameId: gameId };
   });
-
-/**
- * Server-side Cloud Function triggered on 'registrations' write events.
- * Cross-references the submitted 'gameId' against an external verification service to confirm authenticity.
- */
-exports.onTournamentRegistrationWrite = functions.database
-  .ref("/registrations/{tournamentId}/{uid}")
-  .onWrite(async (change, context) => {
-    // If deleted, nothing to verify
-    if (!change.after.exists()) {
-      return null;
-    }
-
-    const regData = change.after.val() || {};
-    const { tournamentId, uid } = context.params;
-
-    // Prevent recursive loop if already verified or rejected
-    if (regData.verificationStatus === "VERIFIED" || regData.verificationStatus === "REJECTED") {
-      return null;
-    }
-
-    const gameId = regData.gameId || regData.characterId || regData.freeFireId || "";
-    const ign = regData.ign || regData.inGameName || "";
-
-    console.log(`Verifying registration for User: ${uid}, Tournament: ${tournamentId}, Game ID: ${gameId}`);
-
-    const verifResult = await verifyExternalGameId(gameId, ign, regData.game || "Free Fire");
-
-    const regRef = rtdb.ref(`registrations/${tournamentId}/${uid}`);
-    const firestoreRegRef = db.collection("tournament_registrations").document(`${tournamentId}_${uid}`);
-
-    if (verifResult.valid) {
-      const updatePayload = {
-        verified: true,
-        verificationStatus: "VERIFIED",
-        verifiedAt: Date.now(),
-        verificationToken: verifResult.verificationToken,
-        rejectionReason: null
-      };
-
-      await regRef.update(updatePayload);
-      await firestoreRegRef.set(updatePayload, { merge: true });
-      console.log(`Game ID ${gameId} successfully verified for User: ${uid}`);
-      return { success: true, verified: true };
-    } else {
-      console.warn(`Game ID ${gameId} failed verification: ${verifResult.reason}`);
-      const rejectionPayload = {
-        verified: false,
-        verificationStatus: "REJECTED",
-        rejectionReason: verifResult.reason || "Invalid ID Format - UID Verification Failed",
-        rejectedAt: Date.now()
-      };
-
-      // Flag registration as rejected
-      await regRef.update(rejectionPayload);
-      await firestoreRegRef.set(rejectionPayload, { merge: true });
-
-      // Automatically release tournament slot and refund entry fee if applicable
-      const slotNum = regData.slotNumber;
-      if (slotNum) {
-        await rtdb.ref(`tournaments/${tournamentId}/slots/${slotNum}`).remove();
-        await rtdb.ref(`tournaments/${tournamentId}/participants/${uid}`).remove();
-      }
-
-      // Send rejection alert notification
-      const notifId = `notif_invalid_id_${Date.now()}`;
-      await rtdb.ref(`notifications/${uid}/${notifId}`).set({
-        id: notifId,
-        userId: uid,
-        title: "⚠️ Registration Rejected: Invalid Game ID",
-        message: verifResult.reason || "Your tournament registration was cancelled due to an invalid Game ID format. Please update with your authentic 8-12 digit UID.",
-        type: "SECURITY_ALERT",
-        timestamp: Date.now(),
-        read: false
-      });
-
-      return { success: false, verified: false, reason: verifResult.reason };
-    }
-  });
-
-/**
- * Server-side Cloud Function triggered on Firestore 'tournament_registrations' write events.
- */
-exports.onFirestoreRegistrationWrite = functions.firestore
-  .document("tournament_registrations/{registrationId}")
-  .onWrite(async (change, context) => {
-    if (!change.after.exists) return null;
-
-    const data = change.after.data() || {};
-    if (data.verificationStatus === "VERIFIED" || data.verificationStatus === "REJECTED") {
-      return null;
-    }
-
-    const gameId = data.gameId || data.characterId || data.freeFireId || "";
-    const ign = data.inGameName || data.ign || "";
-    const verifResult = await verifyExternalGameId(gameId, ign, data.game || "Free Fire");
-
-    if (verifResult.valid) {
-      return change.after.ref.set(
-        {
-          verified: true,
-          verificationStatus: "VERIFIED",
-          verifiedAt: admin.firestore.FieldValue.serverTimestamp(),
-          verificationToken: verifResult.verificationToken
-        },
-        { merge: true }
-      );
-    } else {
-      return change.after.ref.set(
-        {
-          verified: false,
-          verificationStatus: "REJECTED",
-          rejectionReason: verifResult.reason || "Invalid ID Format - UID Verification Failed",
-          rejectedAt: admin.firestore.FieldValue.serverTimestamp()
-        },
-        { merge: true }
-      );
-    }
-  });
-
-/**
- * Backend Tournament Registration endpoint (Callable Cloud Function).
- * Strictly verifies 'gameId' length (8-12 digits) and format constraints before writing to the database.
- */
-exports.registerTournamentSecure = functions.https.onCall(async (data, context) => {
-  const uid = context.auth ? context.auth.uid : (data && data.userId);
-  if (!uid) {
-    throw new functions.https.HttpsError("unauthenticated", "User must be authenticated to register.");
-  }
-
-  const { tournamentId, slotNumber, inGameName, gameId, teamName } = data || {};
-  if (!tournamentId || slotNumber == null || !gameId) {
-    throw new functions.https.HttpsError(
-      "invalid-argument",
-      "Missing required fields: tournamentId, slotNumber, or gameId."
-    );
-  }
-
-  // Strictly enforce 8-12 digits and format constraints before database write
-  const cleanGameId = String(gameId).trim();
-  const formatRegex = /^[0-9]{8,12}$/;
-  if (!formatRegex.test(cleanGameId)) {
-    throw new functions.https.HttpsError(
-      "invalid-argument",
-      "Invalid ID Format: Game ID must be an authentic 8-12 digit numeric player UID (e.g. 5123984129)."
-    );
-  }
-
-  const uniqueChars = new Set(cleanGameId.split(""));
-  if (uniqueChars.size <= 1 || cleanGameId === "12345678" || cleanGameId === "123456789") {
-    throw new functions.https.HttpsError(
-      "invalid-argument",
-      "Invalid ID Format: Repetitive or dummy sequential UID is not permitted."
-    );
-  }
-
-  // Cross-reference with external verification
-  const verification = await verifyExternalGameId(cleanGameId, inGameName);
-  if (!verification.valid) {
-    throw new functions.https.HttpsError("invalid-argument", verification.reason);
-  }
-
-  const nowServerMs = Date.now();
-  const userRef = db.collection("users").document(uid);
-  const tournamentRef = db.collection("tournaments").document(tournamentId);
-
-  return await db.runTransaction(async (transaction) => {
-    const userDoc = await transaction.get(userRef);
-    if (!userDoc.exists) {
-      throw new functions.https.HttpsError("not-found", "User account not found on server.");
-    }
-    const userData = userDoc.data() || {};
-
-    const tourneyDoc = await transaction.get(tournamentRef);
-    if (!tourneyDoc.exists) {
-      throw new functions.https.HttpsError("not-found", "Tournament not found.");
-    }
-    const tourneyData = tourneyDoc.data() || {};
-
-    const entryFee = tourneyData.entryFee || tourneyData.fee || 0;
-    const currentBalance = userData.balance || userData.tokens || 0;
-
-    if (currentBalance < entryFee) {
-      throw new functions.https.HttpsError(
-        "failed-precondition",
-        `Insufficient balance. Required: VT ${entryFee}, Available: VT ${currentBalance}.`
-      );
-    }
-
-    const regId = `${tournamentId}_${uid}`;
-    const regDocRef = db.collection("tournament_registrations").document(regId);
-    const existingReg = await transaction.get(regDocRef);
-    if (existingReg.exists) {
-      throw new functions.https.HttpsError("already-exists", "Already registered for this tournament.");
-    }
-
-    const ticketCode = `TKT-${(tourneyData.game || "FF").slice(0, 2).toUpperCase()}-${slotNumber}-${Math.floor(1000 + Math.random() * 9000)}`;
-
-    const registrationPayload = {
-      userId: uid,
-      userUid: uid,
-      username: userData.username || inGameName || "Warrior",
-      ign: inGameName || userData.inGameName || userData.username || "",
-      inGameName: inGameName || userData.inGameName || userData.username || "",
-      gameId: cleanGameId,
-      characterId: cleanGameId,
-      freeFireId: cleanGameId,
-      slotNumber: Number(slotNumber),
-      teamName: teamName || "",
-      ticketCode: ticketCode,
-      tournamentId: tournamentId,
-      tournamentTitle: tourneyData.title || "Esports Match",
-      game: tourneyData.game || "Free Fire",
-      registeredAt: nowServerMs,
-      joinedAt: nowServerMs,
-      timestamp: nowServerMs,
-      verified: true,
-      verificationStatus: "VERIFIED",
-      verifiedAt: nowServerMs,
-      verificationToken: verification.verificationToken
-    };
-
-    const newTxId = `TX_ENTRY_${tournamentId}_${uid}_${nowServerMs}`;
-    const txRef = db.collection("transactions").document(newTxId);
-    const txData = {
-      id: newTxId,
-      userId: uid,
-      type: "ENTRY_FEE",
-      amount: entryFee,
-      detail: `Joined ${tourneyData.game || "Esports"}: ${tourneyData.title || "Match"} (Slot #${slotNumber})`,
-      isPositive: false,
-      timestamp: nowServerMs,
-      serverTimestamp: admin.firestore.FieldValue.serverTimestamp(),
-      status: "SUCCESS"
-    };
-
-    // Deduct entry fee and update user
-    transaction.update(userRef, {
-      balance: currentBalance - entryFee,
-      matchesPlayed: (userData.matchesPlayed || 0) + 1,
-      freeFireId: cleanGameId,
-      inGameName: inGameName || userData.inGameName || ""
-    });
-
-    // Save registration and transaction in Firestore
-    transaction.set(regDocRef, registrationPayload);
-    transaction.set(tournamentRef.collection("participants").document(uid), registrationPayload);
-    transaction.set(txRef, txData);
-    transaction.update(tournamentRef, {
-      filledSlots: admin.firestore.FieldValue.increment(1)
-    });
-
-    // Mirror to Realtime Database
-    try {
-      await rtdb.ref(`registrations/${tournamentId}/${uid}`).set(registrationPayload);
-      await rtdb.ref(`tournaments/${tournamentId}/participants/${uid}`).set(registrationPayload);
-      await rtdb.ref(`tournaments/${tournamentId}/slots/${slotNumber}`).set(registrationPayload);
-      await rtdb.ref(`tournaments/${tournamentId}/filledSlots`).transaction((current) => (current || 0) + 1);
-      await rtdb.ref(`users/${uid}`).update({
-        balance: currentBalance - entryFee,
-        freeFireId: cleanGameId,
-        inGameName: inGameName || userData.inGameName || ""
-      });
-      await rtdb.ref(`transactions/${newTxId}`).set(txData);
-    } catch (rtdbErr) {
-      console.warn("RTDB registration mirror warning:", rtdbErr.message);
-    }
-
-    return {
-      success: true,
-      message: `Confirmed! Registered in Slot #${slotNumber} (Ticket: ${ticketCode})`,
-      ticketCode: ticketCode,
-      slotNumber: slotNumber,
-      verified: true
-    };
-  });
-});
-

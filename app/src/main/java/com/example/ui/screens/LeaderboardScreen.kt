@@ -215,7 +215,9 @@ fun LeaderboardScreen(viewModel: PlatformViewModel) {
     ) {
         LazyColumn(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
+                .widthIn(max = 760.dp)
+                .align(Alignment.TopCenter)
                 .stretchOverscroll()
                 .padding(horizontal = 16.dp),
             contentPadding = PaddingValues(bottom = 90.dp)
@@ -1705,20 +1707,19 @@ fun PodiumColumn(
                     .size(12.dp)
                     .padding(end = 2.dp)
             )
-            Text(
+            com.example.ui.components.AnimatedFadeSlideText(
                 text = player.username,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color = MaterialTheme.colorScheme.onSurface,
-                overflow = TextOverflow.Ellipsis,
                 maxLines = 1,
-                textAlign = TextAlign.Center,
                 modifier = Modifier.width(75.dp)
             )
         }
         Spacer(modifier = Modifier.height(2.dp))
-        Text(
-            text = "VT ${player.totalWinnings.toInt()}",
+        com.example.ui.components.AnimatedRollingCounter(
+            targetValue = player.totalWinnings.toInt(),
+            prefix = "VT ",
             fontSize = 11.sp,
             fontWeight = FontWeight.Black,
             color = MaterialTheme.colorScheme.primary
@@ -1746,8 +1747,9 @@ fun PodiumColumn(
                     fontWeight = FontWeight.Black,
                     color = MaterialTheme.colorScheme.background
                 )
-                Text(
-                    text = "${player.tokens} TOKENS",
+                com.example.ui.components.AnimatedRollingCounter(
+                    targetValue = player.tokens,
+                    suffix = " TOKENS",
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Black,
                     color = MaterialTheme.colorScheme.background.copy(alpha = 0.7f)
@@ -1808,22 +1810,24 @@ fun LeaderboardRow(player: LeaderboardPlayer) {
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
-                    Text(
+                    com.example.ui.components.AnimatedFadeSlideText(
                         text = player.username,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    Text(
-                        text = "${player.tokens} TOTAL TOKENS",
+                    com.example.ui.components.AnimatedRollingCounter(
+                        targetValue = player.tokens,
+                        suffix = " TOTAL TOKENS",
                         fontSize = 10.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
             }
-            Text(
-                text = "VT ${player.totalWinnings.toInt()}",
+            com.example.ui.components.AnimatedRollingCounter(
+                targetValue = player.totalWinnings.toInt(),
+                prefix = "VT ",
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Black,
                 color = MaterialTheme.colorScheme.primary

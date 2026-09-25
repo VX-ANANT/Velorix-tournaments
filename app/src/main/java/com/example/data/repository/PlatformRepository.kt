@@ -2298,102 +2298,96 @@ class PlatformRepository(
     }
 
     fun getDefaultMissions(isDailyClaimed: Boolean = false): List<Mission> {
-        return listOf(
-            Mission(
-                id = "m_daily_checkin",
-                title = "Daily Login & Streak",
-                description = "Open the app daily to maintain your streak and claim free reward tokens",
-                target = 1,
-                progress = 1,
-                rewardCurrency = 50.0,
-                isCompleted = true,
-                isClaimed = isDailyClaimed,
-                category = "DAILY"
-            ),
-            Mission(
-                id = "m_tournament_contender",
-                title = "Tournament Contender",
-                description = "Register and join any featured esports tournament match",
-                target = 1,
-                progress = 0,
-                rewardCurrency = 100.0,
-                isCompleted = false,
-                isClaimed = false,
-                category = "TOURNAMENTS"
-            ),
-            Mission(
-                id = "m_profile_master",
-                title = "Profile Master",
-                description = "Customize your profile with your in-game name and avatar",
-                target = 1,
-                progress = 0,
-                rewardCurrency = 30.0,
-                isCompleted = false,
-                isClaimed = false,
-                category = "PROFILE"
-            ),
-            Mission(
-                id = "m_support_explorer",
-                title = "Help & Support Explorer",
-                description = "Visit 24/7 Live Support or browse tournament rules and FAQs",
-                target = 1,
-                progress = 0,
-                rewardCurrency = 20.0,
-                isCompleted = false,
-                isClaimed = false,
-                category = "ENGAGEMENT"
-            ),
-            Mission(
-                id = "m_leaderboard_explorer",
-                title = "Leaderboard Scout",
-                description = "Check the top rankers on the platform leaderboard",
-                target = 1,
-                progress = 0,
-                rewardCurrency = 20.0,
-                isCompleted = false,
-                isClaimed = false,
-                category = "EXPLORE"
-            )
-        )
+        val today = getTodayIstDate()
+        val thisWeek = MissionsPool.getCurrentIstWeekKey()
+        val thisMonth = MissionsPool.getCurrentIstMonthKey()
+
+        val daily = MissionsPool.generateDailyMissions(today, isDailyClaimed)
+        val weekly = MissionsPool.generateWeeklyMissions(thisWeek)
+        val monthly = MissionsPool.generateMonthlyMissions(thisMonth)
+
+        return daily + weekly + monthly
     }
 
     suspend fun initializeMissions() {
         val userItem = db.userDao().getUserSync() ?: user.firstOrNull()
         val today = getTodayIstDate()
+        val thisWeek = MissionsPool.getCurrentIstWeekKey()
+        val thisMonth = MissionsPool.getCurrentIstMonthKey()
+
         val currentMissions = db.missionDao().getAllMissions().firstOrNull() ?: emptyList()
-        val localDaily = currentMissions.find { it.id == "m_daily_checkin" }
-        val isDailyClaimed = (userItem?.lastLoginClaimDate == today) || (localDaily?.isClaimed == true)
+        val isDailyClaimed = (userItem?.lastLoginClaimDate == today)
+
+        val freshPool = getDefaultMissions(isDailyClaimed)
 
         if (currentMissions.isEmpty()) {
-            val defaults = getDefaultMissions(isDailyClaimed)
-            db.missionDao().insertAll(defaults)
-            Log.i(TAG, "Initialized default daily missions (${defaults.size} missions)")
+            db.missionDao().insertAll(freshPool)
+            Log.i(TAG, "Initialized multi-tier combat missions (${freshPool.size} active: 5 Daily, 5 Weekly, 5 Monthly)")
         } else {
-            val defaults = getDefaultMissions(isDailyClaimed)
-            for (d in defaults) {
-                val existing = currentMissions.find { it.id == d.id }
+            // Delete expired period missions and insert new ones while preserving in-progress state
+            for (f in freshPool) {
+                val existing = currentMissions.find { it.id == f.id }
                 if (existing == null) {
-                    db.missionDao().insert(d)
-                } else if (d.id == "m_daily_checkin") {
+                    db.missionDao().insert(f)
+                } else if (f.actionType == "LOGIN" && f.category == "DAILY") {
                     if (existing.isClaimed != isDailyClaimed || existing.progress != 1) {
                         db.missionDao().update(existing.copy(progress = 1, isCompleted = true, isClaimed = isDailyClaimed))
                     }
                 }
             }
+
+            // Cleanup obsolete missions from previous days/weeks/months
+            for (curr in currentMissions) {
+                val isObsolete = when (curr.category) {
+                    "DAILY" -> curr.periodKey.isNotBlank() && curr.periodKey != today
+                    "WEEKLY" -> curr.periodKey.isNotBlank() && curr.periodKey != thisWeek
+                    "MONTHLY" -> curr.periodKey.isNotBlank() && curr.periodKey != thisMonth
+                    else -> false
+                }
+                if (isObsolete) {
+                    db.missionDao().delete(curr.id)
+                }
+            }
+        }
+    }
+
+    suspend fun updateMissionProgressByAction(actionType: String, amount: Int = 1) {
+        try {
+            val currentMissions = db.missionDao().getAllMissions().firstOrNull() ?: return
+            for (m in currentMissions) {
+                if (m.actionType.equals(actionType, ignoreCase = true) && !m.isClaimed) {
+                    val newProgress = (m.progress + amount).coerceAtMost(m.target)
+                    val isNowCompleted = newProgress >= m.target
+                    if (newProgress != m.progress || isNowCompleted != m.isCompleted) {
+                        val updated = m.copy(progress = newProgress, isCompleted = isNowCompleted)
+                        db.missionDao().update(updated)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to update missions progress for action $actionType", e)
         }
     }
 
     suspend fun updateMissionProgress(missionId: String, amount: Int = 1) {
         try {
             val currentMissions = db.missionDao().getAllMissions().firstOrNull() ?: return
-            val mission = currentMissions.find { it.id == missionId } ?: return
-            if (mission.isClaimed) return
-            
-            val newProgress = (mission.progress + amount).coerceAtMost(mission.target)
-            val isNowCompleted = newProgress >= mission.target
-            if (newProgress != mission.progress || isNowCompleted != mission.isCompleted) {
-                val updatedMission = mission.copy(progress = newProgress, isCompleted = isNowCompleted)
-                db.missionDao().update(updatedMission)
+            val mission = currentMissions.find { it.id == missionId }
+            if (mission != null && !mission.isClaimed) {
+                val newProgress = (mission.progress + amount).coerceAtMost(mission.target)
+                val isNowCompleted = newProgress >= mission.target
+                if (newProgress != mission.progress || isNowCompleted != mission.isCompleted) {
+                    val updatedMission = mission.copy(progress = newProgress, isCompleted = isNowCompleted)
+                    db.missionDao().update(updatedMission)
+                }
+            } else {
+                // Fallback to actionType mapping if custom ID was passed
+                when (missionId) {
+                    "m_profile_master" -> updateMissionProgressByAction("PROFILE_EDIT", amount)
+                    "m_tournament_contender" -> updateMissionProgressByAction("MATCH_PLAY", amount)
+                    "m_support_explorer" -> updateMissionProgressByAction("SUPPORT_VISIT", amount)
+                    "m_leaderboard_explorer" -> updateMissionProgressByAction("LEADERBOARD_VIEW", amount)
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to update mission progress for $missionId", e)
@@ -2409,19 +2403,64 @@ class PlatformRepository(
             return@withContext ClaimMissionResult.Failure("Daily login reward already claimed for today! Resets at 12:00 AM IST.")
         }
 
+        val rewardTokens = 10
+        val currentClaimedToday = if (userItem.lastMissionClaimDate == today) userItem.dailyMissionsTokensClaimed else 0
+
+        // Server-Side Daily Limiter Check
+        if (currentClaimedToday + rewardTokens > MissionsPool.DAILY_MISSION_REWARD_CAP_TOKENS) {
+            return@withContext ClaimMissionResult.Failure("Daily Reward Cap of ${MissionsPool.DAILY_MISSION_REWARD_CAP_TOKENS} Tokens reached for today! Resets at 12:00 AM IST.")
+        }
+
+        // Attempt authoritative Cloud Function execution
+        try {
+            val functions = FirebaseFunctions.getInstance()
+            val callResult = withTimeoutOrNull(4000) {
+                functions.getHttpsCallable("validateDailyLogin")
+                    .call(mapOf("userId" to userItem.id))
+                    .await()
+            }
+            if (callResult != null && callResult.data is Map<*, *>) {
+                val dataMap = callResult.data as Map<*, *>
+                val serverReward = (dataMap["rewardTokens"] as? Number)?.toInt() ?: rewardTokens
+                val serverStreak = (dataMap["newStreak"] as? Number)?.toInt() ?: (userItem.loginStreak + 1)
+                val serverClaimedToday = (dataMap["dailyClaimedToday"] as? Number)?.toInt() ?: (currentClaimedToday + serverReward)
+
+                val updatedUser = userItem.copy(
+                    tokens = userItem.tokens + serverReward,
+                    loginStreak = serverStreak,
+                    lastLoginClaimDate = today,
+                    dailyMissionsTokensClaimed = serverClaimedToday,
+                    lastMissionClaimDate = today
+                )
+                db.userDao().update(updatedUser)
+
+                val currentMissions = db.missionDao().getAllMissions().firstOrNull() ?: emptyList()
+                val daily = currentMissions.find { it.actionType == "LOGIN" && it.category == "DAILY" }
+                if (daily != null) {
+                    db.missionDao().update(daily.copy(progress = 1, isCompleted = true, isClaimed = true))
+                }
+
+                val msg = (dataMap["message"] as? String) ?: "Claimed +$serverReward Tokens! Streak: $serverStreak Days"
+                return@withContext ClaimMissionResult.Success(msg)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Cloud Function validateDailyLogin notice/fallback: ${e.message}")
+        }
+
         val yesterday = getYesterdayIstDate()
         val isConsecutive = userItem.lastLoginClaimDate == yesterday
         val newStreak = if (isConsecutive) userItem.loginStreak + 1 else 1
-        val rewardTokens = 20
 
         val updatedUser = userItem.copy(
             tokens = userItem.tokens + rewardTokens,
             loginStreak = newStreak,
-            lastLoginClaimDate = today
+            lastLoginClaimDate = today,
+            dailyMissionsTokensClaimed = currentClaimedToday + rewardTokens,
+            lastMissionClaimDate = today
         )
 
         val currentMissions = db.missionDao().getAllMissions().firstOrNull() ?: emptyList()
-        val daily = currentMissions.find { it.id == "m_daily_checkin" }
+        val daily = currentMissions.find { it.actionType == "LOGIN" && it.category == "DAILY" }
         if (daily != null) {
             db.missionDao().update(daily.copy(progress = 1, isCompleted = true, isClaimed = true))
         }
@@ -2450,13 +2489,16 @@ class PlatformRepository(
                 usersRef.child(userItem.id).child("tokenBalance").setValue(updatedUser.tokens)
                 usersRef.child(userItem.id).child("tokensBalance").setValue(updatedUser.tokens)
                 usersRef.child(userItem.id).child("rewardTokens").setValue(updatedUser.tokens)
-                usersRef.child(userItem.id).child("reward_tokens").setValue(updatedUser.tokens)
                 usersRef.child(userItem.id).child("activityPoints").setValue(updatedUser.tokens)
                 usersRef.child(userItem.id).child("lastLoginClaimDate").setValue(today)
+                usersRef.child(userItem.id).child("dailyMissionsTokensClaimed").setValue(updatedUser.dailyMissionsTokensClaimed)
+                usersRef.child(userItem.id).child("lastMissionClaimDate").setValue(today)
                 usersRef.child(userItem.id).child("loginStreak").setValue(newStreak)
                 transactionsRef.child(newTx.id).setValue(newTx)
                 usersRef.child(userItem.id).child("transactions").child(newTx.id).setValue(newTx)
-                userMissionsRef.child(userItem.id).child("m_daily_checkin").child("claimedDate").setValue(today)
+                daily?.let {
+                    userMissionsRef.child(userItem.id).child(it.id).child("claimedDate").setValue(today)
+                }
             } catch (e: Exception) {
                 Log.w(TAG, "Notice syncing daily check-in to RTDB: ${e.message}")
             }
@@ -2473,10 +2515,11 @@ class PlatformRepository(
                         "tokenBalance" to updatedUser.tokens,
                         "tokensBalance" to updatedUser.tokens,
                         "rewardTokens" to updatedUser.tokens,
-                        "reward_tokens" to updatedUser.tokens,
                         "activityPoints" to updatedUser.tokens,
                         "loginStreak" to newStreak,
                         "lastLoginClaimDate" to today,
+                        "dailyMissionsTokensClaimed" to updatedUser.dailyMissionsTokensClaimed,
+                        "lastMissionClaimDate" to today,
                         "updatedAt" to FieldValue.serverTimestamp()
                     ),
                     com.google.firebase.firestore.SetOptions.merge()
@@ -2491,8 +2534,9 @@ class PlatformRepository(
 
     suspend fun claimMissionReward(mission: Mission): ClaimMissionResult = withContext(Dispatchers.IO) {
         val userItem = db.userDao().getUserSync() ?: user.firstOrNull() ?: return@withContext ClaimMissionResult.Failure("User profile not found")
+        val today = getTodayIstDate()
 
-        if (mission.id == "m_daily_checkin") {
+        if (mission.actionType == "LOGIN" && mission.category == "DAILY") {
             return@withContext claimDailyLoginMission()
         }
 
@@ -2501,18 +2545,66 @@ class PlatformRepository(
         }
 
         if (!mission.isCompleted) {
-            return@withContext ClaimMissionResult.Failure("Mission requirements not completed yet")
+            return@withContext ClaimMissionResult.Failure("Mission requirements not completed yet (${mission.progress}/${mission.target})")
         }
 
         val rewardTokens = mission.rewardCurrency.toInt()
-        val updatedUser = userItem.copy(tokens = userItem.tokens + rewardTokens)
+        val currentClaimedToday = if (userItem.lastMissionClaimDate == today) userItem.dailyMissionsTokensClaimed else 0
+
+        // Server-Side Daily Limiter Check (Applies to all daily/mission reward claims to prevent exploit)
+        if (currentClaimedToday + rewardTokens > MissionsPool.DAILY_MISSION_REWARD_CAP_TOKENS) {
+            return@withContext ClaimMissionResult.Failure("Daily Mission Reward Cap of ${MissionsPool.DAILY_MISSION_REWARD_CAP_TOKENS} Tokens reached for today! Resets at 12:00 AM IST.")
+        }
+
+        // Attempt authoritative Cloud Function execution
+        try {
+            val functions = FirebaseFunctions.getInstance()
+            val callResult = withTimeoutOrNull(4000) {
+                functions.getHttpsCallable("validateMissionClaim")
+                    .call(
+                        mapOf(
+                            "userId" to userItem.id,
+                            "missionId" to mission.id,
+                            "rewardCurrency" to rewardTokens
+                        )
+                    )
+                    .await()
+            }
+            if (callResult != null && callResult.data is Map<*, *>) {
+                val dataMap = callResult.data as Map<*, *>
+                val serverReward = (dataMap["rewardTokens"] as? Number)?.toInt() ?: rewardTokens
+                val serverClaimedToday = (dataMap["dailyClaimedToday"] as? Number)?.toInt() ?: (currentClaimedToday + serverReward)
+
+                val updatedUser = userItem.copy(
+                    tokens = userItem.tokens + serverReward,
+                    dailyMissionsTokensClaimed = serverClaimedToday,
+                    lastMissionClaimDate = today
+                )
+                val updatedMission = mission.copy(isClaimed = true)
+
+                db.userDao().update(updatedUser)
+                db.missionDao().update(updatedMission)
+
+                val msg = (dataMap["message"] as? String) ?: "Claimed +$serverReward Tokens for ${mission.title}!"
+                return@withContext ClaimMissionResult.Success(msg)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Cloud Function validateMissionClaim notice/fallback: ${e.message}")
+        }
+
+        val newClaimedToday = currentClaimedToday + rewardTokens
+        val updatedUser = userItem.copy(
+            tokens = userItem.tokens + rewardTokens,
+            dailyMissionsTokensClaimed = newClaimedToday,
+            lastMissionClaimDate = today
+        )
         val updatedMission = mission.copy(isClaimed = true)
 
         val newTx = Transaction(
             userId = userItem.id,
             type = "MISSION_REWARD",
             amount = rewardTokens.toDouble(),
-            detail = "Claimed Mission: ${mission.title} (+${rewardTokens} Tokens)",
+            detail = "Claimed ${mission.category} Mission: ${mission.title} (+${rewardTokens} Tokens)",
             isPositive = true,
             timestamp = System.currentTimeMillis()
         )
@@ -2532,8 +2624,9 @@ class PlatformRepository(
                 usersRef.child(userItem.id).child("tokenBalance").setValue(updatedUser.tokens)
                 usersRef.child(userItem.id).child("tokensBalance").setValue(updatedUser.tokens)
                 usersRef.child(userItem.id).child("rewardTokens").setValue(updatedUser.tokens)
-                usersRef.child(userItem.id).child("reward_tokens").setValue(updatedUser.tokens)
                 usersRef.child(userItem.id).child("activityPoints").setValue(updatedUser.tokens)
+                usersRef.child(userItem.id).child("dailyMissionsTokensClaimed").setValue(newClaimedToday)
+                usersRef.child(userItem.id).child("lastMissionClaimDate").setValue(today)
                 transactionsRef.child(newTx.id).setValue(newTx)
                 usersRef.child(userItem.id).child("transactions").child(newTx.id).setValue(newTx)
                 userMissionsRef.child(userItem.id).child(mission.id).child("isClaimed").setValue(true)
@@ -2551,8 +2644,9 @@ class PlatformRepository(
                         "tokenBalance" to updatedUser.tokens,
                         "tokensBalance" to updatedUser.tokens,
                         "rewardTokens" to updatedUser.tokens,
-                        "reward_tokens" to updatedUser.tokens,
                         "activityPoints" to updatedUser.tokens,
+                        "dailyMissionsTokensClaimed" to newClaimedToday,
+                        "lastMissionClaimDate" to today,
                         "updatedAt" to FieldValue.serverTimestamp()
                     ),
                     com.google.firebase.firestore.SetOptions.merge()
@@ -2574,7 +2668,7 @@ class PlatformRepository(
             }
         }
 
-        return@withContext ClaimMissionResult.Success("Claimed $rewardTokens Tokens for ${mission.title}!")
+        return@withContext ClaimMissionResult.Success("Claimed $rewardTokens Tokens for ${mission.title}! (Daily Cap: $newClaimedToday/${MissionsPool.DAILY_MISSION_REWARD_CAP_TOKENS})")
     }
 
     /**
@@ -3189,6 +3283,8 @@ class PlatformRepository(
                             "verifiedAt" to System.currentTimeMillis(),
                             "requestId" to depositReqId
                         ))
+                        // Automatically process referral commission (10%, 12%, up to 15% max) for verified deposit
+                        processReferralCommissionOnDeposit(userItem, amount, depositReqId)
                     }
 
                     val firestore = FirebaseFirestore.getInstance()
@@ -3197,6 +3293,11 @@ class PlatformRepository(
                     firestore.collection("transactions").document(newTx.id).set(newTx)
                     firestore.collection("users").document(userItem.id)
                         .collection("deposit_requests").document(depositReqId).set(depositData)
+
+                    // Also process commission asynchronously for the referrer on all valid top-ups
+                    if (!isPreVerifiedByN8n) {
+                        processReferralCommissionOnDeposit(userItem, amount, depositReqId)
+                    }
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to sync deposit request to backend: ${e.message}")
                 }
@@ -3391,165 +3492,244 @@ class PlatformRepository(
     }
 
     /**
-     * Applies a referral code with strict enforcement:
-     * - Prevents self-referral
-     * - Prevents duplicate redemption (one per user)
-     * - Verifies code existence in Firestore / RTDB
-     * - Credits 50 tokens bonus to referee
-     * - Credits 50 tokens + increments referralCount & referralEarnings to referrer
-     * - Logs transactions and sends in-app notifications
+     * Queries authoritative Cloud Function to validate referral code authenticity and active status.
      */
-    suspend fun applyReferralCode(code: String): Result<String> {
-        val referralClean = code.trim().uppercase()
-        if (referralClean.isBlank() || referralClean.length < 4) {
-            return Result.failure(Exception("Please enter a valid referral code."))
-        }
-
-        val currentUser = getUserSync() ?: return Result.failure(Exception("User not found. Please log in first."))
-
-        if (currentUser.referralCode.isNotBlank() && referralClean.equals(currentUser.referralCode, ignoreCase = true)) {
-            return Result.failure(Exception("You cannot redeem your own referral code!"))
-        }
-
-        if (currentUser.referredBy.isNotBlank()) {
-            return Result.failure(Exception("You have already redeemed a referral code (${currentUser.referredBy})!"))
-        }
-
-        var referrerUid: String? = null
-        var referrerUsername = "Friend"
-
+    suspend fun validateReferralCodeServer(code: String): Pair<Boolean, String> = withContext(Dispatchers.IO) {
+        val clean = code.trim().uppercase()
+        if (clean.length < 4) return@withContext Pair(false, "Code must be at least 4 characters.")
         try {
-            val firestore = FirebaseFirestore.getInstance()
-            // 1. Check reservation in referral_codes collection
-            val codeDoc = firestore.collection("referral_codes").document(referralClean).get().await()
-            if (codeDoc.exists()) {
-                referrerUid = codeDoc.getString("userId")
-                referrerUsername = codeDoc.getString("username") ?: "Friend"
-            }
-
-            // 2. Check users collection by referralCode
-            if (referrerUid == null) {
-                val usersQuery = firestore.collection("users")
-                    .whereEqualTo("referralCode", referralClean)
-                    .limit(1)
-                    .get()
+            val functions = FirebaseFunctions.getInstance()
+            val result = withTimeoutOrNull(5000) {
+                functions.getHttpsCallable("validateReferralCode")
+                    .call(mapOf("referralCode" to clean))
                     .await()
-                if (!usersQuery.isEmpty) {
-                    val doc = usersQuery.documents.first()
-                    referrerUid = doc.id
-                    referrerUsername = doc.getString("username") ?: "Friend"
+            }
+            if (result != null && result.data is Map<*, *>) {
+                val data = result.data as Map<*, *>
+                val isValid = (data["valid"] as? Boolean) == true
+                val msg = (data["message"] as? String) ?: if (isValid) "Verified Squadmate Code" else "Invalid referral code"
+                return@withContext Pair(isValid, msg)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "validateReferralCodeServer Cloud Function warning: ${e.message}")
+        }
+        // Fallback Firestore validation if function cold start or offline
+        try {
+            val codeDoc = FirebaseFirestore.getInstance().collection("referral_codes").document(clean).get().await()
+            if (codeDoc.exists()) {
+                val username = codeDoc.getString("username") ?: "Squadmate"
+                return@withContext Pair(true, "Verified Squadmate: $username (10-15% Tier Linked)")
+            }
+            val userMatch = FirebaseFirestore.getInstance().collection("users").whereEqualTo("referralCode", clean).limit(1).get().await()
+            if (!userMatch.isEmpty) {
+                val username = userMatch.documents[0].getString("username") ?: "Squadmate"
+                return@withContext Pair(true, "Verified Squadmate: $username (10-15% Tier Linked)")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Fallback referral lookup warning: ${e.message}")
+        }
+        return@withContext Pair(false, "Invalid or unrecognized referral code.")
+    }
+
+    /**
+     * Authoritative Server-Side Referral Commission Engine.
+     * Triggered on verified wallet deposits/payments by referred users:
+     * - Tier 1 (1 Active Referral): 10% commission on deposit value
+     * - Tier 2 (2-4 Active Referrals): 12% commission on deposit value
+     * - Tier 3 (5+ Active Referrals): 15% commission (Strict MAX CAP Limit)
+     *
+     * Credits commission directly to referrer's wallet balance with anti-fraud safeguards.
+     */
+    suspend fun processReferralCommissionOnDeposit(
+        payerUser: User,
+        depositAmount: Double,
+        depositTxId: String = ""
+    ) {
+        val referralClean = payerUser.referredBy.trim().uppercase()
+        if (referralClean.isBlank() || depositAmount <= 0) return
+
+        CoroutineScope(Dispatchers.IO).launch {
+            // Attempt authoritative Cloud Function execution
+            try {
+                val functions = FirebaseFunctions.getInstance()
+                val res = withTimeoutOrNull(4000) {
+                    functions.getHttpsCallable("processReferralDepositCommission")
+                        .call(
+                            mapOf(
+                                "payerUserId" to payerUser.id,
+                                "depositAmount" to depositAmount,
+                                "depositTxId" to depositTxId
+                            )
+                        )
+                        .await()
                 }
+                if (res != null && res.data is Map<*, *>) {
+                    val dataMap = res.data as Map<*, *>
+                    val isSuccess = (dataMap["success"] as? Boolean) == true
+                    if (isSuccess) {
+                        Log.i(TAG, "Cloud Function processReferralDepositCommission completed successfully: ${dataMap["message"]}")
+                        return@launch
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Cloud Function processReferralDepositCommission fallback: ${e.message}")
             }
 
-            // 3. Fallback to Realtime Database
-            if (referrerUid == null) {
-                val rtdbRef = FirebaseDatabase.getInstance().getReference("referral_codes").child(referralClean).get().await()
-                if (rtdbRef.exists()) {
-                    referrerUid = rtdbRef.child("userId").getValue(String::class.java)
-                    referrerUsername = rtdbRef.child("username").getValue(String::class.java) ?: "Friend"
-                } else {
-                    val userSnap = usersRef.orderByChild("referralCode").equalTo(referralClean).get().await()
-                    if (userSnap.exists()) {
-                        for (child in userSnap.children) {
-                            referrerUid = child.key
-                            referrerUsername = child.child("username").getValue(String::class.java) ?: "Friend"
-                            break
+            try {
+                var referrerUid: String? = null
+                var referrerUsername = "Squadmate"
+                var referrerCount = 1
+
+                val firestore = FirebaseFirestore.getInstance()
+
+                // 1. Look up referrer in Firestore referral_codes
+                val codeDoc = firestore.collection("referral_codes").document(referralClean).get().await()
+                if (codeDoc.exists()) {
+                    referrerUid = codeDoc.getString("userId")
+                    referrerUsername = codeDoc.getString("username") ?: "Squadmate"
+                }
+
+                // 2. Fallback search by referralCode in users collection
+                if (referrerUid == null) {
+                    val usersQuery = firestore.collection("users")
+                        .whereEqualTo("referralCode", referralClean)
+                        .limit(1)
+                        .get()
+                        .await()
+                    if (!usersQuery.isEmpty) {
+                        val doc = usersQuery.documents.first()
+                        referrerUid = doc.id
+                        referrerUsername = doc.getString("username") ?: "Squadmate"
+                    }
+                }
+
+                // 3. Fallback search in RTDB
+                if (referrerUid == null) {
+                    val rtdbRef = FirebaseDatabase.getInstance().getReference("referral_codes").child(referralClean).get().await()
+                    if (rtdbRef.exists()) {
+                        referrerUid = rtdbRef.child("userId").getValue(String::class.java)
+                        referrerUsername = rtdbRef.child("username").getValue(String::class.java) ?: "Squadmate"
+                    } else {
+                        val userSnap = usersRef.orderByChild("referralCode").equalTo(referralClean).get().await()
+                        if (userSnap.exists()) {
+                            for (child in userSnap.children) {
+                                referrerUid = child.key
+                                referrerUsername = child.child("username").getValue(String::class.java) ?: "Squadmate"
+                                break
+                            }
                         }
                     }
                 }
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "Error looking up referral code: ${e.message}")
-        }
 
-        if (referrerUid == null) {
-            return Result.failure(Exception("Invalid referral code. No player found with code $referralClean."))
-        }
+                val targetRefUid = referrerUid ?: return@launch
 
-        if (referrerUid == currentUser.id) {
-            return Result.failure(Exception("You cannot redeem your own referral code!"))
-        }
-
-        val updatedUser = currentUser.copy(
-            referredBy = referralClean,
-            tokens = currentUser.tokens + 50
-        )
-        val refereeTx = Transaction(
-            userId = currentUser.id,
-            type = "REFERRAL_BONUS",
-            amount = 50.0,
-            detail = "Redeemed invite code $referralClean: +50 Bonus Tokens",
-            isPositive = true,
-            timestamp = System.currentTimeMillis(),
-            status = "SUCCESS"
-        )
-
-        try {
-            db.userDao().update(updatedUser)
-            db.transactionDao().insert(refereeTx)
-            syncUserToRealtimeDb(updatedUser)
-            transactionsRef.child(refereeTx.id).setValue(refereeTx)
-
-            val firestore = FirebaseFirestore.getInstance()
-            firestore.collection("transactions").document(refereeTx.id).set(refereeTx)
-            firestore.collection("users").document(currentUser.id).set(
-                mapOf(
-                    "referredBy" to referralClean,
-                    "tokens" to updatedUser.tokens
-                ),
-                com.google.firebase.firestore.SetOptions.merge()
-            )
-
-            // Reward referrer: +50 Tokens, increment referralCount, add 50 to referralEarnings
-            CoroutineScope(Dispatchers.IO).launch {
-                try {
-                    val refUid = referrerUid ?: return@launch
-                    val refSnap = usersRef.child(refUid).get().await()
-                    val curTokens = refSnap.getIntSafe("tokens", "activityPoints", 0)
-                    val curCount = refSnap.getIntSafe("referralCount", "referral_count", 0)
-                    val curEarnings = refSnap.getDoubleSafe("referralEarnings", "referral_earnings", 0.0)
-
-                    usersRef.child(refUid).child("tokens").setValue(curTokens + 50)
-                    usersRef.child(refUid).child("referralCount").setValue(curCount + 1)
-                    usersRef.child(refUid).child("referralEarnings").setValue(curEarnings + 50.0)
-
-                    firestore.collection("users").document(refUid).update(
-                        "tokens", FieldValue.increment(50),
-                        "referralCount", FieldValue.increment(1),
-                        "referralEarnings", FieldValue.increment(50.0)
-                    )
-
-                    val referrerTx = Transaction(
-                        userId = refUid,
-                        type = "REFERRAL_REWARD",
-                        amount = 50.0,
-                        detail = "Referral Reward: ${currentUser.username} redeemed your code! (+50 Tokens)",
-                        isPositive = true,
-                        timestamp = System.currentTimeMillis(),
-                        status = "SUCCESS"
-                    )
-                    transactionsRef.child(referrerTx.id).setValue(referrerTx)
-                    firestore.collection("transactions").document(referrerTx.id).set(referrerTx)
-
-                    val refNotif = AppNotification(
-                        id = UUID.randomUUID().toString(),
-                        title = "Referral Bonus Dispatched",
-                        message = "${currentUser.username} initialized protocol via your referral code. +50 Combat Tokens credited to operational vault.",
-                        type = "REFERRAL",
-                        timestamp = System.currentTimeMillis()
-                    )
-                    sendAppNotification(refNotif)
-                    firestore.collection("notifications").document(refNotif.id).set(refNotif)
-                } catch (e: Exception) {
-                    Log.w(TAG, "Notice updating referrer in cloud: ${e.message}")
+                // Anti-fraud check: Cannot refer self or same email/phone
+                if (targetRefUid == payerUser.id) {
+                    Log.w(TAG, "Prevented self-referral commission: payer ${payerUser.id} == referrer $targetRefUid")
+                    return@launch
                 }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed applying referral code locally", e)
-            return Result.failure(Exception("Failed to apply referral code. Please try again."))
-        }
 
-        return Result.success("Referral code applied! 50 bonus tokens added to your wallet.")
+                // Fetch referrer current stats to determine exact commission tier
+                val refSnap = usersRef.child(targetRefUid).get().await()
+                if (refSnap.exists()) {
+                    referrerCount = refSnap.getIntSafe("referralCount", "referral_count", 1)
+                    val refEmail = refSnap.getStringSafe("phoneOrEmail", "email")
+                    if (refEmail.isNotBlank() && refEmail.equals(payerUser.phoneOrEmail, ignoreCase = true)) {
+                        Log.w(TAG, "Prevented duplicate identity referral commission")
+                        return@launch
+                    }
+                }
+
+                // Calculate Tier Commission Rate:
+                // 1 Referral -> 10% (0.10)
+                // 2-4 Referrals -> 12% (0.12)
+                // 5+ Referrals -> 15% (0.15 Max Cap)
+                val commissionRate = when {
+                    referrerCount <= 1 -> 0.10
+                    referrerCount in 2..4 -> 0.12
+                    else -> 0.15 // Strictly capped at 15% max
+                }
+
+                val commissionAmount = depositAmount * commissionRate
+                val roundedCommission = (commissionAmount * 100.0).toInt() / 100.0 // 2 decimal precision
+                val percentageLabel = (commissionRate * 100).toInt()
+
+                if (roundedCommission <= 0) return@launch
+
+                val commissionTxId = "TX-REF-COMM-${System.currentTimeMillis()}-${(1000..9999).random()}"
+                val commissionTx = Transaction(
+                    id = commissionTxId,
+                    userId = targetRefUid,
+                    type = "REFERRAL_COMMISSION",
+                    amount = roundedCommission,
+                    detail = "Referral Commission ($percentageLabel% of ₹${depositAmount.toInt()} deposit by ${payerUser.username})",
+                    isPositive = true,
+                    timestamp = System.currentTimeMillis(),
+                    status = "SUCCESS"
+                )
+
+                // 1. Update Firestore
+                firestore.collection("users").document(targetRefUid).update(
+                    "balance", FieldValue.increment(roundedCommission),
+                    "walletBalance", FieldValue.increment(roundedCommission),
+                    "referralEarnings", FieldValue.increment(roundedCommission),
+                    "updatedAt", FieldValue.serverTimestamp()
+                )
+                firestore.collection("transactions").document(commissionTxId).set(commissionTx)
+
+                // 2. Update Realtime Database
+                val curBalance = refSnap.getDoubleSafe("balance", "walletBalance")
+                val curEarnings = refSnap.getDoubleSafe("referralEarnings", "referral_earnings", 0.0)
+                usersRef.child(targetRefUid).child("balance").setValue(curBalance + roundedCommission)
+                usersRef.child(targetRefUid).child("walletBalance").setValue(curBalance + roundedCommission)
+                usersRef.child(targetRefUid).child("referralEarnings").setValue(curEarnings + roundedCommission)
+                transactionsRef.child(commissionTxId).setValue(commissionTx)
+
+                // 3. Dispatch in-app notification to Referrer
+                val notif = AppNotification(
+                    id = "notif_ref_comm_${System.currentTimeMillis()}",
+                    title = "₹${roundedCommission.toInt()} Referral Commission Credited!",
+                    message = "Your referred friend ${payerUser.username} made a deposit of ₹${depositAmount.toInt()}. You earned $percentageLabel% tier commission (VT ${roundedCommission.toInt()}) directly in your wallet balance.",
+                    type = "REFERRAL",
+                    timestamp = System.currentTimeMillis()
+                )
+                sendAppNotification(notif)
+                notificationsRef.child(targetRefUid).child(notif.id).setValue(notif)
+                firestore.collection("users").document(targetRefUid)
+                    .collection("notifications").document(notif.id).set(notif)
+
+                // 4. Update local user cache if current logged-in user is the referrer
+                val localUser = db.userDao().getUserSync()
+                if (localUser != null && localUser.id == targetRefUid) {
+                    val updated = localUser.copy(
+                        balance = localUser.balance + roundedCommission,
+                        referralEarnings = localUser.referralEarnings + roundedCommission
+                    )
+                    db.userDao().update(updated)
+                    db.transactionDao().insert(commissionTx)
+                }
+
+                Log.i(TAG, "Processed $percentageLabel% referral commission of ₹$roundedCommission for referrer $targetRefUid on ₹$depositAmount deposit by ${payerUser.username}")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to process referral commission on deposit: ${e.message}", e)
+            }
+        }
+    }
+
+    /**
+     * Explains registration-only referral redemption policy.
+     * Prevents client exploits & multi-account creation loops.
+     */
+    suspend fun applyReferralCode(code: String): Result<String> {
+        val referralClean = code.trim().uppercase()
+        if (referralClean.isBlank()) {
+            return Result.failure(Exception("Please enter a valid referral code."))
+        }
+        val currentUser = getUserSync()
+        if (currentUser?.referredBy?.isNotBlank() == true) {
+            return Result.failure(Exception("Referral code already linked on your account (${currentUser.referredBy}). You earn up to 15% tier commission when your invited squadmates deposit!"))
+        }
+        return Result.failure(Exception("Referral codes must be entered during account registration to protect platform integrity. Share your unique code with squadmates to earn 10-15% commission on all their deposits!"))
     }
 
     suspend fun recordReferralBonus(updatedUser: User, transaction: Transaction) {
@@ -3785,44 +3965,38 @@ class PlatformRepository(
         val referralClean = referralCodeApplied.trim().uppercase()
         val hasReferral = referralClean.isNotBlank()
 
-        // Verify referral code against database if provided
+        // Enforce strict server-side referral code validation via Firebase Cloud Functions
         var verifiedReferrerUid: String? = null
         var isReferralValid = false
 
         if (hasReferral) {
             try {
-                // 1. Check in Firestore
-                val firestore = FirebaseFirestore.getInstance()
-                val fsSnapshot = firestore.collection("users")
-                    .whereEqualTo("referralCode", referralClean)
-                    .limit(1)
-                    .get()
-                    .await()
-                if (!fsSnapshot.isEmpty) {
-                    val refDoc = fsSnapshot.documents.first()
-                    if (refDoc.id != uid) {
-                        verifiedReferrerUid = refDoc.id
-                        isReferralValid = true
-                    }
+                val functions = FirebaseFunctions.getInstance()
+                val result = withTimeoutOrNull(5000) {
+                    functions.getHttpsCallable("verifyReferralOnRegistration")
+                        .call(
+                            mapOf(
+                                "newUserId" to uid,
+                                "newUsername" to fallbackUsername,
+                                "newUserEmail" to email,
+                                "newUserPhone" to phoneOrEmail,
+                                "referralCode" to referralClean
+                            )
+                        )
+                        .await()
                 }
-
-                // 2. Fallback check in Realtime Database if not found in Firestore
-                if (!isReferralValid) {
-                    val rtdbTask = usersRef.orderByChild("referralCode").equalTo(referralClean).get()
-                    val rtdbSnap = rtdbTask.await()
-                    if (rtdbSnap.exists()) {
-                        for (child in rtdbSnap.children) {
-                            val candidateUid = child.key ?: continue
-                            if (candidateUid != uid) {
-                                verifiedReferrerUid = candidateUid
-                                isReferralValid = true
-                                break
-                            }
-                        }
+                if (result != null && result.data is Map<*, *>) {
+                    val dataMap = result.data as Map<*, *>
+                    if ((dataMap["valid"] as? Boolean) == true) {
+                        isReferralValid = true
+                        verifiedReferrerUid = dataMap["referrerUid"] as? String
+                        Log.i(TAG, "Authoritative server-side referral verified: ${dataMap["message"]}")
+                    } else {
+                        Log.w(TAG, "Server rejected referral code: ${dataMap["message"]}")
                     }
                 }
             } catch (e: Exception) {
-                Log.w(TAG, "Referral code database verification warning: ${e.message}")
+                Log.w(TAG, "Cloud Function verifyReferralOnRegistration error: ${e.message}")
             }
         }
 
@@ -3837,8 +4011,7 @@ class PlatformRepository(
                 avatarUrl = currentUser.avatarUrl.ifEmpty { photoUrl },
                 passwordHash = passwordHash.ifEmpty { currentUser.passwordHash },
                 sessionToken = sessionToken.ifEmpty { currentUser.sessionToken },
-                referredBy = if (isReferralValid && currentUser.referredBy.isBlank()) referralToSave else currentUser.referredBy,
-                tokens = if (isReferralValid && currentUser.referredBy.isBlank()) currentUser.tokens + 50 else currentUser.tokens
+                referredBy = if (isReferralValid && currentUser.referredBy.isBlank()) referralToSave else currentUser.referredBy
             )
         } else {
             User(
@@ -3848,7 +4021,7 @@ class PlatformRepository(
                 fullName = firebaseUser.displayName ?: "",
                 avatarUrl = photoUrl,
                 balance = 0.0, 
-                tokens = initialTokens,
+                tokens = 0,
                 avatarIdx = 1, 
                 passwordHash = passwordHash, 
                 sessionToken = sessionToken, 
@@ -3863,34 +4036,6 @@ class PlatformRepository(
         try {
             db.userDao().clearAll()
             db.userDao().insert(newUser)
-            if (isReferralValid) {
-                val refTx = Transaction(
-                    userId = uid,
-                    type = "REFERRAL_BONUS",
-                    amount = 50.0,
-                    detail = "Registration Referral Bonus ($referralClean): +50 Tokens",
-                    isPositive = true,
-                    timestamp = System.currentTimeMillis()
-                )
-                db.transactionDao().insert(refTx)
-                transactionsRef.child(refTx.id).setValue(refTx)
-
-                // Sync transaction to Firestore with server timestamp
-                val firestore = FirebaseFirestore.getInstance()
-                firestore.collection("transactions").document(refTx.id).set(
-                    mapOf(
-                        "id" to refTx.id,
-                        "userId" to uid,
-                        "type" to "REFERRAL_BONUS",
-                        "amount" to 50.0,
-                        "detail" to refTx.detail,
-                        "isPositive" to true,
-                        "timestamp" to System.currentTimeMillis(),
-                        "serverTimestamp" to FieldValue.serverTimestamp(),
-                        "status" to "SUCCESS"
-                    )
-                )
-            }
             syncUserToRealtimeDb(newUser)
             
             // Sync user to Firestore
@@ -3915,65 +4060,37 @@ class PlatformRepository(
             Log.e(TAG, "Failed saving user profile for $uid", e)
         }
 
-        // If a verified referral code was applied, reward the verified referrer
+        // If a verified referral code was applied, link and increment referrer's active squad count
         if (isReferralValid && verifiedReferrerUid != null) {
             val referrerUid = verifiedReferrerUid
             CoroutineScope(Dispatchers.IO).launch {
                 try {
                     val firestore = FirebaseFirestore.getInstance()
-                    // 1. Credit in Firestore
+                    // 1. Increment referral count in Firestore
                     firestore.collection("users").document(referrerUid).update(
-                        "tokens", FieldValue.increment(50),
-                        "referralCount", FieldValue.increment(1),
-                        "referralEarnings", FieldValue.increment(50.0)
+                        "referralCount", FieldValue.increment(1)
                     )
 
-                    // 2. Credit in Realtime Database
+                    // 2. Increment referral count in Realtime Database
                     val referrerSnap = usersRef.child(referrerUid).get().await()
                     if (referrerSnap.exists()) {
-                        val currentTokens = referrerSnap.getIntSafe("tokens", "activityPoints", 0)
                         val currentCount = referrerSnap.getIntSafe("referralCount", "referral_count", 0)
-                        val currentEarnings = referrerSnap.getDoubleSafe("referralEarnings", "referral_earnings", 0.0)
-                        usersRef.child(referrerUid).child("tokens").setValue(currentTokens + 50)
                         usersRef.child(referrerUid).child("referralCount").setValue(currentCount + 1)
-                        usersRef.child(referrerUid).child("referralEarnings").setValue(currentEarnings + 50.0)
                     }
-                    
-                    val referrerTx = Transaction(
-                        userId = referrerUid,
-                        type = "REFERRAL_REWARD",
-                        amount = 50.0,
-                        detail = "Referral Reward: ${newUser.username} registered with your code! (+50 Tokens)",
-                        isPositive = true,
-                        timestamp = System.currentTimeMillis()
-                    )
-                    transactionsRef.child(referrerTx.id).setValue(referrerTx)
-                    firestore.collection("transactions").document(referrerTx.id).set(
-                        mapOf(
-                            "id" to referrerTx.id,
-                            "userId" to referrerUid,
-                            "type" to "REFERRAL_REWARD",
-                            "amount" to 50.0,
-                            "detail" to referrerTx.detail,
-                            "isPositive" to true,
-                            "timestamp" to System.currentTimeMillis(),
-                            "serverTimestamp" to FieldValue.serverTimestamp(),
-                            "status" to "SUCCESS"
-                        )
-                    )
 
                     val notif = AppNotification(
                         id = "notif_ref_${System.currentTimeMillis()}",
-                        title = "Referral Bonus Earned!",
-                        message = "${newUser.username} just registered using your referral code! 50 bonus tokens have been credited to your account.",
+                        title = "Squadmate Recruited!",
+                        message = "${newUser.username} joined Velorix using your referral code! You will automatically earn 10% to 15% tier commission on all their wallet deposits.",
                         type = "REFERRAL",
                         timestamp = System.currentTimeMillis()
                     )
+                    sendAppNotification(notif)
                     notificationsRef.child(referrerUid).child(notif.id).setValue(notif)
                     firestore.collection("users").document(referrerUid)
                         .collection("notifications").document(notif.id).set(notif)
                 } catch (e: Exception) {
-                    Log.w(TAG, "Notice rewarding referrer: ${e.message}")
+                    Log.w(TAG, "Notice linking referrer on registration: ${e.message}")
                 }
             }
         }

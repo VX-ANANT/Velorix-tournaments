@@ -137,6 +137,8 @@ data class User(
     var tokens: Int = 0,
     var loginStreak: Int = 0,
     @JsonNames("lastLoginClaimDate", "last_login_claim_date") var lastLoginClaimDate: String = "",
+    @JsonNames("dailyMissionsTokensClaimed", "daily_missions_tokens_claimed") var dailyMissionsTokensClaimed: Int = 0,
+    @JsonNames("lastMissionClaimDate", "last_mission_claim_date") var lastMissionClaimDate: String = "",
     @JsonNames("totalTokensConverted", "total_tokens_converted") var totalTokensConverted: Int = 0,
     @JsonNames("founderTier", "founder_tier") var founderTier: String = "",
     @JsonNames("isFounder", "is_founder") var isFounder: Boolean = false,
@@ -242,10 +244,13 @@ data class Mission(
     var description: String = "",
     var target: Int = 1,
     var progress: Int = 0,
-    @JsonNames("rewardCurrency", "reward_currency") var rewardCurrency: Double = 20.0,
+    @JsonNames("rewardCurrency", "reward_currency") var rewardCurrency: Double = 15.0,
     @JsonNames("isCompleted", "is_completed") var isCompleted: Boolean = false,
     @JsonNames("isClaimed", "is_claimed") var isClaimed: Boolean = false,
-    var category: String = "DAILY" // "DAILY", "CHALLENGE", "SPECIAL"
+    var category: String = "DAILY", // "DAILY", "WEEKLY", "MONTHLY"
+    @JsonNames("periodKey", "period_key") var periodKey: String = "",
+    var badge: String = "COMBAT", // "STREAK", "COMBAT", "SURVIVAL", "CHALLENGE", "COMMUNITY", "EXPLORE", "RANK"
+    @JsonNames("actionType", "action_type") var actionType: String = "" // "LOGIN", "MATCH_PLAY", "KILL_COUNT", "TOP_RANK", "WALLET_CONVERT", "REFERRAL_SHARE", "PROFILE_EDIT", "SUPPORT_VISIT", "LEADERBOARD_VIEW", "BANNER_EXPLORE"
 )
 
 @OptIn(ExperimentalSerializationApi::class)
