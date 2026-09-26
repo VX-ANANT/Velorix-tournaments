@@ -67,11 +67,16 @@ fun MissionsHubModal(
     }
 
     val todayDate = remember { MissionsPool.getTodayIstDate() }
-    val dailyClaimedToday = if (user?.lastMissionClaimDate == todayDate) {
+    val claimedFromDailyMissions = remember(missions) {
+        missions.filter { it.category == "DAILY" && it.isClaimed }
+            .sumOf { it.rewardCurrency.toInt() }
+    }
+    val userClaimedToday = if (user?.lastMissionClaimDate == todayDate) {
         user.dailyMissionsTokensClaimed
     } else {
         0
     }
+    val dailyClaimedToday = maxOf(userClaimedToday, claimedFromDailyMissions)
 
     val dailyCap = MissionsPool.DAILY_MISSION_REWARD_CAP_TOKENS
 
@@ -196,7 +201,7 @@ fun MissionsHubModal(
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Rounded.Shield,
+                                        painter = androidx.compose.ui.res.painterResource(id = com.example.R.drawable.ic_untitledui_shield_tick),
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(16.dp)
@@ -220,8 +225,13 @@ fun MissionsHubModal(
                             Spacer(modifier = Modifier.height(8.dp))
 
                             val capFraction = (dailyClaimedToday.toFloat() / dailyCap.toFloat()).coerceIn(0f, 1f)
+                            val animatedProgress by androidx.compose.animation.core.animateFloatAsState(
+                                targetValue = capFraction,
+                                animationSpec = androidx.compose.animation.core.tween(durationMillis = 600, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+                                label = "cap_progress_anim"
+                            )
                             LinearProgressIndicator(
-                                progress = { capFraction },
+                                progress = { animatedProgress },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(6.dp)

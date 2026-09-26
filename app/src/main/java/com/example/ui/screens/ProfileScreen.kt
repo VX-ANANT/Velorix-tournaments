@@ -79,10 +79,11 @@ fun ProfileScreen(
     var showReportDialog by remember { mutableStateOf(false) }
     var showMyReportsDialog by remember { mutableStateOf(false) }
     var showAboutDeveloperModal by remember { mutableStateOf(false) }
+    var showPlayerQrDialog by remember { mutableStateOf(false) }
     var profileReferralInput by remember { mutableStateOf("") }
     var isApplyingReferral by remember { mutableStateOf(false) }
 
-    val isAnyPopupOpen = showAvatarDialog || showDeleteDialog || showConvertDialog || showReportDialog || showMyReportsDialog || showAboutDeveloperModal
+    val isAnyPopupOpen = showAvatarDialog || showDeleteDialog || showConvertDialog || showReportDialog || showMyReportsDialog || showAboutDeveloperModal || showPlayerQrDialog
     val bgBlurRadius by animateDpAsState(
         targetValue = if (isAnyPopupOpen) 22.dp else 0.dp,
         animationSpec = tween(durationMillis = 280, easing = LinearOutSlowInEasing),
@@ -114,6 +115,19 @@ fun ProfileScreen(
                         containerColor = MaterialTheme.colorScheme.surface,
                     ),
                     actions = {
+                        IconButton(
+                            onClick = {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                showPlayerQrDialog = true
+                            }
+                        ) {
+                            Icon(
+                                painter = androidx.compose.ui.res.painterResource(com.example.R.drawable.ic_qr_code),
+                                contentDescription = "My Player QR Pass",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
                         IconButton(
                             onClick = {
                                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
@@ -225,7 +239,30 @@ fun ProfileScreen(
                 Text(user.username, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                 Text(user.phoneOrEmail, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(10.dp))
+                FilledTonalButton(
+                    onClick = {
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                        showPlayerQrDialog = true
+                    },
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                        contentColor = MaterialTheme.colorScheme.primary
+                    ),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
+                    modifier = Modifier.height(38.dp)
+                ) {
+                    Icon(
+                        painter = androidx.compose.ui.res.painterResource(id = com.example.R.drawable.ic_qr_code),
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Esports Passport & QR Check-In", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+                
+                Spacer(modifier = Modifier.height(28.dp))
 
                 // Rewards Section
                 ProfileSectionCard(title = "App Rewards & Token Converter", description = "Earn Tokens via Daily Missions and convert to VT Tokens (10 Tokens = 1 VT).") {
@@ -1549,6 +1586,14 @@ fun ProfileScreen(
                     showAboutDeveloperModal = false
                     onNavigateToSettings()
                 }
+            )
+        }
+
+        val activeUser = user
+        if (showPlayerQrDialog && activeUser != null) {
+            com.example.ui.components.PlayerQrCodeDialog(
+                user = activeUser,
+                onDismiss = { showPlayerQrDialog = false }
             )
         }
 

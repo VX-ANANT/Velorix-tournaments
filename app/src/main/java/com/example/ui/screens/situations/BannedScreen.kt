@@ -368,7 +368,7 @@ fun BannedScreen(
             shape = RoundedCornerShape(20.dp),
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.Shield, contentDescription = null, tint = Color(0xFFEF4444), modifier = Modifier.size(24.dp))
+                    Icon(painter = androidx.compose.ui.res.painterResource(id = com.example.R.drawable.ic_untitledui_shield), contentDescription = null, tint = Color(0xFFEF4444), modifier = Modifier.size(24.dp))
                     Spacer(Modifier.width(10.dp))
                     Text("File Official Ban Appeal", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 }

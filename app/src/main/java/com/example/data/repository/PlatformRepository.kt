@@ -1682,13 +1682,28 @@ class PlatformRepository(
                     try {
                         val fetchedUser = parseUserFromSnapshot(snapshot, userId)
                         val local = db.userDao().getUserSync()
+                        val today = getTodayIstDate()
                         val mergedUser = if (local != null && local.id == userId) {
                             fetchedUser.copy(
                                 loginStreak = maxOf(fetchedUser.loginStreak, local.loginStreak),
                                 lastLoginClaimDate = if (fetchedUser.lastLoginClaimDate.isNotBlank()) fetchedUser.lastLoginClaimDate else local.lastLoginClaimDate,
                                 totalTokensConverted = maxOf(fetchedUser.totalTokensConverted, local.totalTokensConverted),
-                                balance = if (fetchedUser.balance > 0.0) fetchedUser.balance else local.balance,
-                                tokens = maxOf(fetchedUser.tokens, local.tokens)
+                                balance = fetchedUser.balance,
+                                tokens = fetchedUser.tokens,
+                                dailyMissionsTokensClaimed = if (fetchedUser.lastMissionClaimDate == today && fetchedUser.dailyMissionsTokensClaimed > 0) {
+                                    if (local.lastMissionClaimDate == today) maxOf(fetchedUser.dailyMissionsTokensClaimed, local.dailyMissionsTokensClaimed) else fetchedUser.dailyMissionsTokensClaimed
+                                } else if (local.lastMissionClaimDate == today) {
+                                    local.dailyMissionsTokensClaimed
+                                } else {
+                                    0
+                                },
+                                lastMissionClaimDate = if (fetchedUser.lastMissionClaimDate == today) {
+                                    fetchedUser.lastMissionClaimDate
+                                } else if (local.lastMissionClaimDate == today) {
+                                    local.lastMissionClaimDate
+                                } else {
+                                    fetchedUser.lastMissionClaimDate
+                                }
                             )
                         } else {
                             fetchedUser
@@ -1730,6 +1745,11 @@ class PlatformRepository(
                                 ?: (doc.get("wallet_balance") as? Number)?.toDouble() ?: 0.0
                             val fsStreak = (doc.get("loginStreak") as? Number)?.toInt() ?: 0
                             val fsLastClaim = doc.getString("lastLoginClaimDate") ?: ""
+                            val fsDailyClaimed = (doc.get("dailyMissionsTokensClaimed") as? Number)?.toInt()
+                                ?: (doc.get("daily_missions_tokens_claimed") as? Number)?.toInt() ?: 0
+                            val fsLastMissionClaim = doc.getString("lastMissionClaimDate")
+                                ?: doc.getString("last_mission_claim_date") ?: ""
+                            val today = getTodayIstDate()
                             val fsTotalConverted = (doc.get("totalTokensConverted") as? Number)?.toInt()
                                 ?: (doc.get("total_tokens_converted") as? Number)?.toInt()
                                 ?: (doc.get("tokensConverted") as? Number)?.toInt() ?: 0
@@ -1746,11 +1766,19 @@ class PlatformRepository(
                             val local = db.userDao().getUserSync()
                             if (local != null && local.id == userId) {
                                 val updated = local.copy(
-                                    balance = if (fsBalance > 0.0 || local.balance == 0.0) fsBalance else local.balance,
-                                    tokens = if (fsTokens > 0 || local.tokens == 0) fsTokens else local.tokens,
+                                    balance = if (doc.contains("balance") || doc.contains("walletBalance") || doc.contains("wallet_balance")) fsBalance else local.balance,
+                                    tokens = if (doc.contains("tokens") || doc.contains("tokenBalance") || doc.contains("tokensBalance")) fsTokens else local.tokens,
                                     loginStreak = maxOf(local.loginStreak, fsStreak),
                                     lastLoginClaimDate = if (fsLastClaim.isNotBlank()) fsLastClaim else local.lastLoginClaimDate,
                                     totalTokensConverted = maxOf(local.totalTokensConverted, fsTotalConverted),
+                                    dailyMissionsTokensClaimed = if (fsLastMissionClaim == today && fsDailyClaimed > 0) {
+                                        if (local.lastMissionClaimDate == today) maxOf(fsDailyClaimed, local.dailyMissionsTokensClaimed) else fsDailyClaimed
+                                    } else if (local.lastMissionClaimDate == today) {
+                                        local.dailyMissionsTokensClaimed
+                                    } else {
+                                        0
+                                    },
+                                    lastMissionClaimDate = if (fsLastMissionClaim == today) fsLastMissionClaim else local.lastMissionClaimDate,
                                     isFounder = fsFounder || local.isFounder,
                                     founderTier = if (fsTier.isNotBlank()) fsTier else local.founderTier,
                                     reservedTokens = maxOf(local.reservedTokens, fsReserved),
@@ -2556,6 +2584,9 @@ class PlatformRepository(
             return@withContext ClaimMissionResult.Failure("Daily Mission Reward Cap of ${MissionsPool.DAILY_MISSION_REWARD_CAP_TOKENS} Tokens reached for today! Resets at 12:00 AM IST.")
         }
 
+        var finalRewardTokens = rewardTokens
+        var finalClaimedToday = currentClaimedToday + rewardTokens
+
         // Attempt authoritative Cloud Function execution
         try {
             val functions = FirebaseFunctions.getInstance()
@@ -2572,30 +2603,16 @@ class PlatformRepository(
             }
             if (callResult != null && callResult.data is Map<*, *>) {
                 val dataMap = callResult.data as Map<*, *>
-                val serverReward = (dataMap["rewardTokens"] as? Number)?.toInt() ?: rewardTokens
-                val serverClaimedToday = (dataMap["dailyClaimedToday"] as? Number)?.toInt() ?: (currentClaimedToday + serverReward)
-
-                val updatedUser = userItem.copy(
-                    tokens = userItem.tokens + serverReward,
-                    dailyMissionsTokensClaimed = serverClaimedToday,
-                    lastMissionClaimDate = today
-                )
-                val updatedMission = mission.copy(isClaimed = true)
-
-                db.userDao().update(updatedUser)
-                db.missionDao().update(updatedMission)
-
-                val msg = (dataMap["message"] as? String) ?: "Claimed +$serverReward Tokens for ${mission.title}!"
-                return@withContext ClaimMissionResult.Success(msg)
+                finalRewardTokens = (dataMap["rewardTokens"] as? Number)?.toInt() ?: rewardTokens
+                finalClaimedToday = (dataMap["dailyClaimedToday"] as? Number)?.toInt() ?: (currentClaimedToday + finalRewardTokens)
             }
         } catch (e: Exception) {
             Log.w(TAG, "Cloud Function validateMissionClaim notice/fallback: ${e.message}")
         }
 
-        val newClaimedToday = currentClaimedToday + rewardTokens
         val updatedUser = userItem.copy(
-            tokens = userItem.tokens + rewardTokens,
-            dailyMissionsTokensClaimed = newClaimedToday,
+            tokens = userItem.tokens + finalRewardTokens,
+            dailyMissionsTokensClaimed = finalClaimedToday,
             lastMissionClaimDate = today
         )
         val updatedMission = mission.copy(isClaimed = true)
@@ -2603,8 +2620,8 @@ class PlatformRepository(
         val newTx = Transaction(
             userId = userItem.id,
             type = "MISSION_REWARD",
-            amount = rewardTokens.toDouble(),
-            detail = "Claimed ${mission.category} Mission: ${mission.title} (+${rewardTokens} Tokens)",
+            amount = finalRewardTokens.toDouble(),
+            detail = "Claimed ${mission.category} Mission: ${mission.title} (+${finalRewardTokens} Tokens)",
             isPositive = true,
             timestamp = System.currentTimeMillis()
         )
@@ -2625,7 +2642,7 @@ class PlatformRepository(
                 usersRef.child(userItem.id).child("tokensBalance").setValue(updatedUser.tokens)
                 usersRef.child(userItem.id).child("rewardTokens").setValue(updatedUser.tokens)
                 usersRef.child(userItem.id).child("activityPoints").setValue(updatedUser.tokens)
-                usersRef.child(userItem.id).child("dailyMissionsTokensClaimed").setValue(newClaimedToday)
+                usersRef.child(userItem.id).child("dailyMissionsTokensClaimed").setValue(finalClaimedToday)
                 usersRef.child(userItem.id).child("lastMissionClaimDate").setValue(today)
                 transactionsRef.child(newTx.id).setValue(newTx)
                 usersRef.child(userItem.id).child("transactions").child(newTx.id).setValue(newTx)
@@ -2645,7 +2662,7 @@ class PlatformRepository(
                         "tokensBalance" to updatedUser.tokens,
                         "rewardTokens" to updatedUser.tokens,
                         "activityPoints" to updatedUser.tokens,
-                        "dailyMissionsTokensClaimed" to newClaimedToday,
+                        "dailyMissionsTokensClaimed" to finalClaimedToday,
                         "lastMissionClaimDate" to today,
                         "updatedAt" to FieldValue.serverTimestamp()
                     ),
@@ -2668,7 +2685,7 @@ class PlatformRepository(
             }
         }
 
-        return@withContext ClaimMissionResult.Success("Claimed $rewardTokens Tokens for ${mission.title}! (Daily Cap: $newClaimedToday/${MissionsPool.DAILY_MISSION_REWARD_CAP_TOKENS})")
+        return@withContext ClaimMissionResult.Success("Claimed +$finalRewardTokens Tokens for ${mission.title}! (Daily Cap: $finalClaimedToday/${MissionsPool.DAILY_MISSION_REWARD_CAP_TOKENS})")
     }
 
     /**
@@ -2709,6 +2726,14 @@ class PlatformRepository(
 
             CoroutineScope(Dispatchers.IO).launch {
                 try {
+                    usersRef.child(userItem.id).child("tokens").setValue(updatedUser.tokens)
+                    usersRef.child(userItem.id).child("tokenBalance").setValue(updatedUser.tokens)
+                    usersRef.child(userItem.id).child("tokensBalance").setValue(updatedUser.tokens)
+                    usersRef.child(userItem.id).child("balance").setValue(updatedUser.balance)
+                    usersRef.child(userItem.id).child("walletBalance").setValue(updatedUser.balance)
+                    usersRef.child(userItem.id).child("wallet_balance").setValue(updatedUser.balance)
+                    usersRef.child(userItem.id).child("totalTokensConverted").setValue(newTotalTokensConverted)
+                    usersRef.child(userItem.id).child("total_tokens_converted").setValue(newTotalTokensConverted)
                     syncUserToRealtimeDb(updatedUser)
                     transactionsRef.child(newTx.id).setValue(newTx)
                     usersRef.child(userItem.id).child("transactions").child(newTx.id).setValue(newTx)
@@ -4176,6 +4201,13 @@ class PlatformRepository(
             "referralEarnings" to user.referralEarnings,
             "loginStreak" to user.loginStreak,
             "lastLoginClaimDate" to user.lastLoginClaimDate,
+            "dailyMissionsTokensClaimed" to user.dailyMissionsTokensClaimed,
+            "daily_missions_tokens_claimed" to user.dailyMissionsTokensClaimed,
+            "lastMissionClaimDate" to user.lastMissionClaimDate,
+            "last_mission_claim_date" to user.lastMissionClaimDate,
+            "isOnline" to true,
+            "online" to true,
+            "status" to if (user.isBanned) "BANNED" else if (user.isSuspended) "SUSPENDED" else "ACTIVE",
             "createdAt" to if (user.dateOfJoining > 0) user.dateOfJoining else System.currentTimeMillis(),
             "lastLoginAt" to System.currentTimeMillis(),
             "fcmToken" to user.fcmToken,
@@ -4228,6 +4260,13 @@ class PlatformRepository(
                     "referralEarnings" to user.referralEarnings,
                     "loginStreak" to user.loginStreak,
                     "lastLoginClaimDate" to user.lastLoginClaimDate,
+                    "dailyMissionsTokensClaimed" to user.dailyMissionsTokensClaimed,
+                    "daily_missions_tokens_claimed" to user.dailyMissionsTokensClaimed,
+                    "lastMissionClaimDate" to user.lastMissionClaimDate,
+                    "last_mission_claim_date" to user.lastMissionClaimDate,
+                    "isOnline" to true,
+                    "online" to true,
+                    "status" to if (user.isBanned) "BANNED" else if (user.isSuspended) "SUSPENDED" else "ACTIVE",
                     "founderTier" to user.founderTier,
                     "isFounder" to user.isFounder,
                     "reservedTokens" to user.reservedTokens,
@@ -4397,6 +4436,8 @@ class PlatformRepository(
         val referredBy = snapshot.getStringSafe("referredBy", "referred_by")
         val loginStreak = snapshot.getIntSafe("loginStreak", "login_streak", 0)
         val lastLoginClaimDate = snapshot.getStringSafe("lastLoginClaimDate", "last_login_claim_date")
+        val dailyMissionsTokensClaimed = snapshot.getIntSafe("dailyMissionsTokensClaimed", "daily_missions_tokens_claimed", 0)
+        val lastMissionClaimDate = snapshot.getStringSafe("lastMissionClaimDate", "last_mission_claim_date")
         val rawFounderTier = snapshot.getStringSafe("founderTier", "founder_tier", "registered_tier_id")
         val isAnantEmail = phoneOrEmail.equals("service.veloxyra@gmail.com", ignoreCase = true) || phoneOrEmail.equals("anantisback47@gmail.com", ignoreCase = true)
         val founderTier = if (rawFounderTier.isNotBlank()) rawFounderTier else if (isAnantEmail) "tier_1000" else ""
@@ -4442,6 +4483,8 @@ class PlatformRepository(
             referralEarnings = referralEarnings,
             loginStreak = loginStreak,
             lastLoginClaimDate = lastLoginClaimDate,
+            dailyMissionsTokensClaimed = dailyMissionsTokensClaimed,
+            lastMissionClaimDate = lastMissionClaimDate,
             founderTier = founderTier,
             isFounder = isFounder,
             reservedTokens = reservedTokens,

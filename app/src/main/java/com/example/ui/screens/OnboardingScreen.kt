@@ -310,7 +310,7 @@ fun BasicProfileStep(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Shield,
+                            painter = androidx.compose.ui.res.painterResource(id = com.example.R.drawable.ic_untitledui_shield_tick),
                             contentDescription = null,
                             tint = Color(0xFF10B981),
                             modifier = Modifier.size(18.dp)

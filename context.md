@@ -285,4 +285,76 @@ An AI Agent or engineer building the **Velorix Web Admin Panel** should utilize 
    * Toggle `maintenanceMode`, set ETA, and toggle `forceUpdate` in `/system_config/app_config`.
 
 ---
+
+## 11. Real-Time Player Status, Tokenomics & Anti-Exploit Admin Telemetry
+
+The Android client and Cloud Functions sync real-time telemetry to `/users/{userId}` (Firestore and Realtime DB) to provide the Admin Panel with a single pane of glass for player tracking, sanctions, and economic monitoring.
+
+### A. Real-Time Player Schema Fields (for Admin Dashboard Tables & Metrics):
+* `id` (`string`): Firebase Auth UID.
+* `username` / `name` (`string`): Player username.
+* `email` / `phoneOrEmail` (`string`): Registered contact email or phone.
+* `ign` / `inGameName` (`string`): In-game nickname.
+* `gameId` / `freeFireId` (`string`): Verified game UID (8–12 numeric digits).
+* `status` (`string`): Player status: `"ACTIVE"` | `"SUSPENDED"` | `"BANNED"`.
+* `isOnline` / `online` (`boolean`): Real-time connection presence flag.
+* `lastLoginAt` (`number`/`timestamp`): Timestamp of player's last active session.
+* `balance` / `walletBalance` (`number`): Playable liquid VT Tokens (1 VT = ₹1.00 INR).
+* `tokens` / `tokenBalance` (`number`): In-game combat tokens earned via missions and check-ins.
+* `totalTokensConverted` (`number`): Cumulative tokens converted to VT balance (10 Tokens = 1 VT).
+* `dailyMissionsTokensClaimed` (`number`): Tokens claimed today towards the 100-token anti-exploit cap (0–100).
+* `lastMissionClaimDate` (`string`): Date key (`yyyy-MM-dd`) in Asia/Kolkata timezone of last mission claim.
+* `loginStreak` (`number`): Consecutive daily check-in streak count.
+* `lastLoginClaimDate` (`string`): Date key (`yyyy-MM-dd`) of last daily check-in.
+* `referralCode` (`string`): Unique user referral code (e.g. `VRX-USER-A1B2`).
+* `referredBy` (`string`): Referral code of player's referrer (empty if organic signup).
+* `referralCount` (`number`): Number of verified players registered via this user.
+* `referralEarnings` (`number`): Cumulative commission earnings in VT Tokens from referred deposits.
+* `founderTier` (`string`): Founder patron pass ID (e.g. `tier_100`, `tier_500`, `tier_1000`).
+* `isFounder` (`boolean`): Founder patron status flag.
+* `isBanned` (`boolean`), `banReason` (`string`), `banType` (`"TEMPORARY"` | `"PERMANENT"`).
+* `isSuspended` (`boolean`), `suspendReason` (`string`), `suspensionExpiresAt` (`number`).
+
+### B. Admin Dashboard Key Performance Indicators (KPIs):
+1. **Total Players:** `COUNT(users)` in Firestore / RTDB.
+2. **Active vs Sanctioned:** Filter where `status == "ACTIVE"`, `status == "SUSPENDED"`, or `status == "BANNED"`.
+3. **Daily Mission Cap Monitor:** Query players with `dailyMissionsTokensClaimed >= 100` today to identify power farmers and ensure the 100-token daily cap reset operates properly at midnight IST.
+4. **Token Conversion Volume:** Sum of `totalTokensConverted` across all users to observe token-to-cash conversion liabilities.
+5. **Referral Squad Leaders:** Top users sorted by `referralCount` descending with their tiered commission rates (10%, 12%, 15%).
+
+---
+
+## 12. Product Requirement Document (PRD): Social Athlete Profiles & Squad Matchmaking
+
+### 12.1 Strategic Value Assessment (Is a Social Profile System Good?)
+**Verdict: Highly Recommended, but Phase-Gated.**
+* **Strengths:** 
+  * Boosts Organic Virality: In esports, players play in DUO and SQUAD configurations. Allowing friends to team up multiplies tournament entry volume by 2x to 4x.
+  * Reduces Match Abandonment: Squad mates who know each other show up to custom room matches reliably, reducing no-show forfeits and customer support tickets.
+  * Increases Retention: Players return to check squad standings and activity feeds even on non-tournament days.
+* **Risks & Anti-Exploit Guardrails:**
+  * Collusion / Match-Fixing Risk: Teaming up in SOLO lobbies must be strictly prevented. Friends can only co-join in dedicated DUO/SQUAD designated brackets.
+  * Harassment / Chat Abuse: Text chat requires strict keyword filtering and player reporting to comply with Google Play safety guidelines.
+
+---
+
+### 12.2 Semantic Versioning Release Roadmap
+
+| Release Tier | Version | Focus & Scope | Key Capabilities |
+| :--- | :--- | :--- | :--- |
+| **Current / MVP** | **v1.0.0** | Core Esports Platform | • Auth & Safe Registration Referral Lock<br>• Room Database offline cache & Realtime DB sync<br>• Authoritative Cloud Functions for missions & anti-exploit cap (100 tokens/day)<br>• **Player Pass QR Code (ZXing)** for instant LAN check-in & ID sharing<br>• Manual room credential delivery (ID/Password) & anti-cheat |
+| **Maintenance & Patches** | **v1.1.x – v1.3.x** | Polish & Bug Fixes | • UI responsiveness on low-end devices<br>• Network retry resilience on spotty mobile data<br>• Minor localized copywriting and visual refinements |
+| **Pre-Social Features** | **v1.4.0 – v1.7.x** | Friends Discovery & QR Scanner | • In-app camera QR scanner to scan another athlete's pass<br>• Search players by IGN or Free Fire UID<br>• "Send Friend Request" & "Incoming Requests" tab<br>• Friend online status badge (`online` / `in-match` / `offline`) |
+| **Major Milestone** | **v2.0.0** | Full Social & Squad Co-Lobbies | • **Squad Parties:** Host invites up to 3 friends into a match pre-lobby<br>• **Co-Entry Fee Deductions:** Party leader pays for squad or split-pay among members<br>• **Match Notification Ping:** In-app audio ping when custom room credentials drop<br>• **Shared Squad Leaderboard & Clan Tags** |
+
+---
+
+### 12.3 Data Architecture for v1.5+ (Friends & Squads)
+* `/friends/{userId}/{friendUid}`: Record of mutual friendships and date added.
+* `/friend_requests/{recipientUid}/{senderUid}`: Status (`"PENDING"`, `"ACCEPTED"`, `"DECLINED"`).
+* `/squad_parties/{partyId}`:
+  * `leaderId` (`string`), `members` (`array of {uid, ign, readyStatus}`), `tournamentId` (`string`).
+  * Cloud Function `joinSquadTournament` performs atomic balance check and reservation across all squad members simultaneously.
+
+---
 *Generated for the Velorix Platform ecosystem. Use this document as the master context for all client, backend, and admin panel implementations.*

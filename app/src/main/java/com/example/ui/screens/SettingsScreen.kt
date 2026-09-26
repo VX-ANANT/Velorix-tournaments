@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
@@ -977,7 +978,7 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         SettingsActionTile(
-                            icon = Icons.Default.Shield,
+                            icon = androidx.compose.ui.graphics.vector.ImageVector.vectorResource(id = com.example.R.drawable.ic_untitledui_shield_tick),
                             title = "Sentinel Anti-Cheat Protocol",
                             subtitle = "Autonomous Forensic Bot & Zero-Tolerance Hardware Blacklisting",
                             iconTint = Color(0xFFEF4444),
