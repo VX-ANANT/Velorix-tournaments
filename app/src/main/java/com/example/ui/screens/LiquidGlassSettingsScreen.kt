@@ -274,6 +274,18 @@ fun LiquidGlassSettingsScreen(
                                 viewModel.setGlassNavBar(it)
                             }
                         )
+                        SettingsDivider()
+
+                        SettingsToggleRow(
+                            icon = Icons.Outlined.Layers,
+                            title = "Glass Cards",
+                            subtitle = "Apply frosted glass and glowing border to tournament cards",
+                            checked = config.glassCards,
+                            onCheckedChange = {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                viewModel.setGlassCards(it)
+                            }
+                        )
                     }
                 }
             }

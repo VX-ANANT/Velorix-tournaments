@@ -513,6 +513,20 @@ class MainActivity : ComponentActivity() {
                             com.example.ui.components.BottomTab("profile", "Profile", profileIcon)
                         }
 
+                        val isGlassActive = liquidGlassConfig.enableLiquidGlass && (liquidGlassConfig.glassNavBar || liquidGlassConfig.glassCards)
+                        val glassTint = remember(liquidGlassConfig.surfaceTint, liquidGlassConfig.surfaceOpacity, liquidGlassConfig.vibrancy) {
+                            val base = when (liquidGlassConfig.surfaceTint.lowercase()) {
+                                "crimson" -> Color(0xFF1E030B)
+                                "midnight" -> Color(0xFF091122)
+                                "clear" -> Color(0xFF06080E)
+                                else -> Color(0xFF0D111A)
+                            }
+                            base.copy(alpha = (liquidGlassConfig.surfaceOpacity * 0.35f * liquidGlassConfig.vibrancy).coerceIn(0f, 0.6f))
+                        }
+                        val glassBlur = remember(liquidGlassConfig.blurRadius) {
+                            liquidGlassConfig.blurRadius.coerceIn(0f, 30f).dp
+                        }
+
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -521,13 +535,19 @@ class MainActivity : ComponentActivity() {
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .haze(
-                                        state = hazeState,
-                                        style = HazeStyle(
-                                            tint = Color.Transparent,
-                                            blurRadius = 8.dp, // BitChord BLUR_RADIUS_DP = 8f for subtle frosted glass
-                                            noiseFactor = 0f
-                                        )
+                                    .then(
+                                        if (isGlassActive) {
+                                            Modifier.haze(
+                                                state = hazeState,
+                                                style = HazeStyle(
+                                                    tint = glassTint,
+                                                    blurRadius = glassBlur,
+                                                    noiseFactor = 0f
+                                                )
+                                            )
+                                        } else {
+                                            Modifier
+                                        }
                                     )
                             ) {
                                 androidx.compose.animation.AnimatedContent(

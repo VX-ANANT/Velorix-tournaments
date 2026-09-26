@@ -39,19 +39,31 @@ fun UserAvatar(
     modifier: Modifier = Modifier,
     size: Dp = 80.dp,
     showEditBadge: Boolean = false,
+    animateGlow: Boolean = false,
     onClick: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
-    val infiniteTransition = rememberInfiniteTransition(label = "avatarGlow")
-    val glowColor by infiniteTransition.animateColor(
-        initialValue = NeonGreen,
-        targetValue = MaterialTheme.colorScheme.primary,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2500, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glowColor"
-    )
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val secondaryColor = MaterialTheme.colorScheme.secondary
+    val isAnimated = animateGlow && size >= 64.dp
+
+    val ringBrush = if (isAnimated) {
+        val infiniteTransition = rememberInfiniteTransition(label = "avatarGlow")
+        val glowColor by infiniteTransition.animateColor(
+            initialValue = NeonGreen,
+            targetValue = primaryColor,
+            animationSpec = infiniteRepeatable(
+                animation = tween(2500, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "glowColor"
+        )
+        Brush.sweepGradient(listOf(glowColor, secondaryColor, glowColor))
+    } else {
+        remember(primaryColor, secondaryColor) {
+            Brush.sweepGradient(listOf(primaryColor, secondaryColor, primaryColor))
+        }
+    }
 
     val resolvedModel = remember(avatarUrl) {
         AvatarHelper.resolveAvatarModel(context, avatarUrl)
@@ -68,11 +80,7 @@ fun UserAvatar(
             modifier = Modifier
                 .fillMaxSize()
                 .clip(CircleShape)
-                .background(
-                    Brush.sweepGradient(
-                        listOf(glowColor, MaterialTheme.colorScheme.secondary, glowColor)
-                    )
-                )
+                .background(ringBrush)
                 .padding(2.5.dp)
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.surface)

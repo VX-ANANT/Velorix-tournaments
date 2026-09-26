@@ -231,13 +231,13 @@ fun FloatingBottomBar(
                 .clip(BAR_PILL_SHAPE)
                 .then(
                     if (isGlassEnabled) {
-                        Modifier.hazeChild(state = hazeState, shape = BAR_PILL_SHAPE)
+                        Modifier
+                            .hazeChild(state = hazeState, shape = BAR_PILL_SHAPE)
+                            .background(brush = liquidGlassBackground)
                     } else {
-                        Modifier.background(Color(0xFF161922))
+                        Modifier.background(Color(0xFF141722))
                     }
                 )
-                // Apple Liquid Glass Translucent Base
-                .background(brush = liquidGlassBackground)
                 // Upper Curvature Glare & Lens Refraction
                 .drawBehind {
                     if (isGlassEnabled) {
@@ -255,7 +255,7 @@ fun FloatingBottomBar(
                 // Specular Glass Rim Border
                 .border(
                     width = 1.dp,
-                    brush = specularRimGradient,
+                    brush = if (isGlassEnabled) specularRimGradient else androidx.compose.ui.graphics.SolidColor(Color.White.copy(alpha = 0.12f)),
                     shape = BAR_PILL_SHAPE
                 )
                 .padding(horizontal = PILL_INSET_HORIZONTAL, vertical = PILL_INSET_VERTICAL),
@@ -380,12 +380,13 @@ fun FloatingBottomBar(
                 .clip(CircleShape)
                 .then(
                     if (isGlassEnabled) {
-                        Modifier.hazeChild(state = hazeState, shape = CircleShape)
+                        Modifier
+                            .hazeChild(state = hazeState, shape = CircleShape)
+                            .background(brush = liquidGlassBackground)
                     } else {
-                        Modifier.background(Color(0xFF161922))
+                        Modifier.background(Color(0xFF141722))
                     }
                 )
-                .background(brush = liquidGlassBackground)
                 .drawBehind {
                     if (isGlassEnabled) {
                         drawRoundRect(
@@ -408,7 +409,7 @@ fun FloatingBottomBar(
                             0.8f to Color.White.copy(alpha = (specularIntensity * 0.25f).coerceIn(0.03f, 0.12f)),
                             1.0f to Color.White.copy(alpha = (specularIntensity * 0.8f).coerceIn(0.12f, 0.35f))
                         )
-                    } else specularRimGradient,
+                    } else if (isGlassEnabled) specularRimGradient else androidx.compose.ui.graphics.SolidColor(Color.White.copy(alpha = 0.12f)),
                     shape = CircleShape
                 )
                 .clickable(

@@ -56,6 +56,7 @@ fun TournamentCard(
     isJoined: Boolean = false,
     joinCooldownSeconds: Int = 0,
     liveUpdate: com.example.data.model.LiveMatchUpdate? = null,
+    isGlassCard: Boolean = false,
     onClick: () -> Unit,
     onJoinClick: () -> Unit
 ) {
@@ -118,14 +119,33 @@ fun TournamentCard(
         else -> Color(0xFFFDE68A)
     }
 
+    val cardContainerColor = if (isGlassCard) {
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant
+    }
+    val cardBorder = if (isGlassCard) {
+        BorderStroke(
+            1.dp,
+            Brush.verticalGradient(
+                listOf(
+                    Color.White.copy(alpha = 0.28f),
+                    Color.White.copy(alpha = 0.06f)
+                )
+            )
+        )
+    } else {
+        BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+    }
+
     Card(
         modifier = modifier
             .fillMaxWidth()
             .padding(bottom = 16.dp)
             .testTag("custom_tournament_card"),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        colors = CardDefaults.cardColors(containerColor = cardContainerColor),
         shape = RoundedCornerShape(24.dp),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+        border = cardBorder,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {

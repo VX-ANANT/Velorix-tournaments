@@ -80,6 +80,7 @@ fun MatchesScreen(
     
     var selectedGameFilter by remember { mutableStateOf("ALL") }
     var selectedFeeFilter by remember { mutableStateOf("ALL") }
+    val liquidGlassConfig by viewModel.liquidGlassConfig.collectAsState()
 
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
@@ -268,7 +269,11 @@ fun MatchesScreen(
                     contentPadding = PaddingValues(bottom = 90.dp)
                 ) {
                     items(filteredUpcoming, key = { it.id }) { match ->
-                        UpcomingJoinedRow(match = match, onClick = { haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove); onNavigateToTournament(match.id) })
+                        UpcomingJoinedRow(
+                            match = match,
+                            isGlassCard = liquidGlassConfig.enableLiquidGlass && liquidGlassConfig.glassCards,
+                            onClick = { haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove); onNavigateToTournament(match.id) }
+                        )
                     }
                 }
             }
@@ -374,19 +379,31 @@ fun MatchesScreen(
 }
 }
 @Composable
-fun UpcomingJoinedRow(match: Tournament, onClick: () -> Unit) {
+fun UpcomingJoinedRow(match: Tournament, isGlassCard: Boolean = false, onClick: () -> Unit) {
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val context = LocalContext.current
     val hasCredentials = match.roomId.isNotBlank()
+
+    val cardBg = if (isGlassCard) {
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant
+    }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 12.dp)
-            .border(1.dp, if (hasCredentials) NeonGreen.copy(alpha = 0.5f) else MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+            .border(
+                1.dp,
+                if (hasCredentials) NeonGreen.copy(alpha = 0.5f)
+                else if (isGlassCard) Color.White.copy(alpha = 0.2f)
+                else MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f),
+                RoundedCornerShape(16.dp)
+            )
             .clickable { haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove); onClick() }
             .testTag("upcoming_match_${match.id}"),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        colors = CardDefaults.cardColors(containerColor = cardBg),
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {

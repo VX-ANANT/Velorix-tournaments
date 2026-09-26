@@ -103,6 +103,7 @@ fun HomeScreen(
     val isSyncing by viewModel.isSyncing.collectAsState()
     val lastSyncedTimestamp by viewModel.lastSyncedTimestamp.collectAsState()
     val actionCooldowns by viewModel.actionCooldownSeconds.collectAsState()
+    val liquidGlassConfig by viewModel.liquidGlassConfig.collectAsState()
     var selectedCategory by remember { mutableStateOf("All") }
     var selectedFee by remember { mutableStateOf("All") }
     var searchQuery by remember { mutableStateOf("") }
@@ -566,6 +567,7 @@ fun HomeScreen(
                         killBounty = match.killBounty,
                         isJoined = match.joined,
                         joinCooldownSeconds = joinCooldown,
+                        isGlassCard = liquidGlassConfig.enableLiquidGlass && liquidGlassConfig.glassCards,
                         onClick = { haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove); onNavigateToTournament(match.id) },
                         onJoinClick = { haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove); onNavigateToTournament(match.id) }
                     )

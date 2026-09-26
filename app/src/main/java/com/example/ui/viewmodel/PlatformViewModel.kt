@@ -724,7 +724,7 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
                 } else if (!hasVpn && _isVpnActive.value) {
                     _isVpnActive.value = false
                 }
-                delay(1000)
+                delay(15000) // Poll every 15 seconds to prevent battery drain and CPU stutters
             }
         }
 
@@ -755,7 +755,7 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
                 _isLoggedIn.value = true
                 prefs.edit().putBoolean("is_logged_in", true).apply()
                 withContext(Dispatchers.IO) {
-                    repository.fetchDataFromServer(force = true)
+                    repository.fetchDataFromServer(force = false)
                 }
                 val userItem = repository.getUserSync()
                 checkAndSetOnboardingStatus(userItem)
