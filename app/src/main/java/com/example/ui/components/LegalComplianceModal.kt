@@ -250,7 +250,7 @@ private fun TermsContent() {
 
         Spacer(modifier = Modifier.height(14.dp))
         LegalSectionTitle("1. ARCHITECTURAL SCOPE & SAFE HARBOR")
-        LegalParagraph("VeloRix functions strictly as an electronic sports contest organizer and intermediary infrastructure under Section 79 of the Information Technology Act, 2000. VeloRix provides competitive matchmaking for mobile gaming titles including Garena Free Fire and is not affiliated with or endorsed by Garena International.")
+        LegalParagraph("VeloRix functions strictly as an electronic sports contest organizer and intermediary infrastructure under Section 79 of the Information Technology Act, 2000. VeloRix provides competitive matchmaking for mobile gaming titles including Free Fire and is not affiliated with or endorsed by game publishers.")
 
         LegalSectionTitle("2. STRICT 18+ AGE GATING & TERRITORIAL CITADEL")
         LegalParagraph("• Mandatory 18+ Majority under PROG Act 2025 & MeitY Rules 2026: Operatives must certify attainment of 18+ legal majority to engage in entry-fee combat rooms. Minors are restricted solely to Free Practice Scrims.\n• Geofenced Enactments: In absolute adherence to respective state statutes, cash competitions are strictly prohibited to residents within Assam, Odisha, Telangana, Nagaland, Andhra Pradesh, and Sikkim. VPN or geolocation spoofing triggers autonomous hardware invalidation.")
@@ -385,7 +385,7 @@ private fun LegalStatusContent() {
 
         Spacer(modifier = Modifier.height(14.dp))
         LegalSectionTitle("1. STATUTORY ESPORTS CLASSIFICATION (PROG RULES 2026)")
-        LegalParagraph("Under Section 4 & 5 of the Promotion and Regulation of Online Gaming Rules, 2026 notified by MeitY, competitive battle royale matches (Free Fire) with predetermined deterministic rules, motor dexterity requirements, and verified match credentials qualify as permissible skill-based e-sports contests.")
+        LegalParagraph("Under Section 4 & 5 of the Promotion and Regulation of Online Gaming Rules, 2026 notified by MeitY, competitive tactical survival matches (Free Fire) with predetermined deterministic rules, motor dexterity requirements, and verified match credentials qualify as permissible skill-based e-sports contests.")
 
         LegalSectionTitle("2. ONLINE GAMING AUTHORITY OF INDIA (OGAI) SENTINEL")
         LegalParagraph("Adheres to the regulatory directives issued by the Online Gaming Authority of India (OGAI), established in April 2026: strict zero algorithmic tampering, mobile hardware parity (anti-emulator enforcement), auditable tournament ledger, and prompt institutional grievance redressal.")

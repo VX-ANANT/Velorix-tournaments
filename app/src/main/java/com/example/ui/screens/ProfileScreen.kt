@@ -211,8 +211,6 @@ fun ProfileScreen(
                         .fillMaxWidth()
                         .widthIn(max = 760.dp)
                         .padding(padding)
-                        .blur(radius = bgBlurRadius)
-                        .stretchOverscroll()
                         .verticalScroll(rememberScrollState())
                         .padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -807,7 +805,7 @@ fun ProfileScreen(
                                         Spacer(modifier = Modifier.height(8.dp))
 
                                         Text(
-                                            text = stat.tournamentTitle.ifBlank { "Championship Arena" },
+                                            text = stat.tournamentTitle.ifBlank { "Championship Match" },
                                             fontSize = 14.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = MaterialTheme.colorScheme.onSurface
@@ -1119,7 +1117,7 @@ fun ProfileScreen(
                                 .padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            GeminiStarLogo(size = 32.dp, animated = true)
+                            GeminiStarLogo(size = 32.dp, animated = false)
                             Spacer(modifier = Modifier.width(14.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(

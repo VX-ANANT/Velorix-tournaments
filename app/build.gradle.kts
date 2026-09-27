@@ -45,7 +45,8 @@ android {
   buildTypes {
     release {
       isCrunchPngs = false
-      isMinifyEnabled = false
+      isMinifyEnabled = true
+      isShrinkResources = true
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
       signingConfig = signingConfigs.getByName("release")
     }
@@ -148,15 +149,20 @@ dependencies {
 }
 
 afterEvaluate {
-    val srcFile = layout.buildDirectory.file("outputs/apk/debug/app-debug.apk").get().asFile
+    val debugApk = layout.buildDirectory.file("outputs/apk/debug/app-debug.apk").get().asFile
+    val releaseApk = layout.buildDirectory.file("outputs/apk/release/app-release.apk").get().asFile
     val singleDest = layout.projectDirectory.file("../APK_DOWNLOAD/velorix.apk").asFile
 
-    tasks.named("assembleDebug") {
-        doLast {
-            if (srcFile.exists()) {
-                singleDest.parentFile.mkdirs()
-                srcFile.copyTo(singleDest, overwrite = true)
-            }
+    tasks.findByName("assembleDebug")?.doLast {
+        if (debugApk.exists()) {
+            singleDest.parentFile.mkdirs()
+            debugApk.copyTo(singleDest, overwrite = true)
+        }
+    }
+    tasks.findByName("assembleRelease")?.doLast {
+        if (releaseApk.exists()) {
+            singleDest.parentFile.mkdirs()
+            releaseApk.copyTo(singleDest, overwrite = true)
         }
     }
 }

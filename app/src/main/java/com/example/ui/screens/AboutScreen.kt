@@ -145,7 +145,6 @@ fun AboutScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .stretchOverscroll()
                 .padding(horizontal = 20.dp),
             contentPadding = PaddingValues(top = 12.dp, bottom = 48.dp)
         ) {

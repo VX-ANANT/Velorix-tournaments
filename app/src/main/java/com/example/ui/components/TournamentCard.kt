@@ -24,6 +24,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.geometry.Offset
@@ -37,6 +38,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 val DeepSpaceBlack = Color(0xFF09090B)
 val CardSurfaceLight = Color(0xFF18181B)
+private data class TacticalBadgeStyle(
+    val text: String,
+    val bgColor: Color,
+    val borderColor: Color,
+    val textColor: Color
+)
+
 @Composable
 fun TournamentCard(
     thumbnailUrl: String,
@@ -57,91 +65,176 @@ fun TournamentCard(
     joinCooldownSeconds: Int = 0,
     liveUpdate: com.example.data.model.LiveMatchUpdate? = null,
     isGlassCard: Boolean = false,
+    liquidGlassConfig: com.example.data.model.LiquidGlassConfig = com.example.data.model.LiquidGlassConfig(),
     onClick: () -> Unit,
     onJoinClick: () -> Unit
 ) {
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
-    val isFull = filledSlots >= maxSlots
-    val rawProgress = if (maxSlots > 0) filledSlots.toFloat() / maxSlots.toFloat() else 0f
-    val progress = rawProgress.coerceIn(0f, 1f)
-
-    // Compute tactical badge info
-    val tacticalBadgeText = when {
-        categoryBadge.isNotBlank() -> categoryBadge
-        matchCategory.equals("CLASH_SQUAD", true) || matchCategory.equals("CS", true) -> when (matchMode.uppercase()) {
-            "HEADSHOT_ONLY", "ONLY_HEAD" -> "HEADSHOT ONLY (NO BODY)"
-            "BODY_DAMAGE_ON", "ALL_WEAPONS" -> "ALL WEAPONS & BODY DMG"
-            "SNIPER_ONLY" -> "SNIPER ONLY DUEL"
-            "LIMITED_AMMO" -> "LIMITED AMMO TACTICAL"
-            "UNLIMITED_AMMO" -> "UNLIMITED AMMO RUSH"
-            "PISTOL_ONLY" -> "DESERT EAGLE ONLY"
-            else -> "CLASH SQUAD $format"
+    val isFull by remember(filledSlots, maxSlots) {
+        derivedStateOf { filledSlots >= maxSlots }
+    }
+    val progress by remember(filledSlots, maxSlots) {
+        derivedStateOf {
+            val raw = if (maxSlots > 0) filledSlots.toFloat() / maxSlots.toFloat() else 0f
+            raw.coerceIn(0f, 1f)
         }
-        matchCategory.equals("LONE_WOLF", true) -> if (format.contains("2", true)) "LONE WOLF 2v2" else "LONE WOLF 1v1 DUEL"
-        matchMode.equals("PER_KILL", true) || matchMode.equals("PER_KILL_DOMINATION", true) -> {
-            if (killBounty > 0) "₹${killBounty.toInt()}/KILL BOUNTY" else "PER-KILL DOMINATION"
+    }
+
+    // Compute tactical badge styling with remember
+    val badgeStyle = remember(categoryBadge, matchCategory, matchMode, killBounty, format) {
+        val tacticalBadgeText = when {
+            categoryBadge.isNotBlank() -> categoryBadge
+            matchCategory.equals("CLASH_SQUAD", true) || matchCategory.equals("CS", true) -> when (matchMode.uppercase()) {
+                "HEADSHOT_ONLY", "ONLY_HEAD" -> "HEADSHOT ONLY (NO BODY)"
+                "BODY_DAMAGE_ON", "ALL_WEAPONS" -> "ALL WEAPONS & BODY DMG"
+                "SNIPER_ONLY" -> "SNIPER ONLY DUEL"
+                "LIMITED_AMMO" -> "LIMITED AMMO TACTICAL"
+                "UNLIMITED_AMMO" -> "UNLIMITED AMMO RUSH"
+                "PISTOL_ONLY" -> "DESERT EAGLE ONLY"
+                else -> "CLASH SQUAD $format"
+            }
+            matchCategory.equals("LONE_WOLF", true) -> if (format.contains("2", true)) "LONE WOLF 2v2" else "LONE WOLF 1v1 DUEL"
+            matchMode.equals("PER_KILL", true) || matchMode.equals("PER_KILL_DOMINATION", true) -> {
+                if (killBounty > 0) "₹${killBounty.toInt()}/KILL BOUNTY" else "PER-KILL DOMINATION"
+            }
+            matchMode.equals("SURVIVAL", true) || matchMode.equals("SURVIVAL_WWCD", true) -> "SURVIVAL / WWCD"
+            else -> if (killBounty > 0) "₹${killBounty.toInt()}/KILL" else "$format SURVIVAL"
         }
-        matchMode.equals("SURVIVAL", true) || matchMode.equals("SURVIVAL_WWCD", true) -> "SURVIVAL / WWCD"
-        else -> if (killBounty > 0) "₹${killBounty.toInt()}/KILL" else "$format BATTLE ROYALE"
+
+        val isHeadshotOnly = tacticalBadgeText.contains("HEADSHOT", true) || matchMode.contains("HEAD", true)
+        val isSniperOnly = tacticalBadgeText.contains("SNIPER", true)
+        val isClashSquad = matchCategory.contains("CLASH", true) || matchCategory.contains("CS", true) || format.contains("v", true)
+        val isLoneWolf = matchCategory.contains("LONE", true)
+        val isSurvival = tacticalBadgeText.contains("SURVIVAL", true) || tacticalBadgeText.contains("WWCD", true)
+
+        val bg = when {
+            isHeadshotOnly -> Color(0xEE7F1D1D)
+            isSniperOnly -> Color(0xEE581C87)
+            isLoneWolf -> Color(0xEE7C2D12)
+            isClashSquad -> Color(0xEE0C4A6E)
+            isSurvival -> Color(0xEE064E3B)
+            else -> Color(0xEE1E293B)
+        }
+        val border = when {
+            isHeadshotOnly -> Color(0xFFEF4444)
+            isSniperOnly -> Color(0xFFA855F7)
+            isLoneWolf -> Color(0xFFF97316)
+            isClashSquad -> Color(0xFF38BDF8)
+            isSurvival -> Color(0xFF10B981)
+            else -> Color(0xFFF59E0B)
+        }
+        val text = when {
+            isHeadshotOnly -> Color(0xFFFCA5A5)
+            isSniperOnly -> Color(0xFFE9D5FF)
+            isLoneWolf -> Color(0xFFFDBA74)
+            isClashSquad -> Color(0xFFBAE6FD)
+            isSurvival -> Color(0xFF6EE7B7)
+            else -> Color(0xFFFDE68A)
+        }
+        TacticalBadgeStyle(tacticalBadgeText, bg, border, text)
     }
 
-    // Determine tactical badge color styling
-    val isHeadshotOnly = tacticalBadgeText.contains("HEADSHOT", true) || matchMode.contains("HEAD", true)
-    val isSniperOnly = tacticalBadgeText.contains("SNIPER", true)
-    val isClashSquad = matchCategory.contains("CLASH", true) || matchCategory.contains("CS", true) || format.contains("v", true)
-    val isLoneWolf = matchCategory.contains("LONE", true)
-    val isSurvival = tacticalBadgeText.contains("SURVIVAL", true) || tacticalBadgeText.contains("WWCD", true)
-
-    val badgeBgColor = when {
-        isHeadshotOnly -> Color(0xEE7F1D1D) // Dark Crimson
-        isSniperOnly -> Color(0xEE581C87) // Dark Purple
-        isLoneWolf -> Color(0xEE7C2D12) // Dark Orange
-        isClashSquad -> Color(0xEE0C4A6E) // Dark Cyan/Navy
-        isSurvival -> Color(0xEE064E3B) // Dark Emerald
-        else -> Color(0xEE1E293B) // Dark Slate
+    val isGlassEnabled = remember(isGlassCard, liquidGlassConfig.enableLiquidGlass, liquidGlassConfig.glassCards) {
+        isGlassCard && liquidGlassConfig.enableLiquidGlass && liquidGlassConfig.glassCards
     }
 
-    val badgeBorderColor = when {
-        isHeadshotOnly -> Color(0xFFEF4444)
-        isSniperOnly -> Color(0xFFA855F7)
-        isLoneWolf -> Color(0xFFF97316)
-        isClashSquad -> Color(0xFF38BDF8)
-        isSurvival -> Color(0xFF10B981)
-        else -> Color(0xFFF59E0B)
+    val cardContainerColor = remember(isGlassEnabled, liquidGlassConfig.surfaceTint, liquidGlassConfig.surfaceOpacity, liquidGlassConfig.vibrancy) {
+        if (isGlassEnabled) {
+            val baseTint = when (liquidGlassConfig.surfaceTint.lowercase()) {
+                "crimson" -> Color(0xFF1E030B)
+                "midnight" -> Color(0xFF091122)
+                "clear" -> Color(0xFF06080E)
+                "emerald" -> Color(0xFF031A0F)
+                "gold" -> Color(0xFF1E1704)
+                else -> Color(0xFF0E131F)
+            }
+            baseTint.copy(alpha = (liquidGlassConfig.surfaceOpacity * 0.9f * liquidGlassConfig.vibrancy).coerceIn(0.12f, 0.88f))
+        } else {
+            CardSurfaceLight
+        }
     }
 
-    val badgeTextColor = when {
-        isHeadshotOnly -> Color(0xFFFCA5A5)
-        isSniperOnly -> Color(0xFFE9D5FF)
-        isLoneWolf -> Color(0xFFFDBA74)
-        isClashSquad -> Color(0xFFBAE6FD)
-        isSurvival -> Color(0xFF6EE7B7)
-        else -> Color(0xFFFDE68A)
-    }
-
-    val cardContainerColor = if (isGlassCard) {
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
-    } else {
-        MaterialTheme.colorScheme.surfaceVariant
-    }
-    val cardBorder = if (isGlassCard) {
-        BorderStroke(
-            1.dp,
-            Brush.verticalGradient(
+    val outlineColor = MaterialTheme.colorScheme.outline
+    val cardBorder = remember(isGlassEnabled, liquidGlassConfig.lensRefractionAmount, liquidGlassConfig.chromaticAberration, outlineColor) {
+        if (isGlassEnabled) {
+            val specular = liquidGlassConfig.lensRefractionAmount.coerceIn(0.05f, 0.5f)
+            val borderColors = if (liquidGlassConfig.chromaticAberration) {
                 listOf(
-                    Color.White.copy(alpha = 0.28f),
-                    Color.White.copy(alpha = 0.06f)
+                    Color(0xFF38BDF8).copy(alpha = (specular * 1.3f).coerceIn(0.1f, 0.6f)),
+                    Color.White.copy(alpha = (specular * 0.9f).coerceIn(0.08f, 0.5f)),
+                    Color(0xFFF43F5E).copy(alpha = (specular * 0.5f).coerceIn(0.05f, 0.35f)),
+                    Color.White.copy(alpha = (specular * 0.2f).coerceIn(0.02f, 0.15f))
                 )
-            )
-        )
-    } else {
-        BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+            } else {
+                listOf(
+                    Color.White.copy(alpha = (specular * 1.2f).coerceIn(0.1f, 0.55f)),
+                    Color.White.copy(alpha = (specular * 0.2f).coerceIn(0.02f, 0.15f))
+                )
+            }
+            BorderStroke(1.dp, Brush.verticalGradient(borderColors))
+        } else {
+            BorderStroke(1.dp, outlineColor.copy(alpha = 0.2f))
+        }
+    }
+
+    val onSurfaceColor = MaterialTheme.colorScheme.onSurface
+    val cardTitleColor = remember(isGlassEnabled, liquidGlassConfig.glassTextColor, onSurfaceColor) {
+        if (isGlassEnabled) {
+            when (liquidGlassConfig.glassTextColor.lowercase()) {
+                "platinum" -> Color(0xFFE2E8F0)
+                "adaptive" -> Color(0xFFF1F5F9)
+                else -> Color.White
+            }
+        } else {
+            onSurfaceColor
+        }
+    }
+
+    val cardElevation = remember(isGlassEnabled, liquidGlassConfig.depthEffect) {
+        if (isGlassEnabled && liquidGlassConfig.depthEffect) 8.dp else 0.dp
+    }
+
+    // Memoized text formatting
+    val prizePoolText = remember(prizePool) { "VT ${prizePool.toInt()}" }
+    val entryFeeText = remember(entryFee) { if (entryFee == 0.0) "FREE" else "VT ${entryFee.toInt()}" }
+    val slotsText = remember(filledSlots, maxSlots) { "$filledSlots/$maxSlots" }
+    val mapFormatText = remember(mapType, perspective, format) { "$mapType • $perspective • $format" }
+
+    val joinButtonText by remember(joinCooldownSeconds, isFull) {
+        derivedStateOf {
+            when {
+                joinCooldownSeconds > 0 -> "Wait ${joinCooldownSeconds}s"
+                isFull -> "Slots Full"
+                else -> "Join Now"
+            }
+        }
     }
 
     Card(
         modifier = modifier
             .fillMaxWidth()
             .padding(bottom = 16.dp)
+            .shadow(
+                elevation = cardElevation,
+                shape = RoundedCornerShape(24.dp),
+                ambientColor = Color.Black.copy(alpha = 0.35f),
+                spotColor = Color.Black.copy(alpha = 0.5f)
+            )
+            .drawBehind {
+                if (isGlassEnabled) {
+                    val glareHeight = size.height * liquidGlassConfig.lensRefractionHeight.coerceIn(0.2f, 0.9f)
+                    val glareAlpha = (liquidGlassConfig.lensRefractionAmount * 0.35f).coerceIn(0.02f, 0.18f)
+                    drawRoundRect(
+                        brush = Brush.verticalGradient(
+                            0.0f to Color.White.copy(alpha = glareAlpha),
+                            0.65f to Color.White.copy(alpha = glareAlpha * 0.2f),
+                            1.0f to Color.Transparent
+                        ),
+                        size = androidx.compose.ui.geometry.Size(size.width, glareHeight),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(48f, 48f)
+                    )
+                }
+            }
             .testTag("custom_tournament_card"),
         colors = CardDefaults.cardColors(containerColor = cardContainerColor),
         shape = RoundedCornerShape(24.dp),
@@ -163,9 +256,24 @@ fun TournamentCard(
                         onClick()
                     }
             ) {
+                val context = androidx.compose.ui.platform.LocalContext.current
+                val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+                val imageRequest = remember(thumbnailUrl, context, lifecycleOwner) {
+                    coil.request.ImageRequest.Builder(context)
+                        .data(thumbnailUrl)
+                        .lifecycle(lifecycleOwner)
+                        .crossfade(true)
+                        .memoryCacheKey(thumbnailUrl)
+                        .diskCacheKey(thumbnailUrl)
+                        .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
+                        .diskCachePolicy(coil.request.CachePolicy.ENABLED)
+                        .size(coil.size.Size(720, 360))
+                        .build()
+                }
+
                 // Main Game Background Image
                 coil.compose.AsyncImage(
-                    model = thumbnailUrl,
+                    model = imageRequest,
                     contentDescription = "Game Thumbnail",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
@@ -192,8 +300,8 @@ fun TournamentCard(
                     // Left: Tactical Category Badge (Unmissable for players)
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = badgeBgColor,
-                        border = BorderStroke(1.5.dp, badgeBorderColor)
+                        color = badgeStyle.bgColor,
+                        border = BorderStroke(1.5.dp, badgeStyle.borderColor)
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
@@ -203,12 +311,12 @@ fun TournamentCard(
                                 modifier = Modifier
                                     .size(6.dp)
                                     .clip(RoundedCornerShape(3.dp))
-                                    .background(badgeBorderColor)
+                                    .background(badgeStyle.borderColor)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = tacticalBadgeText.uppercase(),
-                                color = badgeTextColor,
+                                text = badgeStyle.text.uppercase(),
+                                color = badgeStyle.textColor,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Black,
                                 letterSpacing = 0.5.sp
@@ -272,7 +380,7 @@ fun TournamentCard(
                     text = title,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = cardTitleColor,
                     maxLines = 1
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -290,7 +398,7 @@ fun TournamentCard(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "$mapType • $perspective • $format",
+                            text = mapFormatText,
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -298,14 +406,14 @@ fun TournamentCard(
 
                     Surface(
                         shape = RoundedCornerShape(4.dp),
-                        color = badgeBgColor.copy(alpha = 0.5f),
-                        border = BorderStroke(0.8.dp, badgeBorderColor.copy(alpha = 0.8f))
+                        color = badgeStyle.bgColor.copy(alpha = 0.5f),
+                        border = BorderStroke(0.8.dp, badgeStyle.borderColor.copy(alpha = 0.8f))
                     ) {
                         Text(
-                            text = tacticalBadgeText,
+                            text = badgeStyle.text,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
-                            color = badgeTextColor,
+                            color = badgeStyle.textColor,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
@@ -325,9 +433,8 @@ fun TournamentCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(4.dp))
-                        com.example.ui.components.AnimatedRollingCounter(
-                            targetValue = prizePool.toInt(),
-                            prefix = "VT ",
+                        Text(
+                            text = prizePoolText,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.secondary
@@ -341,22 +448,12 @@ fun TournamentCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(4.dp))
-                        if (entryFee == 0.0) {
-                            Text(
-                                text = "FREE",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        } else {
-                            com.example.ui.components.AnimatedRollingCounter(
-                                targetValue = entryFee.toInt(),
-                                prefix = "VT ",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
+                        Text(
+                            text = entryFeeText,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
@@ -366,20 +463,12 @@ fun TournamentCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(4.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            com.example.ui.components.AnimatedRollingCounter(
-                                targetValue = filledSlots,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Text(
-                                text = "/$maxSlots",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
+                        Text(
+                            text = slotsText,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
@@ -442,13 +531,15 @@ fun TournamentCard(
                 }
                 Spacer(modifier = Modifier.height(20.dp))
                 val context = androidx.compose.ui.platform.LocalContext.current
-                val remindMeClick = {
-                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                    val intent = android.content.Intent(android.content.Intent.ACTION_INSERT).apply {
-                        data = android.provider.CalendarContract.Events.CONTENT_URI
-                        putExtra(android.provider.CalendarContract.Events.TITLE, "VeloRix Tournament: $title")
+                val remindMeClick = remember(context, title, haptic) {
+                    {
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                        val intent = android.content.Intent(android.content.Intent.ACTION_INSERT).apply {
+                            data = android.provider.CalendarContract.Events.CONTENT_URI
+                            putExtra(android.provider.CalendarContract.Events.TITLE, "VeloRix Tournament: $title")
+                        }
+                        context.startActivity(intent)
                     }
-                    context.startActivity(intent)
                 }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -490,11 +581,7 @@ fun TournamentCard(
                                 )
                             ) {
                                 Text(
-                                    text = when {
-                                        joinCooldownSeconds > 0 -> "Wait ${joinCooldownSeconds}s"
-                                        isFull -> "Slots Full"
-                                        else -> "Join Now"
-                                    },
+                                    text = joinButtonText,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 15.sp,
                                     letterSpacing = 0.5.sp

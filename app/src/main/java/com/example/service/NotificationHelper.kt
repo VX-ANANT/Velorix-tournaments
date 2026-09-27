@@ -303,7 +303,7 @@ object NotificationHelper {
             else -> "#${position} Place"
         }
 
-        val winningsText = if (winnings > 0) "Earned VT ${winnings.toInt()} credited to your wallet!" else "Better luck in the next battle!"
+        val winningsText = if (winnings > 0) "Earned VT ${winnings.toInt()} credited to your wallet!" else "Better luck in the next match!"
         val title = "Results Published: $tournamentTitle"
         val content = "You finished $rankStr with $kills kills! $winningsText"
 
@@ -716,7 +716,7 @@ object NotificationHelper {
         val engagementMessages = listOf(
             Pair(
                 "Cash Scrims & Tournaments Live!",
-                "Daily Free Fire custom scrims are live with instant cash prizes. Enter the arena and claim your glory!"
+                "Daily Free Fire custom scrims are live with instant cash prizes. Join the contest and claim your glory!"
             ),
             Pair(
                 "Daily Login Streak Bonus Waiting!",

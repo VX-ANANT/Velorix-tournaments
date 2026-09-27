@@ -37,13 +37,18 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.Tournament
+import com.example.util.TrackTournamentFeedJank
 import com.example.ui.components.VeloRixButton
 
 
@@ -70,8 +75,15 @@ fun MatchesScreen(
     val user by viewModel.userState.collectAsState()
     val transactions by viewModel.transactions.collectAsState()
     val matchStats by viewModel.matchStats.collectAsState(emptyList())
-    val joinedMatches = tournaments.filter { it.joined }
+    val joinedMatches by remember {
+        derivedStateOf { tournaments.filter { it.joined } }
+    }
     val liveUpdatesMap by viewModel.liveMatchUpdates.collectAsState()
+
+    TrackTournamentFeedJank(
+        feedTag = "MatchesScreen_JoinedMatches",
+        itemCount = joinedMatches.size
+    )
 
     val tabs = listOf("UPCOMING", "COMPLETED")
     val pagerState = rememberPagerState(pageCount = { tabs.size })
@@ -82,23 +94,13 @@ fun MatchesScreen(
     var selectedFeeFilter by remember { mutableStateOf("ALL") }
     val liquidGlassConfig by viewModel.liquidGlassConfig.collectAsState()
 
-    var visible by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        visible = true
-    }
-
-    AnimatedVisibility(
-        visible = visible,
-        enter = androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(700)) + androidx.compose.animation.slideInVertically(androidx.compose.animation.core.tween(700), initialOffsetY = { it / 5 }),
-        modifier = Modifier.fillMaxSize()
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = { viewModel.refreshHomeData() },
+        modifier = Modifier
+            .fillMaxSize()
+            .testTag("matches_list_pull_to_refresh")
     ) {
-        PullToRefreshBox(
-            isRefreshing = isRefreshing,
-            onRefresh = { viewModel.refreshHomeData() },
-            modifier = Modifier
-                .fillMaxSize()
-                .testTag("matches_list_pull_to_refresh")
-        ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -227,7 +229,7 @@ fun MatchesScreen(
             if (filteredUpcoming.isEmpty()) {
                 if (isRefreshing || isLoadingTournaments) {
                     LazyColumn(
-                        modifier = Modifier.fillMaxSize().stretchOverscroll(),
+                        modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 90.dp)
                     ) {
                         items(3, key = { "skeleton_match_$it" }) {
@@ -265,13 +267,14 @@ fun MatchesScreen(
             }
             } else {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize().stretchOverscroll(),
+                    modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 90.dp)
                 ) {
                     items(filteredUpcoming, key = { it.id }) { match ->
                         UpcomingJoinedRow(
                             match = match,
                             isGlassCard = liquidGlassConfig.enableLiquidGlass && liquidGlassConfig.glassCards,
+                            liquidGlassConfig = liquidGlassConfig,
                             onClick = { haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove); onNavigateToTournament(match.id) }
                         )
                     }
@@ -288,7 +291,7 @@ fun MatchesScreen(
                     list.add(
                         CompletedMatchItem(
                             title = stat.tournamentTitle.ifBlank { "Tournament #${stat.matchNo}" },
-                            game = stat.game.ifBlank { "Battle Royale" },
+                            game = stat.game.ifBlank { "Classic Survival" },
                             date = if (stat.timestamp > 0) SimpleDateFormat("dd MMM, hh:mm a", Locale.US).format(Date(stat.timestamp)) else "Completed",
                             rank = if (isWin) "#1 Winner" else "#${stat.position}",
                             reward = if (stat.winnings > 0) "VT ${stat.winnings.toInt()}" else "VT 0",
@@ -364,7 +367,7 @@ fun MatchesScreen(
                 }
             } else {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize().stretchOverscroll(),
+                    modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 90.dp)
                 ) {
                     items(filteredCompleted) { match ->
@@ -377,34 +380,88 @@ fun MatchesScreen(
 }
 }
 }
-}
 @Composable
-fun UpcomingJoinedRow(match: Tournament, isGlassCard: Boolean = false, onClick: () -> Unit) {
+fun UpcomingJoinedRow(
+    match: Tournament,
+    isGlassCard: Boolean = false,
+    liquidGlassConfig: com.example.data.model.LiquidGlassConfig = com.example.data.model.LiquidGlassConfig(),
+    onClick: () -> Unit
+) {
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val context = LocalContext.current
     val hasCredentials = match.roomId.isNotBlank()
 
-    val cardBg = if (isGlassCard) {
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+    val isGlassEnabled = isGlassCard && liquidGlassConfig.enableLiquidGlass && liquidGlassConfig.glassCards
+
+    val baseTint = when (liquidGlassConfig.surfaceTint.lowercase()) {
+        "crimson" -> Color(0xFF1E030B)
+        "midnight" -> Color(0xFF091122)
+        "clear" -> Color(0xFF06080E)
+        "emerald" -> Color(0xFF031A0F)
+        "gold" -> Color(0xFF1E1704)
+        else -> Color(0xFF0E131F)
+    }
+
+    val cardBg = if (isGlassEnabled) {
+        baseTint.copy(alpha = (liquidGlassConfig.surfaceOpacity * 0.9f * liquidGlassConfig.vibrancy).coerceIn(0.12f, 0.88f))
     } else {
         MaterialTheme.colorScheme.surfaceVariant
     }
+
+    val cardBorder = if (hasCredentials) {
+        BorderStroke(1.dp, NeonGreen.copy(alpha = 0.5f))
+    } else if (isGlassEnabled) {
+        val specular = liquidGlassConfig.lensRefractionAmount.coerceIn(0.05f, 0.5f)
+        val borderColors = if (liquidGlassConfig.chromaticAberration) {
+            listOf(
+                Color(0xFF38BDF8).copy(alpha = (specular * 1.3f).coerceIn(0.1f, 0.6f)),
+                Color.White.copy(alpha = (specular * 0.9f).coerceIn(0.08f, 0.5f)),
+                Color(0xFFF43F5E).copy(alpha = (specular * 0.5f).coerceIn(0.05f, 0.35f)),
+                Color.White.copy(alpha = (specular * 0.2f).coerceIn(0.02f, 0.15f))
+            )
+        } else {
+            listOf(
+                Color.White.copy(alpha = (specular * 1.2f).coerceIn(0.1f, 0.55f)),
+                Color.White.copy(alpha = (specular * 0.2f).coerceIn(0.02f, 0.15f))
+            )
+        }
+        BorderStroke(1.dp, Brush.verticalGradient(borderColors))
+    } else {
+        BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f))
+    }
+
+    val cardElevation = if (isGlassEnabled && liquidGlassConfig.depthEffect) 6.dp else 0.dp
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(bottom = 12.dp)
-            .border(
-                1.dp,
-                if (hasCredentials) NeonGreen.copy(alpha = 0.5f)
-                else if (isGlassCard) Color.White.copy(alpha = 0.2f)
-                else MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f),
-                RoundedCornerShape(16.dp)
+            .shadow(
+                elevation = cardElevation,
+                shape = RoundedCornerShape(16.dp),
+                ambientColor = Color.Black.copy(alpha = 0.35f),
+                spotColor = Color.Black.copy(alpha = 0.5f)
             )
+            .drawBehind {
+                if (isGlassEnabled) {
+                    val glareHeight = size.height * liquidGlassConfig.lensRefractionHeight.coerceIn(0.2f, 0.9f)
+                    val glareAlpha = (liquidGlassConfig.lensRefractionAmount * 0.35f).coerceIn(0.02f, 0.18f)
+                    drawRoundRect(
+                        brush = Brush.verticalGradient(
+                            0.0f to Color.White.copy(alpha = glareAlpha),
+                            0.65f to Color.White.copy(alpha = glareAlpha * 0.2f),
+                            1.0f to Color.Transparent
+                        ),
+                        size = androidx.compose.ui.geometry.Size(size.width, glareHeight),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(32f, 32f)
+                    )
+                }
+            }
             .clickable { haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove); onClick() }
             .testTag("upcoming_match_${match.id}"),
         colors = CardDefaults.cardColors(containerColor = cardBg),
-        shape = RoundedCornerShape(16.dp)
+        shape = RoundedCornerShape(16.dp),
+        border = cardBorder
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(

@@ -18,11 +18,14 @@ data class LiquidGlassConfig(
     val lensRefractionAmount: Float = 0.16f,  // 0.0f to 0.45f (subtle specular highlights, non-harsh white)
     val chromaticAberration: Boolean = true,
     val depthEffect: Boolean = true,
-    val surfaceTint: String = "obsidian",      // "obsidian", "crimson", "midnight", "clear"
+    val surfaceTint: String = "obsidian",      // "obsidian", "crimson", "midnight", "clear", "emerald", "gold"
     val surfaceOpacity: Float = 0.28f,        // 0.10f to 0.80f (high transparency, clear backdrop visibility)
     val glassTextColor: String = "white",     // "white", "adaptive", "platinum"
-    val glassPlayer: Boolean = true,
-    val glassMiniPlayer: Boolean = true,
+    val glassTopBar: Boolean = true,
+    val glassDialogs: Boolean = true,
     val glassNavBar: Boolean = true,
-    val glassCards: Boolean = true
+    val glassCards: Boolean = true,
+    // Backward compatibility aliases
+    val glassPlayer: Boolean = true,
+    val glassMiniPlayer: Boolean = true
 )

@@ -246,7 +246,6 @@ fun NotificationCenterScreen(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .stretchOverscroll()
                         .padding(horizontal = 16.dp),
                     contentPadding = PaddingValues(bottom = 32.dp, top = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -337,7 +336,7 @@ fun NotificationItemCard(
                 NotificationVisualConfig(
                     drawableRes = com.example.R.drawable.ic_bag_ok,
                     accentColor = Color(0xFFF59E0B),
-                    categoryLabel = "DAILY ARENA"
+                    categoryLabel = "DAILY CONTEST"
                 )
             }
             "TOURNAMENT_REMINDER", "TOURNAMENT_START", "START_TIME" -> {

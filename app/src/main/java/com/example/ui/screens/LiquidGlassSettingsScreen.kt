@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,6 +21,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -80,11 +84,19 @@ fun LiquidGlassSettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .stretchOverscroll()
                 .padding(horizontal = 16.dp),
             contentPadding = PaddingValues(top = 12.dp, bottom = 48.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
+            // ---------------------------------------------------------
+            // 0. REAL-TIME INTERACTIVE MATERIAL PREVIEW
+            // ---------------------------------------------------------
+            item {
+                SectionHeader(title = "REAL-TIME MATERIAL PREVIEW")
+                Spacer(modifier = Modifier.height(8.dp))
+                LiveGlassPreviewCard(config = config)
+            }
+
             // ---------------------------------------------------------
             // 1. NAVIGATION BAR STYLE
             // ---------------------------------------------------------
@@ -242,24 +254,24 @@ fun LiquidGlassSettingsScreen(
                     Column {
                         SettingsToggleRow(
                             icon = Icons.Outlined.ViewStream,
-                            title = "Glass Player",
-                            subtitle = "Manage Glass Player settings",
-                            checked = config.glassPlayer,
+                            title = "Glass Header & Top Bar",
+                            subtitle = "Apply frosted glass refraction and specular rim to top app bars",
+                            checked = config.glassTopBar,
                             onCheckedChange = {
                                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                viewModel.setGlassPlayer(it)
+                                viewModel.setGlassTopBar(it)
                             }
                         )
                         SettingsDivider()
 
                         SettingsToggleRow(
-                            icon = Icons.Outlined.ViewStream,
-                            title = "Glass Mini Player",
-                            subtitle = "Manage Glass Mini Player settings",
-                            checked = config.glassMiniPlayer,
+                            icon = Icons.Outlined.Layers,
+                            title = "Glass Dialogs & Modals",
+                            subtitle = "Hardware-accelerated glass backdrop blur on popups and modals",
+                            checked = config.glassDialogs,
                             onCheckedChange = {
                                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                                viewModel.setGlassMiniPlayer(it)
+                                viewModel.setGlassDialogs(it)
                             }
                         )
                         SettingsDivider()
@@ -626,8 +638,10 @@ private fun TintSelectionDialog(
 ) {
     val tints = listOf(
         "obsidian" to "Dark Obsidian (Sleek Apple Pro)",
-        "crimson" to "Velorix Crimson (Esports Arena)",
+        "crimson" to "Velorix Crimson (Esports Championship)",
         "midnight" to "Midnight Navy (Deep Sapphire)",
+        "emerald" to "Toxic Emerald (Cyber Gamer)",
+        "gold" to "Imperial Gold (Champion Tier)",
         "clear" to "Smoky Crystal (Ultra Transparent)"
     )
 
@@ -759,4 +773,183 @@ private fun TextColorSelectionDialog(
             }
         }
     )
+}
+
+@Composable
+private fun LiveGlassPreviewCard(config: LiquidGlassConfig) {
+    val specularIntensity = config.lensRefractionAmount.coerceIn(0.0f, 0.45f)
+    val glareHeightFraction = config.lensRefractionHeight.coerceIn(0.15f, 0.95f)
+    val isGlassEnabled = config.enableLiquidGlass
+
+    val baseTint = when (config.surfaceTint.lowercase()) {
+        "crimson" -> Color(0xFF1E030B)
+        "midnight" -> Color(0xFF091122)
+        "clear" -> Color(0xFF06080E)
+        "emerald" -> Color(0xFF031A0F)
+        "gold" -> Color(0xFF1E1704)
+        else -> Color(0xFF0D111A)
+    }
+
+    val textColor = when (config.glassTextColor.lowercase()) {
+        "platinum" -> Color(0xFFE2E8F0)
+        "adaptive" -> Color(0xFFF1F5F9)
+        else -> Color.White
+    }
+
+    val specularRimGradient = if (config.chromaticAberration) {
+        Brush.verticalGradient(
+            0.0f to Color(0xFF38BDF8).copy(alpha = (specularIntensity * 1.3f).coerceIn(0.1f, 0.6f)),
+            0.20f to Color.White.copy(alpha = specularIntensity * 0.40f),
+            0.75f to Color(0xFFF43F5E).copy(alpha = (specularIntensity * 0.25f).coerceIn(0.04f, 0.25f)),
+            1.0f to Color.White.copy(alpha = specularIntensity * 0.45f)
+        )
+    } else {
+        Brush.verticalGradient(
+            0.0f to Color.White.copy(alpha = specularIntensity),
+            0.20f to Color.White.copy(alpha = specularIntensity * 0.35f),
+            0.75f to Color.White.copy(alpha = specularIntensity * 0.10f),
+            1.0f to Color.White.copy(alpha = specularIntensity * 0.40f)
+        )
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(180.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(Color(0xFF0B0E14))
+    ) {
+        // Vibrant background lights underneath the glass
+        androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+            drawCircle(
+                brush = Brush.radialGradient(
+                    listOf(Color(0xFF3B82F6).copy(alpha = (0.85f * config.vibrancy).coerceIn(0.1f, 1f)), Color.Transparent),
+                    radius = size.width * 0.55f,
+                    center = androidx.compose.ui.geometry.Offset(size.width * 0.25f, size.height * 0.3f)
+                ),
+                radius = size.width * 0.55f,
+                center = androidx.compose.ui.geometry.Offset(size.width * 0.25f, size.height * 0.3f)
+            )
+            drawCircle(
+                brush = Brush.radialGradient(
+                    listOf(Color(0xFFEC4899).copy(alpha = (0.80f * config.vibrancy).coerceIn(0.1f, 1f)), Color.Transparent),
+                    radius = size.width * 0.5f,
+                    center = androidx.compose.ui.geometry.Offset(size.width * 0.75f, size.height * 0.7f)
+                ),
+                radius = size.width * 0.5f,
+                center = androidx.compose.ui.geometry.Offset(size.width * 0.75f, size.height * 0.7f)
+            )
+            drawCircle(
+                brush = Brush.radialGradient(
+                    listOf(Color(0xFF10B981).copy(alpha = (0.65f * config.vibrancy).coerceIn(0.1f, 1f)), Color.Transparent),
+                    radius = size.width * 0.35f,
+                    center = androidx.compose.ui.geometry.Offset(size.width * 0.5f, size.height * 0.9f)
+                ),
+                radius = size.width * 0.35f,
+                center = androidx.compose.ui.geometry.Offset(size.width * 0.5f, size.height * 0.9f)
+            )
+        }
+
+        // Glass Surface Overlay
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(14.dp)
+                .shadow(
+                    elevation = if (config.depthEffect) 12.dp else 0.dp,
+                    shape = RoundedCornerShape(20.dp),
+                    ambientColor = Color.Black.copy(alpha = 0.4f),
+                    spotColor = Color.Black.copy(alpha = 0.6f)
+                )
+                .clip(RoundedCornerShape(20.dp))
+                .background(
+                    if (isGlassEnabled) {
+                        baseTint.copy(alpha = (config.surfaceOpacity * 0.85f * config.vibrancy).coerceIn(0.12f, 0.88f))
+                    } else {
+                        Color(0xFF1E212B)
+                    }
+                )
+                .drawBehind {
+                    if (isGlassEnabled) {
+                        drawRoundRect(
+                            brush = Brush.verticalGradient(
+                                0.0f to Color.White.copy(alpha = (specularIntensity * 0.45f).coerceIn(0.04f, 0.22f)),
+                                0.7f to Color.White.copy(alpha = (specularIntensity * 0.10f).coerceIn(0.01f, 0.06f)),
+                                1.0f to Color.Transparent
+                            ),
+                            size = androidx.compose.ui.geometry.Size(size.width, size.height * glareHeightFraction),
+                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(40f, 40f)
+                        )
+                    }
+                }
+                .border(
+                    width = 1.dp,
+                    brush = if (isGlassEnabled) specularRimGradient else androidx.compose.ui.graphics.SolidColor(Color(0xFF334155)),
+                    shape = RoundedCornerShape(20.dp)
+                )
+                .padding(16.dp)
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(if (isGlassEnabled) Color(0xFF10B981) else Color(0xFFF59E0B))
+                        )
+                        Text(
+                            text = if (isGlassEnabled) "ACTIVE LIQUID GLASS" else "PERFORMANCE MODE (SOLID)",
+                            fontFamily = GffDevanagariFontFamily,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = textColor,
+                            letterSpacing = 0.5.sp
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.White.copy(alpha = 0.12f))
+                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                    ) {
+                        Text(
+                            text = config.surfaceTint.uppercase(),
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Black,
+                            color = textColor
+                        )
+                    }
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = if (isGlassEnabled) "Real-time Material Reflection" else "Hardware Optimized Rendering",
+                        fontFamily = GffDevanagariFontFamily,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = textColor
+                    )
+                    Text(
+                        text = if (isGlassEnabled)
+                            "Opacity: ${(config.surfaceOpacity * 100).roundToInt()}% • Blur: ${config.blurRadius.roundToInt()}dp • Glare: ${(config.lensRefractionAmount * 100).roundToInt()}%"
+                        else
+                            "Glass blur disabled. UI operates at 120 FPS maximum smoothness.",
+                        fontSize = 11.sp,
+                        color = textColor.copy(alpha = 0.8f)
+                    )
+                }
+            }
+        }
+    }
 }

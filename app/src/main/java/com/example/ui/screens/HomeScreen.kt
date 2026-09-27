@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import com.example.util.TrackTournamentFeedJank
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -110,32 +112,38 @@ fun HomeScreen(
     var searchFocused by remember { mutableStateOf(false) }
     val searchHistory by viewModel.searchHistory.collectAsState()
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
-    val categories = listOf("All", "Battle Royale", "Clash Squad", "Lone Wolf", "Free Fire", "BGMI")
+    val categories = listOf("All", "Survival Mode", "Clash Squad", "Lone Wolf", "Free Fire", "BGMI")
 
-    // Filtered tournaments memoization
-    val filteredTournaments = remember(tournaments, selectedCategory, searchQuery, selectedFee) {
-        tournaments.filter { t ->
-            val matchesCategory = when (selectedCategory) {
-                "All" -> true
-                "Battle Royale" -> t.matchCategory.contains("BATTLE", ignoreCase = true) || 
-                                   t.matchCategory.contains("BR", ignoreCase = true) ||
-                                   (!t.matchCategory.contains("CLASH", ignoreCase = true) && !t.matchCategory.contains("LONE", ignoreCase = true) && (t.format.contains("SOLO", true) || t.format.contains("DUO", true) || t.format.contains("SQUAD", true)))
-                "Clash Squad" -> t.matchCategory.contains("CLASH", ignoreCase = true) || 
-                                 t.matchCategory.contains("CS", ignoreCase = true) || 
-                                 t.title.contains("CS", ignoreCase = true) ||
-                                 t.format.contains("v", ignoreCase = true)
-                "Lone Wolf" -> t.matchCategory.contains("LONE", ignoreCase = true) || 
-                               t.title.contains("Lone Wolf", ignoreCase = true)
-                "Free Fire" -> t.game.contains("Free", ignoreCase = true) || t.game.contains("FF", ignoreCase = true) || t.game.equals("Free Fire", ignoreCase = true)
-                "BGMI" -> t.game.contains("BGMI", ignoreCase = true) || t.game.contains("PUBG", ignoreCase = true) || t.game.contains("Battleground", ignoreCase = true) || t.game.equals("BGMI", ignoreCase = true)
-                else -> true
+    // Filtered tournaments calculation with derivedStateOf to prevent unnecessary recompositions
+    val filteredTournaments by remember {
+        derivedStateOf {
+            val q = searchQuery.trim()
+            val cat = selectedCategory
+            val fee = selectedFee
+            tournaments.filter { t ->
+                val matchesCategory = when (cat) {
+                    "All" -> true
+                    "Survival Mode" -> t.matchCategory.contains("SURVIVAL", ignoreCase = true) || 
+                                       t.matchCategory.contains("BR", ignoreCase = true) ||
+                                       t.matchCategory.contains("CLASSIC", ignoreCase = true) ||
+                                       (!t.matchCategory.contains("CLASH", ignoreCase = true) && !t.matchCategory.contains("LONE", ignoreCase = true) && (t.format.contains("SOLO", true) || t.format.contains("DUO", true) || t.format.contains("SQUAD", true)))
+                    "Clash Squad" -> t.matchCategory.contains("CLASH", ignoreCase = true) || 
+                                     t.matchCategory.contains("CS", ignoreCase = true) || 
+                                     t.title.contains("CS", ignoreCase = true) ||
+                                     t.format.contains("v", ignoreCase = true)
+                    "Lone Wolf" -> t.matchCategory.contains("LONE", ignoreCase = true) || 
+                                   t.title.contains("Lone Wolf", ignoreCase = true)
+                    "Free Fire" -> t.game.contains("Free", ignoreCase = true) || t.game.contains("FF", ignoreCase = true) || t.game.equals("Free Fire", ignoreCase = true)
+                    "BGMI" -> t.game.contains("BGMI", ignoreCase = true) || t.game.contains("PUBG", ignoreCase = true) || t.game.contains("Battleground", ignoreCase = true) || t.game.equals("BGMI", ignoreCase = true)
+                    else -> true
+                }
+                val matchesSearch = q.isBlank() || 
+                    t.title.contains(q, ignoreCase = true) ||
+                    t.game.contains(q, ignoreCase = true) ||
+                    t.mapType.contains(q, ignoreCase = true)
+                val matchesFee = fee == "All" || (fee == "Free" && t.entryFee == 0.0) || (fee == "Paid" && t.entryFee > 0.0)
+                matchesCategory && matchesSearch && matchesFee
             }
-            val matchesSearch = searchQuery.isBlank() || 
-                t.title.contains(searchQuery, ignoreCase = true) ||
-                t.game.contains(searchQuery, ignoreCase = true) ||
-                t.mapType.contains(searchQuery, ignoreCase = true)
-            val matchesFee = selectedFee == "All" || (selectedFee == "Free" && t.entryFee == 0.0) || (selectedFee == "Paid" && t.entryFee > 0.0)
-            matchesCategory && matchesSearch && matchesFee
         }
     }
     val speechRecognizerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
@@ -149,6 +157,15 @@ fun HomeScreen(
             viewModel.saveSearchQuery(spokenText)
         }
     }
+    val tournamentListState = rememberLazyListState()
+
+    // Lightweight Choreographer Frame Rate & Jank Monitor logging to Crashlytics
+    TrackTournamentFeedJank(
+        feedTag = "HomeScreen_TournamentFeed",
+        itemCount = filteredTournaments.size,
+        isScrolling = tournamentListState.isScrollInProgress
+    )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -161,12 +178,11 @@ fun HomeScreen(
                 .testTag("tournament_list_pull_to_refresh")
         ) {
             LazyColumn(
+                state = tournamentListState,
                 modifier = Modifier
                     .fillMaxWidth()
                     .widthIn(max = 760.dp)
                     .align(Alignment.TopCenter)
-                    .blur(radius = bgBlurRadius)
-                    .stretchOverscroll()
                     .padding(horizontal = 16.dp),
                 contentPadding = PaddingValues(bottom = 90.dp)
             ) {
@@ -264,7 +280,7 @@ fun HomeScreen(
                                 },
                             contentAlignment = Alignment.Center
                         ) {
-                            GeminiStarLogo(size = 24.dp, animated = true)
+                            GeminiStarLogo(size = 24.dp, animated = false)
                         }
 
                         // Notification Bell Icon with Badge
@@ -540,17 +556,38 @@ fun HomeScreen(
                 }
             } else {
                 items(filteredTournaments, key = { it.id }) { match ->
-                    val gameThumbnailUrl = if (match.game.contains("BGMI", true)) {
-                        "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80"
-                    } else {
-                        "https://images.unsplash.com/photo-1552820728-8b83bb6b773f?auto=format&fit=crop&w=800&q=80"
+                    val gameThumbnailUrl = remember(match.game) {
+                        if (match.game.contains("BGMI", true)) {
+                            "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80"
+                        } else {
+                            "https://images.unsplash.com/photo-1552820728-8b83bb6b773f?auto=format&fit=crop&w=800&q=80"
+                        }
                     }
-                    val joinCooldown = maxOf(
-                        actionCooldowns["tournament_join_${match.id}"] ?: 0,
-                        actionCooldowns["slot_join_${match.id}"] ?: 0
-                    )
+                    val joinCooldown by remember(actionCooldowns, match.id) {
+                        derivedStateOf {
+                            maxOf(
+                                actionCooldowns["tournament_join_${match.id}"] ?: 0,
+                                actionCooldowns["slot_join_${match.id}"] ?: 0
+                            )
+                        }
+                    }
+                    val isGlassCard = remember(liquidGlassConfig.enableLiquidGlass, liquidGlassConfig.glassCards) {
+                        liquidGlassConfig.enableLiquidGlass && liquidGlassConfig.glassCards
+                    }
+                    val onCardClick = remember(match.id) {
+                        {
+                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                            onNavigateToTournament(match.id)
+                        }
+                    }
+                    val onJoinActionClick = remember(match.id) {
+                        {
+                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                            onNavigateToTournament(match.id)
+                        }
+                    }
                     TournamentCard(
-                        modifier = Modifier.animateItem(),
+                        modifier = Modifier,
                         thumbnailUrl = gameThumbnailUrl,
                         title = match.title,
                         entryFee = match.entryFee,
@@ -567,9 +604,10 @@ fun HomeScreen(
                         killBounty = match.killBounty,
                         isJoined = match.joined,
                         joinCooldownSeconds = joinCooldown,
-                        isGlassCard = liquidGlassConfig.enableLiquidGlass && liquidGlassConfig.glassCards,
-                        onClick = { haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove); onNavigateToTournament(match.id) },
-                        onJoinClick = { haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove); onNavigateToTournament(match.id) }
+                        isGlassCard = isGlassCard,
+                        liquidGlassConfig = liquidGlassConfig,
+                        onClick = onCardClick,
+                        onJoinClick = onJoinActionClick
                     )
                 }
             }

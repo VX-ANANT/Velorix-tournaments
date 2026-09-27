@@ -1,5 +1,11 @@
 package com.example.ui.screens
 
+import android.graphics.Matrix
+import android.graphics.SurfaceTexture
+import android.media.MediaPlayer
+import android.view.Surface
+import android.view.TextureView
+import androidx.annotation.RawRes
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.FastOutSlowInEasing
 
@@ -10,13 +16,17 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import kotlinx.coroutines.launch
+import com.example.ui.theme.get180DegreeAdaptiveColor
+import com.example.ui.theme.get180DegreeAdaptiveMutedColor
 
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -36,16 +46,158 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.haze
+import dev.chrisbanes.haze.hazeChild
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import com.example.ui.components.LegalComplianceModal
 import com.example.ui.components.LegalTab
 import com.example.ui.viewmodel.PlatformViewModel
+
+/**
+ * High-performance hardware-accelerated video background with continuous loop
+ * and non-distorted center-crop scaling for seamless presentation.
+ */
+@Composable
+fun AuthVideoBackground(
+    @RawRes rawResId: Int = com.example.R.raw.auth_bg_video,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    var mediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            try {
+                mediaPlayer?.stop()
+                mediaPlayer?.release()
+                mediaPlayer = null
+            } catch (_: Throwable) {}
+        }
+    }
+
+    Box(modifier = modifier) {
+        AndroidView(
+            factory = { ctx ->
+                val tv = TextureView(ctx)
+                tv.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
+                    override fun onSurfaceTextureAvailable(surfaceTexture: SurfaceTexture, width: Int, height: Int) {
+                        try {
+                            mediaPlayer?.release()
+                            val mp = MediaPlayer().apply {
+                                val afd = ctx.resources.openRawResourceFd(rawResId)
+                                setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
+                                afd.close()
+                                setSurface(Surface(surfaceTexture))
+                                isLooping = true
+                                setVolume(0f, 0f) // Muted continuous loop
+                                setOnVideoSizeChangedListener { _, vWidth, vHeight ->
+                                    adjustVideoAspectRatio(tv, vWidth, vHeight, width, height)
+                                }
+                                setOnPreparedListener { mpInstance ->
+                                    adjustVideoAspectRatio(tv, mpInstance.videoWidth, mpInstance.videoHeight, width, height)
+                                    mpInstance.start()
+                                }
+                                prepareAsync()
+                            }
+                            mediaPlayer = mp
+                        } catch (e: Throwable) {
+                            android.util.Log.e("AuthVideoBg", "Error preparing background video: ${e.message}")
+                        }
+                    }
+
+                    override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {
+                        mediaPlayer?.let { mp ->
+                            adjustVideoAspectRatio(tv, mp.videoWidth, mp.videoHeight, width, height)
+                        }
+                    }
+
+                    override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
+                        try {
+                            mediaPlayer?.stop()
+                            mediaPlayer?.release()
+                            mediaPlayer = null
+                        } catch (_: Throwable) {}
+                        return true
+                    }
+
+                    override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {}
+                }
+                tv
+            },
+            modifier = Modifier.fillMaxSize()
+        )
+
+        // Top subtle dark vignette for status bar readability
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(130.dp)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xD006080F),
+                            Color(0x6006080F),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+
+        // Bottom smooth uncovered gradient fade (revealing video above, blending into dark background below)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        0.00f to Color.Transparent,
+                        0.25f to Color.Transparent,
+                        0.45f to Color(0x5506080F),
+                        0.65f to Color(0xBB06080F),
+                        0.85f to Color(0xF506080F),
+                        1.00f to Color(0xFF06080F)
+                    )
+                )
+        )
+    }
+}
+
+private fun adjustVideoAspectRatio(
+    textureView: TextureView,
+    videoWidth: Int,
+    videoHeight: Int,
+    viewWidth: Int,
+    viewHeight: Int
+) {
+    if (videoWidth <= 0 || videoHeight <= 0 || viewWidth <= 0 || viewHeight <= 0) return
+    val viewRatio = viewWidth.toFloat() / viewHeight.toFloat()
+    val videoRatio = videoWidth.toFloat() / videoHeight.toFloat()
+    val scaleX: Float
+    val scaleY: Float
+    if (viewRatio > videoRatio) {
+        scaleX = 1f
+        scaleY = (viewWidth.toFloat() / videoWidth.toFloat()) / (viewHeight.toFloat() / videoHeight.toFloat())
+    } else {
+        scaleX = (viewHeight.toFloat() / videoHeight.toFloat()) / (viewWidth.toFloat() / videoWidth.toFloat())
+        scaleY = 1f
+    }
+    val matrix = Matrix()
+    matrix.setScale(scaleX, scaleY, viewWidth / 2f, viewHeight / 2f)
+    textureView.setTransform(matrix)
+}
 
 @Composable
 fun AuthScreen(
@@ -58,55 +210,72 @@ fun AuthScreen(
     var selectedLegalTab by remember { mutableStateOf(LegalTab.TERMS) }
 
     val scrollState = rememberScrollState()
+    val authBgColor = Color(0xFF06080F)
+    val hazeState = remember { HazeState() }
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = Color.Transparent
+    // Dynamic 180° Complementary Adaptive Color Engine (Live opposite color to background)
+    val adaptiveTextColor = remember(authBgColor) { get180DegreeAdaptiveColor(authBgColor) }
+    val adaptiveMutedTextColor = remember(authBgColor) { get180DegreeAdaptiveMutedColor(authBgColor) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(authBgColor)
     ) {
+        // 1. Uncovered Video Background (spans upper portion of screen, smoothly uncovered with bottom gradient)
+        AuthVideoBackground(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.68f)
+                .align(Alignment.TopCenter)
+                .haze(state = hazeState)
+        )
+
+        // 2. Foreground Full-Screen Scrollable Content (No window/card container - completely full-screen elements)
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .systemBarsPadding()
                 .verticalScroll(scrollState)
-                .padding(32.dp),
-            contentAlignment = Alignment.Center
+                .padding(horizontal = 24.dp, vertical = 12.dp),
+            contentAlignment = Alignment.TopCenter
         ) {
-            val infiniteTransition = androidx.compose.animation.core.rememberInfiniteTransition()
-            val floatOffset by infiniteTransition.animateFloat(
-                initialValue = -5f,
-                targetValue = 5f,
-                animationSpec = androidx.compose.animation.core.infiniteRepeatable(
-                    animation = androidx.compose.animation.core.tween(2000, easing = FastOutSlowInEasing),
-                    repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
-                ),
-                label = "auth_bounce"
-            )
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 16.dp)
-                    .offset(y = floatOffset.dp)
+                    .padding(vertical = 4.dp)
             ) {
-                // Keep it clean and minimal
+                // Top spacing so the animated 3D video is uncovered & prominently visible
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Prominent Velorix Logo (Bada sa dikhe as explicitly requested)
                 Image(
                     painter = androidx.compose.ui.res.painterResource(id = com.example.R.drawable.velorix_logo_image),
                     contentDescription = "Velorix Logo",
-                    colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(MaterialTheme.colorScheme.primary),
-                    modifier = Modifier.size(80.dp).padding(bottom = 16.dp)
+                    contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                    modifier = Modifier
+                        .fillMaxWidth(0.72f)
+                        .height(130.dp)
+                        .padding(bottom = 6.dp)
                 )
 
+                // Clean Subtitle - "Sign in with" / "Register with to continue" (Adaptive 180° opposite color)
                 Text(
-                    text = if (isSignUpMode) "Create your account" else "Sign in to continue",
+                    text = if (isSignUpMode) "Register with to continue" else "Sign in with to continue",
                     style = MaterialTheme.typography.bodyLarge.copy(
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                        color = adaptiveTextColor.copy(alpha = 0.95f),
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 16.sp
                     ),
-                    modifier = Modifier.padding(bottom = 40.dp)
+                    modifier = Modifier.padding(bottom = 28.dp)
                 )
 
+                // Direct Full-Screen Layout for Login / Registration (No card/window wrapper)
                 if (isSignUpMode) {
                     RegistrationScreen(
                         viewModel = viewModel,
+                        hazeState = hazeState,
                         onAuthSuccess = {
                             if (onRegisterSuccess != null) {
                                 onRegisterSuccess()
@@ -118,19 +287,26 @@ fun AuthScreen(
                         onOpenLegal = { tab ->
                             selectedLegalTab = tab
                             showLegalModal = true
-                        }
+                        },
+                        textColor = adaptiveTextColor,
+                        mutedTextColor = adaptiveMutedTextColor
                     )
                 } else {
                     LoginScreen(
                         viewModel = viewModel,
+                        hazeState = hazeState,
                         onAuthSuccess = onAuthSuccess,
                         onSwitchToSignUp = { isSignUpMode = true },
                         onOpenLegal = { tab ->
                             selectedLegalTab = tab
                             showLegalModal = true
-                        }
+                        },
+                        textColor = adaptiveTextColor,
+                        mutedTextColor = adaptiveMutedTextColor
                     )
                 }
+
+                Spacer(modifier = Modifier.height(32.dp))
             }
         }
     }
@@ -143,12 +319,79 @@ fun AuthScreen(
     }
 }
 
+/**
+ * Standalone Liquid Glass effect for individual text input boxes matching the bottom nav bar.
+ * Applies the frosted glass blur via Haze, translucent obsidian gradient, specular rim border,
+ * lens glare reflection, and depth shadow directly to the exact edges of the text box itself.
+ */
+@Composable
+fun Modifier.glassTextBox(
+    hazeState: HazeState? = null,
+    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(16.dp)
+): Modifier {
+    var isFocused by remember { mutableStateOf(false) }
+    val specularRim = Brush.verticalGradient(
+        0.0f to Color(0xFF38BDF8).copy(alpha = if (isFocused) 0.90f else 0.55f),
+        0.20f to Color.White.copy(alpha = if (isFocused) 0.65f else 0.35f),
+        0.75f to Color(0xFFF43F5E).copy(alpha = if (isFocused) 0.35f else 0.15f),
+        1.0f to Color.White.copy(alpha = if (isFocused) 0.70f else 0.40f)
+    )
+
+    return this
+        .shadow(
+            elevation = 8.dp,
+            shape = shape,
+            ambientColor = Color.Black.copy(alpha = 0.30f),
+            spotColor = Color.Black.copy(alpha = 0.45f)
+        )
+        .clip(shape)
+        .then(
+            if (hazeState != null) {
+                Modifier.hazeChild(
+                    state = hazeState,
+                    shape = shape
+                )
+            } else {
+                Modifier
+            }
+        )
+        .background(
+            Brush.verticalGradient(
+                colors = listOf(
+                    Color(0x350E121E), // ~21% translucent obsidian glass matching bottom nav bar
+                    Color(0x55090C16)  // ~33% translucent deep glass tint matching bottom nav bar
+                )
+            )
+        )
+        .drawBehind {
+            // Upper curvature glare & lens refraction highlight
+            drawRoundRect(
+                brush = Brush.verticalGradient(
+                    0.0f to Color.White.copy(alpha = 0.14f),
+                    0.50f to Color.White.copy(alpha = 0.03f),
+                    1.0f to Color.Transparent
+                ),
+                size = androidx.compose.ui.geometry.Size(size.width, size.height * 0.50f),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx(), 16.dp.toPx())
+            )
+        }
+        .border(
+            width = if (isFocused) 1.5.dp else 1.dp,
+            brush = specularRim,
+            shape = shape
+        )
+        .onFocusChanged { isFocused = it.isFocused }
+}
+
 @Composable
 fun LoginScreen(
     viewModel: PlatformViewModel,
+    hazeState: HazeState? = null,
     onAuthSuccess: () -> Unit,
     onSwitchToSignUp: () -> Unit,
-    onOpenLegal: (LegalTab) -> Unit = {}
+    onOpenLegal: (LegalTab) -> Unit = {},
+    textColor: Color = Color.White,
+    mutedTextColor: Color = Color(0xFFCBD5E1)
 ) {
     val isAuthLoading by viewModel.isAuthLoading.collectAsState(initial = false)
 
@@ -239,55 +482,81 @@ fun LoginScreen(
             onValueChange = { emailOrPhone = it },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 16.dp)
+                .glassTextBox(hazeState = hazeState)
                 .testTag("email_input"),
-            label = { Text("Email or Phone") },
-            leadingIcon = { Icon(androidx.compose.ui.graphics.vector.ImageVector.vectorResource(com.example.R.drawable.ic_iconsax_profile), contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+            label = { Text("Email or Phone", color = mutedTextColor) },
+            leadingIcon = { Icon(androidx.compose.ui.graphics.vector.ImageVector.vectorResource(com.example.R.drawable.ic_iconsax_profile), contentDescription = null, tint = textColor) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(16.dp),
             singleLine = true,
-            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MaterialTheme.colorScheme.primary, unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f))
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                focusedTextColor = textColor,
+                unfocusedTextColor = textColor,
+                focusedBorderColor = Color.Transparent,
+                unfocusedBorderColor = Color.Transparent,
+                focusedLabelColor = textColor,
+                unfocusedLabelColor = mutedTextColor
+            )
         )
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 8.dp)
+                .glassTextBox(hazeState = hazeState)
                 .testTag("password_input"),
-            label = { Text("Password") },
-            leadingIcon = { Icon(androidx.compose.ui.graphics.vector.ImageVector.vectorResource(com.example.R.drawable.ic_iconsax_lock), contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+            label = { Text("Password", color = mutedTextColor) },
+            leadingIcon = { Icon(androidx.compose.ui.graphics.vector.ImageVector.vectorResource(com.example.R.drawable.ic_iconsax_lock), contentDescription = null, tint = textColor) },
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(16.dp),
             singleLine = true,
-            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MaterialTheme.colorScheme.primary, unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f))
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                focusedTextColor = textColor,
+                unfocusedTextColor = textColor,
+                focusedBorderColor = Color.Transparent,
+                unfocusedBorderColor = Color.Transparent,
+                focusedLabelColor = textColor,
+                unfocusedLabelColor = mutedTextColor
+            )
         )
+        
+        Spacer(modifier = Modifier.height(8.dp))
         
         Text(
             text = "Forgot Password?",
-            style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.primary),
+            style = MaterialTheme.typography.bodyMedium.copy(color = textColor.copy(alpha = 0.90f), fontWeight = FontWeight.Normal),
             modifier = Modifier
                 .align(Alignment.End)
-                .padding(bottom = 24.dp, end = 4.dp)
+                .padding(bottom = 20.dp, end = 4.dp)
                 .clickable { showForgotPasswordDialog = true }
         )
 
-        // Submit Button
+        // Submit Button - Solid White with Black text
         Button(
             onClick = {
                 val method = if (emailOrPhone.contains("@")) "email" else "phone"
                 viewModel.login(emailOrPhone, password, method, onComplete = onAuthSuccess)
             },
             modifier = Modifier.fillMaxWidth().height(56.dp).testTag("submit_login_button"),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color.White,
+                contentColor = Color.Black
+            ),
             enabled = !isAuthLoading
         ) {
             if (isAuthLoading) {
-                CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(24.dp))
+                CircularProgressIndicator(color = Color.Black, modifier = Modifier.size(24.dp))
             } else {
-                Text("Login", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text("Sign In", color = Color.Black, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
         }
         
@@ -298,9 +567,9 @@ fun LoginScreen(
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f))
-            Text(" OR ", color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f), style = MaterialTheme.typography.bodySmall)
-            HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f))
+            HorizontalDivider(modifier = Modifier.weight(1f), color = Color.White.copy(alpha = 0.22f))
+            Text("  OR  ", color = mutedTextColor, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+            HorizontalDivider(modifier = Modifier.weight(1f), color = Color.White.copy(alpha = 0.22f))
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -312,10 +581,10 @@ fun LoginScreen(
             activityContext = activityContext.baseContext
         }
         
-        // Google Login Button
+        // Google Sign-In with 2025 Google Favicon
         AuthOptionButton(
-            text = "Continue with Google",
-            painter = androidx.compose.ui.res.painterResource(id = com.example.R.drawable.ic_google_colored),
+            text = "Sign in with Google",
+            painter = androidx.compose.ui.res.painterResource(id = com.example.R.drawable.google_favicon_2025),
             enabled = !isAuthLoading
         ) {
             try {
@@ -343,11 +612,11 @@ fun LoginScreen(
         
         AuthLegalConsentFootnote(onOpenLegal = onOpenLegal)
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
         Text(
-            text = "Don't have an account? Sign Up",
-            style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold),
+            text = "Don't have an account? Register with to continue",
+            style = MaterialTheme.typography.bodyMedium.copy(color = textColor, fontWeight = FontWeight.Bold),
             modifier = Modifier.clickable { onSwitchToSignUp() }.padding(8.dp).align(Alignment.CenterHorizontally).testTag("toggle_auth_mode")
         )
     }
@@ -356,9 +625,12 @@ fun LoginScreen(
 @Composable
 fun RegistrationScreen(
     viewModel: PlatformViewModel,
+    hazeState: HazeState? = null,
     onAuthSuccess: () -> Unit,
     onSwitchToLogin: () -> Unit,
-    onOpenLegal: (LegalTab) -> Unit = {}
+    onOpenLegal: (LegalTab) -> Unit = {},
+    textColor: Color = Color.White,
+    mutedTextColor: Color = Color(0xFFCBD5E1)
 ) {
     val isAuthLoading by viewModel.isAuthLoading.collectAsState(initial = false)
 
@@ -410,180 +682,230 @@ fun RegistrationScreen(
             onValueChange = { username = it },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 16.dp)
+                .glassTextBox(hazeState = hazeState)
                 .testTag("reg_username_input"),
-            label = { Text("Username") },
-            leadingIcon = { Icon(androidx.compose.ui.graphics.vector.ImageVector.vectorResource(com.example.R.drawable.ic_iconsax_profile), contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
-            shape = RoundedCornerShape(12.dp),
+            label = { Text("Username", color = mutedTextColor) },
+            leadingIcon = { Icon(androidx.compose.ui.graphics.vector.ImageVector.vectorResource(com.example.R.drawable.ic_iconsax_profile), contentDescription = null, tint = textColor) },
+            shape = RoundedCornerShape(16.dp),
             singleLine = true,
-            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MaterialTheme.colorScheme.primary, unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f))
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                focusedTextColor = textColor,
+                unfocusedTextColor = textColor,
+                focusedBorderColor = Color.Transparent,
+                unfocusedBorderColor = Color.Transparent,
+                focusedLabelColor = textColor,
+                unfocusedLabelColor = mutedTextColor
+            )
         )
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedTextField(
             value = emailOrPhone,
             onValueChange = { emailOrPhone = it },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 16.dp)
+                .glassTextBox(hazeState = hazeState)
                 .testTag("reg_email_input"),
-            label = { Text("Email or Phone") },
-            leadingIcon = { Icon(androidx.compose.ui.graphics.vector.ImageVector.vectorResource(com.example.R.drawable.ic_iconsax_mail), contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+            label = { Text("Email or Phone", color = mutedTextColor) },
+            leadingIcon = { Icon(androidx.compose.ui.graphics.vector.ImageVector.vectorResource(com.example.R.drawable.ic_iconsax_mail), contentDescription = null, tint = textColor) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(16.dp),
             singleLine = true,
-            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MaterialTheme.colorScheme.primary, unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f))
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                focusedTextColor = textColor,
+                unfocusedTextColor = textColor,
+                focusedBorderColor = Color.Transparent,
+                unfocusedBorderColor = Color.Transparent,
+                focusedLabelColor = textColor,
+                unfocusedLabelColor = mutedTextColor
+            )
         )
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 16.dp)
+                .glassTextBox(hazeState = hazeState)
                 .testTag("reg_password_input"),
-            label = { Text("Password") },
-            leadingIcon = { Icon(androidx.compose.ui.graphics.vector.ImageVector.vectorResource(com.example.R.drawable.ic_iconsax_lock), contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+            label = { Text("Password", color = mutedTextColor) },
+            leadingIcon = { Icon(androidx.compose.ui.graphics.vector.ImageVector.vectorResource(com.example.R.drawable.ic_iconsax_lock), contentDescription = null, tint = textColor) },
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(16.dp),
             singleLine = true,
-            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MaterialTheme.colorScheme.primary, unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f))
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                focusedTextColor = textColor,
+                unfocusedTextColor = textColor,
+                focusedBorderColor = Color.Transparent,
+                unfocusedBorderColor = Color.Transparent,
+                focusedLabelColor = textColor,
+                unfocusedLabelColor = mutedTextColor
+            )
         )
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedTextField(
             value = referralCode,
             onValueChange = { referralCode = it.uppercase().filter { ch -> ch.isLetterOrDigit() } },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 24.dp)
+                .glassTextBox(hazeState = hazeState)
                 .testTag("reg_referral_input"),
-            label = { Text("Referral Code (Optional)") },
-            placeholder = { Text("e.g. VRX-NAME-9999 (Squad Bonus)") },
-            leadingIcon = { Icon(Icons.Default.CardGiftcard, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-            shape = RoundedCornerShape(12.dp),
+            label = { Text("Referral Code (Optional)", color = mutedTextColor) },
+            placeholder = { Text("e.g. VRX-NAME-9999", color = mutedTextColor.copy(alpha = 0.6f)) },
+            leadingIcon = { Icon(Icons.Default.CardGiftcard, contentDescription = null, tint = textColor) },
+            shape = RoundedCornerShape(16.dp),
             singleLine = true,
-            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MaterialTheme.colorScheme.primary, unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f))
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                focusedTextColor = textColor,
+                unfocusedTextColor = textColor,
+                focusedBorderColor = Color.Transparent,
+                unfocusedBorderColor = Color.Transparent,
+                focusedLabelColor = textColor,
+                unfocusedLabelColor = mutedTextColor
+            )
         )
 
-        // Statutory & COPPA Compliance Gate Card
-        Surface(
-            shape = RoundedCornerShape(14.dp),
-            color = Color(0xFF12151E),
-            border = androidx.compose.foundation.BorderStroke(1.dp, if (isAgeConfirmed) Color(0xFF22C55E).copy(alpha = 0.4f) else Color(0xFFEF4444).copy(alpha = 0.5f)),
-            modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp)
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // Statutory & COPPA Compliance Gate (Full-screen clean layout, no heavy window container)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 20.dp)
         ) {
-            Column(modifier = Modifier.padding(14.dp)) {
-                // Mandatory Age Gate (18+ / COPPA Compliance)
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth().clickable { isAgeConfirmed = !isAgeConfirmed }
-                ) {
-                    Checkbox(
-                        checked = isAgeConfirmed,
-                        onCheckedChange = { isAgeConfirmed = it },
-                        colors = CheckboxDefaults.colors(
-                            checkedColor = Color(0xFF22C55E),
-                            uncheckedColor = Color(0xFFEF4444)
-                        )
+            // Mandatory Age Gate (18+ / COPPA Compliance)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { isAgeConfirmed = !isAgeConfirmed }
+                    .padding(vertical = 4.dp)
+            ) {
+                Checkbox(
+                    checked = isAgeConfirmed,
+                    onCheckedChange = { isAgeConfirmed = it },
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = Color(0xFF22C55E),
+                        uncheckedColor = Color(0xFFEF4444)
                     )
-                    Spacer(Modifier.width(6.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "I confirm I am 18 years of age or older",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                        Text(
-                            text = "Mandatory statutory verification for skill-based tournaments (COPPA & IT Rules).",
-                            fontSize = 10.sp,
-                            color = Color(0xFF94A3B8)
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(8.dp))
-
-                // State Skill-Gaming Jurisdiction Warranty
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth().clickable { isStateCompliant = !isStateCompliant }
-                ) {
-                    Checkbox(
-                        checked = isStateCompliant,
-                        onCheckedChange = { isStateCompliant = it },
-                        colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "I am not a resident of restricted states",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White
-                        )
-                        Text(
-                            text = "Assam, Odisha, Telangana, Nagaland, Sikkim, Andhra Pradesh.",
-                            fontSize = 10.sp,
-                            color = Color(0xFF94A3B8)
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(8.dp))
-
-                // Terms of Service & Privacy & DMCA Safe Harbor
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth().clickable { isTermsAccepted = !isTermsAccepted }
-                ) {
-                    Checkbox(
-                        checked = isTermsAccepted,
-                        onCheckedChange = { isTermsAccepted = it },
-                        colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
-                    )
-                    Spacer(Modifier.width(6.dp))
+                )
+                Spacer(Modifier.width(6.dp))
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "I agree to the Terms of Service, Privacy Policy & Safe Harbor IP guidelines.",
-                        fontSize = 11.sp,
-                        color = Color(0xFFCBD5E1)
-                    )
-                }
-
-                Spacer(Modifier.height(6.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    Text(
-                        text = "Terms of Service",
-                        fontSize = 10.sp,
-                        color = MaterialTheme.colorScheme.primary,
+                        text = "I confirm I am 18 years of age or older",
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.clickable { onOpenLegal(LegalTab.TERMS) }
+                        color = textColor
                     )
-                    Text("•", fontSize = 10.sp, color = Color(0xFF64748B))
                     Text(
-                        text = "Privacy Policy",
+                        text = "Mandatory statutory verification for skill-based tournaments (COPPA & IT Rules).",
                         fontSize = 10.sp,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.clickable { onOpenLegal(LegalTab.PRIVACY) }
-                    )
-                    Text("•", fontSize = 10.sp, color = Color(0xFF64748B))
-                    Text(
-                        text = "Refunds & Escrow",
-                        fontSize = 10.sp,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.clickable { onOpenLegal(LegalTab.REFUNDS) }
+                        color = mutedTextColor
                     )
                 }
             }
+
+            Spacer(Modifier.height(6.dp))
+
+            // State Skill-Gaming Jurisdiction Warranty
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { isStateCompliant = !isStateCompliant }
+                    .padding(vertical = 4.dp)
+            ) {
+                Checkbox(
+                    checked = isStateCompliant,
+                    onCheckedChange = { isStateCompliant = it },
+                    colors = CheckboxDefaults.colors(checkedColor = Color(0xFF38BDF8))
+                )
+                Spacer(Modifier.width(6.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "I am not a resident of restricted states",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = textColor
+                    )
+                    Text(
+                        text = "Assam, Odisha, Telangana, Nagaland, Sikkim, Andhra Pradesh.",
+                        fontSize = 10.sp,
+                        color = mutedTextColor
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(6.dp))
+
+            // Terms of Service & Privacy & DMCA Safe Harbor
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { isTermsAccepted = !isTermsAccepted }
+                    .padding(vertical = 4.dp)
+            ) {
+                Checkbox(
+                    checked = isTermsAccepted,
+                    onCheckedChange = { isTermsAccepted = it },
+                    colors = CheckboxDefaults.colors(checkedColor = Color(0xFF38BDF8))
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = "I agree to Terms of Service, Privacy Policy & Safe Harbor IP guidelines.",
+                    fontSize = 11.sp,
+                    color = mutedTextColor
+                )
+            }
+
+            Spacer(Modifier.height(6.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                Text(
+                    text = "Terms of Service",
+                    fontSize = 10.sp,
+                    color = Color(0xFF38BDF8),
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.clickable { onOpenLegal(LegalTab.TERMS) }
+                )
+                Text("•", fontSize = 10.sp, color = mutedTextColor)
+                Text(
+                    text = "Privacy Policy",
+                    fontSize = 10.sp,
+                    color = Color(0xFF38BDF8),
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.clickable { onOpenLegal(LegalTab.PRIVACY) }
+                )
+                Text("•", fontSize = 10.sp, color = mutedTextColor)
+                Text(
+                    text = "Refunds & Escrow",
+                    fontSize = 10.sp,
+                    color = Color(0xFF38BDF8),
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.clickable { onOpenLegal(LegalTab.REFUNDS) }
+                )
+            }
         }
 
-        // Submit Button
+        // Submit Button - Solid White with Black Text
         Button(
             onClick = {
                 if (!isAgeConfirmed) {
@@ -609,13 +931,17 @@ fun RegistrationScreen(
                 )
             },
             modifier = Modifier.fillMaxWidth().height(56.dp).testTag("submit_register_button"),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color.White,
+                contentColor = Color.Black
+            ),
             enabled = !isAuthLoading && isAgeConfirmed && isStateCompliant && isTermsAccepted
         ) {
             if (isAuthLoading) {
-                CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(24.dp))
+                CircularProgressIndicator(color = Color.Black, modifier = Modifier.size(24.dp))
             } else {
-                Text("Create Account (18+ Verified)", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text("Create Account (18+ Verified)", color = Color.Black, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
         }
         
@@ -626,9 +952,9 @@ fun RegistrationScreen(
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f))
-            Text(" OR ", color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f), style = MaterialTheme.typography.bodySmall)
-            HorizontalDivider(modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f))
+            HorizontalDivider(modifier = Modifier.weight(1f), color = Color.White.copy(alpha = 0.22f))
+            Text("  OR  ", color = mutedTextColor, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+            HorizontalDivider(modifier = Modifier.weight(1f), color = Color.White.copy(alpha = 0.22f))
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -640,10 +966,10 @@ fun RegistrationScreen(
             activityContext = activityContext.baseContext
         }
         
-        // Google Login Button
+        // Google Sign-In Button with 2025 Google Favicon
         AuthOptionButton(
-            text = "Continue with Google",
-            painter = androidx.compose.ui.res.painterResource(id = com.example.R.drawable.ic_google_colored),
+            text = "Register with Google",
+            painter = androidx.compose.ui.res.painterResource(id = com.example.R.drawable.google_favicon_2025),
             enabled = !isAuthLoading
         ) {
             try {
@@ -671,11 +997,11 @@ fun RegistrationScreen(
         
         AuthLegalConsentFootnote(onOpenLegal = onOpenLegal)
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
         Text(
-            text = "Already have an account? Login",
-            style = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold),
+            text = "Already have an account? Sign in with to continue",
+            style = MaterialTheme.typography.bodyMedium.copy(color = textColor, fontWeight = FontWeight.Bold),
             modifier = Modifier.clickable { onSwitchToLogin() }.padding(8.dp).align(Alignment.CenterHorizontally).testTag("toggle_auth_mode")
         )
     }
@@ -706,10 +1032,10 @@ fun AuthLegalConsentFootnote(
                 text = "Skill Gaming • 18+ Only • DPDP Compliant",
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF94A3B8)
+                color = Color(0xFF38BDF8)
             )
         }
-        Spacer(modifier = Modifier.height(5.dp))
+        Spacer(modifier = Modifier.height(6.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center,
@@ -718,37 +1044,37 @@ fun AuthLegalConsentFootnote(
             Text(
                 text = "By continuing, you accept ",
                 fontSize = 11.sp,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.55f)
+                color = Color(0xFFCBD5E1)
             )
             Text(
                 text = "Terms",
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
+                color = Color(0xFF38BDF8),
                 modifier = Modifier.clickable { onOpenLegal(LegalTab.TERMS) }
             )
             Text(
                 text = " • ",
                 fontSize = 11.sp,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f)
+                color = Color(0xFFCBD5E1)
             )
             Text(
                 text = "Privacy",
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
+                color = Color(0xFF38BDF8),
                 modifier = Modifier.clickable { onOpenLegal(LegalTab.PRIVACY) }
             )
             Text(
                 text = " • ",
                 fontSize = 11.sp,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f)
+                color = Color(0xFFCBD5E1)
             )
             Text(
                 text = "Fair Play",
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
+                color = Color(0xFF38BDF8),
                 modifier = Modifier.clickable { onOpenLegal(LegalTab.FAIR_PLAY) }
             )
         }
@@ -770,18 +1096,20 @@ fun AuthOptionButton(
             .fillMaxWidth()
             .height(56.dp)
             .testTag("google_login_button"),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.35f)),
         colors = ButtonDefaults.outlinedButtonColors(
-            contentColor = MaterialTheme.colorScheme.onBackground
+            containerColor = Color(0x33000000),
+            contentColor = Color.White
         )
     ) {
         if (painter != null) {
-            Icon(painter = painter, contentDescription = null, tint = androidx.compose.ui.graphics.Color.Unspecified, modifier = Modifier.size(24.dp))
+            Image(painter = painter, contentDescription = null, modifier = Modifier.size(22.dp))
         } else if (icon != null) {
-            Icon(imageVector = icon, contentDescription = null, tint = androidx.compose.ui.graphics.Color.Unspecified, modifier = Modifier.size(24.dp))
+            Icon(imageVector = icon, contentDescription = null, tint = Color.Unspecified, modifier = Modifier.size(22.dp))
         }
         Spacer(modifier = Modifier.width(12.dp))
-        Text(text, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium))
+        Text(text, style = MaterialTheme.typography.bodyLarge.copy(color = Color.White, fontWeight = FontWeight.Medium, fontSize = 15.sp))
     }
 }
 

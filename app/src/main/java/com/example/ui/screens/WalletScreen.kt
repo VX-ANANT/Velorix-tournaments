@@ -137,8 +137,6 @@ fun WalletScreen(viewModel: PlatformViewModel) {
             modifier = Modifier
                 .fillMaxWidth()
                 .widthIn(max = 760.dp)
-                .blur(radius = bgBlurRadius)
-                .stretchOverscroll()
                 .padding(horizontal = 16.dp),
             contentPadding = PaddingValues(bottom = 90.dp)
         ) {

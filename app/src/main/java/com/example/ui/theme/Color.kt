@@ -63,3 +63,31 @@ val EarthCharcoal = Color(0xFF1E232A)
 val EarthWarmDark = Color(0xFF16181B)
 val EarthCream = Color(0xFFFAEDCD)
 
+/**
+ * 180° Contrast-Inversion Adaptive Color Engine:
+ * Inverts luminance and contrast 180° across the spectrum:
+ * Dark backgrounds (luminance < 0.5) receive pure crisp high-contrast white (Color(0xFFFFFFFF)),
+ * light backgrounds receive deep dark slate (Color(0xFF0F172A)), ensuring 100% readability
+ * with zero unwanted yellow/tint artifacts.
+ */
+fun get180DegreeAdaptiveColor(backgroundColor: Color): Color {
+    val luminance = 0.299f * backgroundColor.red + 0.587f * backgroundColor.green + 0.114f * backgroundColor.blue
+    return if (luminance < 0.5f) {
+        Color(0xFFFFFFFF)
+    } else {
+        Color(0xFF0F172A)
+    }
+}
+
+/**
+ * Secondary muted variant of the 180° adaptive color (for subtitles, hints, footnotes)
+ */
+fun get180DegreeAdaptiveMutedColor(backgroundColor: Color): Color {
+    val luminance = 0.299f * backgroundColor.red + 0.587f * backgroundColor.green + 0.114f * backgroundColor.blue
+    return if (luminance < 0.5f) {
+        Color(0xFFCBD5E1)
+    } else {
+        Color(0xFF64748B)
+    }
+}
+

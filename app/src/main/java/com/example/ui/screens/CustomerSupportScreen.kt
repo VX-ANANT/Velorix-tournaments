@@ -341,7 +341,7 @@ fun CustomerSupportScreen(
                         }
                     } else {
                         LazyColumn(
-                            modifier = Modifier.weight(1f).stretchOverscroll(),
+                            modifier = Modifier.weight(1f),
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             items(activeSessions, key = { it.id }) { session ->
@@ -1256,7 +1256,6 @@ fun CustomerSupportScreen(
                             state = listState,
                             modifier = Modifier
                                 .fillMaxSize()
-                                .stretchOverscroll()
                                 .padding(horizontal = 16.dp),
                             contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp)

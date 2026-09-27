@@ -69,7 +69,9 @@ class MainActivity : ComponentActivity() {
             android.util.Log.e("Entrig", "Entrig onRequestPermissionsResult failed", e)
         }
     }
+    private var refreshRateEnforced = false
     private fun enforceHighRefreshRate() {
+        if (refreshRateEnforced) return
         try {
             // 1. Get default display reliably across all Android OS versions
             val currentDisplay: android.view.Display? = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
@@ -92,6 +94,7 @@ class MainActivity : ComponentActivity() {
                 }
                 params.preferredRefreshRate = targetRate
                 window.attributes = params
+                refreshRateEnforced = true
             }
         } catch (e: Throwable) {
             android.util.Log.d("HighRefreshRate", "120 FPS configuration handled: ${e.message}")
@@ -513,12 +516,14 @@ class MainActivity : ComponentActivity() {
                             com.example.ui.components.BottomTab("profile", "Profile", profileIcon)
                         }
 
-                        val isGlassActive = liquidGlassConfig.enableLiquidGlass && (liquidGlassConfig.glassNavBar || liquidGlassConfig.glassCards)
+                        val isGlassActive = liquidGlassConfig.enableLiquidGlass && (liquidGlassConfig.glassNavBar || liquidGlassConfig.glassCards || liquidGlassConfig.glassTopBar || liquidGlassConfig.glassDialogs)
                         val glassTint = remember(liquidGlassConfig.surfaceTint, liquidGlassConfig.surfaceOpacity, liquidGlassConfig.vibrancy) {
                             val base = when (liquidGlassConfig.surfaceTint.lowercase()) {
                                 "crimson" -> Color(0xFF1E030B)
                                 "midnight" -> Color(0xFF091122)
                                 "clear" -> Color(0xFF06080E)
+                                "emerald" -> Color(0xFF031A0F)
+                                "gold" -> Color(0xFF1E1704)
                                 else -> Color(0xFF0D111A)
                             }
                             base.copy(alpha = (liquidGlassConfig.surfaceOpacity * 0.35f * liquidGlassConfig.vibrancy).coerceIn(0f, 0.6f))
@@ -527,6 +532,7 @@ class MainActivity : ComponentActivity() {
                             liquidGlassConfig.blurRadius.coerceIn(0f, 30f).dp
                         }
 
+                        val isEmuDevice = remember { EnvUtils.isEmu() }
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -535,20 +541,7 @@ class MainActivity : ComponentActivity() {
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .then(
-                                        if (isGlassActive) {
-                                            Modifier.haze(
-                                                state = hazeState,
-                                                style = HazeStyle(
-                                                    tint = glassTint,
-                                                    blurRadius = glassBlur,
-                                                    noiseFactor = 0f
-                                                )
-                                            )
-                                        } else {
-                                            Modifier
-                                        }
-                                    )
+                                    .then(if (!isEmuDevice) Modifier.haze(hazeState) else Modifier)
                             ) {
                                 androidx.compose.animation.AnimatedContent(
                                     targetState = currentTabState,

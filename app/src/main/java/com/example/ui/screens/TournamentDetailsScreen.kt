@@ -133,8 +133,6 @@ fun TournamentDetailsScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .blur(radius = bgBlurRadius)
-                    .stretchOverscroll()
                     .verticalScroll(scrollState)
                     .padding(bottom = 90.dp) // space for sticky button
             ) {
@@ -796,7 +794,7 @@ fun DetailsTabContent(
                 modifier = Modifier.weight(1f),
                 icon = androidx.compose.ui.graphics.vector.ImageVector.vectorResource(com.example.R.drawable.ic_iconsax_profile),
                 title = "TEAM TYPE",
-                value = "SOLO ARENA"
+                value = "SOLO CONTEST"
             )
         }
 
@@ -816,7 +814,7 @@ fun DetailsTabContent(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Welcome to the ultimate esports arena! Join top-tier players in ${match.game} and prove your skills. Room ID and custom passwords will be displayed in the matches section and sent dynamically via notifications 15 to 20 minutes before the official countdown starts.",
+                    text = "Welcome to the ultimate esports championship! Join top-tier players in ${match.game} and prove your skills. Room ID and custom passwords will be displayed in the matches section and sent dynamically via notifications 15 to 20 minutes before the official countdown starts.",
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha=0.8f),
                     lineHeight = 18.sp

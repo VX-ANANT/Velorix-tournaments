@@ -181,7 +181,6 @@ fun LegalComplianceScreen(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .stretchOverscroll()
                         .padding(horizontal = 20.dp),
                     contentPadding = PaddingValues(top = 20.dp, bottom = 48.dp)
                 ) {
@@ -233,7 +232,7 @@ private fun TermsPage() {
         SectionBlock(
             number = "01",
             title = "Architectural Scope & Safe Harbor",
-            content = "VeloRix functions strictly as an electronic sports contest organizer and intermediary infrastructure under Section 79 of the Information Technology Act, 2000. VeloRix provides competitive matchmaking for mobile gaming titles including Garena Free Fire and is not affiliated with, endorsed by, or sponsored by Garena International."
+            content = "VeloRix functions strictly as an electronic sports contest organizer and intermediary infrastructure under Section 79 of the Information Technology Act, 2000. VeloRix provides competitive matchmaking for mobile gaming titles including Free Fire and is not affiliated with, endorsed by, or sponsored by game publishers."
         )
 
         SectionBlock(
@@ -470,7 +469,7 @@ private fun LegalStatusPage() {
             number = "02",
             title = "MeitY PROG Rules, 2026 & OGAI Directives",
             bullets = listOf(
-                "Classification of Esports: Under Sections 4 & 5 of the MeitY PROG Rules 2026, battle royale contests requiring hand-eye coordination, rapid spatial decision-making, and game knowledge are classified as permissible games of skill.",
+                "Classification of Esports: Under Sections 4 & 5 of the MeitY PROG Rules 2026, tactical survival contests requiring hand-eye coordination, rapid spatial decision-making, and game knowledge are classified as permissible games of skill.",
                 "Online Gaming Authority of India (OGAI): VeloRix aligns with the operational directives of the Online Gaming Authority of India (OGAI) established in April 2026, including zero algorithmic manipulation, auditable match histories, and prompt player grievance resolution."
             )
         )

@@ -211,14 +211,12 @@ fun LeaderboardScreen(viewModel: PlatformViewModel) {
         onRefresh = { viewModel.refreshHomeData() },
         modifier = Modifier
             .fillMaxSize()
-            .blur(radius = bgBlurRadius)
     ) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
                 .widthIn(max = 760.dp)
                 .align(Alignment.TopCenter)
-                .stretchOverscroll()
                 .padding(horizontal = 16.dp),
             contentPadding = PaddingValues(bottom = 90.dp)
         ) {

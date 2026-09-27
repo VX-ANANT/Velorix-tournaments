@@ -291,7 +291,7 @@ fun SplashScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "ESPORTS TOURNAMENT ARENA",
+                text = "ESPORTS CHAMPIONSHIP PLATFORM",
                 fontFamily = GffDevanagariFontFamily,
                 fontWeight = FontWeight.SemiBold,
                 letterSpacing = 4.sp,

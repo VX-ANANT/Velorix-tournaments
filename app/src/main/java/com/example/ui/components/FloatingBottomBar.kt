@@ -154,6 +154,7 @@ fun FloatingBottomBar(
     // -----------------------------------------------------------------
     // Dynamic Apple Liquid Glass Material Calculation
     // -----------------------------------------------------------------
+    val isEmu = remember { com.example.EnvUtils.isEmu() }
     val isGlassEnabled = config.enableLiquidGlass && config.glassNavBar
     val tintOpacity = config.surfaceOpacity.coerceIn(0.08f, 0.85f)
     val specularIntensity = (config.lensRefractionAmount * 1.6f).coerceIn(0.08f, 0.55f)
@@ -164,6 +165,8 @@ fun FloatingBottomBar(
         "crimson" -> Color(0xFF1E030B)
         "midnight" -> Color(0xFF091122)
         "clear" -> Color(0xFF06080E)
+        "emerald" -> Color(0xFF031A0F)
+        "gold" -> Color(0xFF1E1704)
         else -> Color(0xFF0D111A) // obsidian
     }
 
@@ -174,13 +177,22 @@ fun FloatingBottomBar(
         )
     )
 
-    // Non-harsh specular top light catcher with smooth refraction
-    val specularRimGradient = Brush.verticalGradient(
-        0.0f to Color.White.copy(alpha = specularIntensity),
-        0.20f to Color.White.copy(alpha = specularIntensity * 0.35f),
-        0.75f to Color.White.copy(alpha = specularIntensity * 0.10f),
-        1.0f to Color.White.copy(alpha = specularIntensity * 0.40f)
-    )
+    // Non-harsh specular top light catcher with chromatic dispersion & smooth refraction
+    val specularRimGradient = if (config.chromaticAberration) {
+        Brush.verticalGradient(
+            0.0f to Color(0xFF38BDF8).copy(alpha = (specularIntensity * 1.3f).coerceIn(0.1f, 0.6f)),
+            0.20f to Color.White.copy(alpha = specularIntensity * 0.40f),
+            0.75f to Color(0xFFF43F5E).copy(alpha = (specularIntensity * 0.25f).coerceIn(0.04f, 0.25f)),
+            1.0f to Color.White.copy(alpha = specularIntensity * 0.45f)
+        )
+    } else {
+        Brush.verticalGradient(
+            0.0f to Color.White.copy(alpha = specularIntensity),
+            0.20f to Color.White.copy(alpha = specularIntensity * 0.35f),
+            0.75f to Color.White.copy(alpha = specularIntensity * 0.10f),
+            1.0f to Color.White.copy(alpha = specularIntensity * 0.40f)
+        )
+    }
 
     val activePillBackground = Brush.verticalGradient(
         colors = listOf(
@@ -231,9 +243,8 @@ fun FloatingBottomBar(
                 .clip(BAR_PILL_SHAPE)
                 .then(
                     if (isGlassEnabled) {
-                        Modifier
-                            .hazeChild(state = hazeState, shape = BAR_PILL_SHAPE)
-                            .background(brush = liquidGlassBackground)
+                        val base = if (!isEmu) Modifier.hazeChild(state = hazeState, shape = BAR_PILL_SHAPE) else Modifier
+                        base.background(brush = liquidGlassBackground)
                     } else {
                         Modifier.background(Color(0xFF141722))
                     }
@@ -380,9 +391,8 @@ fun FloatingBottomBar(
                 .clip(CircleShape)
                 .then(
                     if (isGlassEnabled) {
-                        Modifier
-                            .hazeChild(state = hazeState, shape = CircleShape)
-                            .background(brush = liquidGlassBackground)
+                        val base = if (!isEmu) Modifier.hazeChild(state = hazeState, shape = CircleShape) else Modifier
+                        base.background(brush = liquidGlassBackground)
                     } else {
                         Modifier.background(Color(0xFF141722))
                     }

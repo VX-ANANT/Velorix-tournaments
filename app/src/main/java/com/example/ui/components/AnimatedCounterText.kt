@@ -36,21 +36,24 @@ fun AnimatedRollingCounter(
     color: Color = Color.Unspecified,
     letterSpacing: TextUnit = 0.sp,
     style: TextStyle = LocalTextStyle.current,
-    animateValueGradually: Boolean = true
+    animateValueGradually: Boolean = false
 ) {
     val doubleTarget = targetValue.toDouble()
     
-    // Smoothly interpolate numeric value if gradual animation is enabled
-    val animatedNumber by animateFloatAsState(
-        targetValue = doubleTarget.toFloat(),
-        animationSpec = spring(
-            dampingRatio = 0.85f,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "rolling_number_interpolation"
-    )
-
-    val displayValue = if (animateValueGradually) animatedNumber.toDouble() else doubleTarget
+    // Smoothly interpolate numeric value only if gradual animation is enabled
+    val displayValue = if (animateValueGradually) {
+        val animatedNumber by animateFloatAsState(
+            targetValue = doubleTarget.toFloat(),
+            animationSpec = spring(
+                dampingRatio = 0.85f,
+                stiffness = Spring.StiffnessLow
+            ),
+            label = "rolling_number_interpolation"
+        )
+        animatedNumber.toDouble()
+    } else {
+        doubleTarget
+    }
 
     // Format number string based on whether original is integer or float
     val isInt = targetValue is Int || targetValue is Long || (doubleTarget % 1.0 == 0.0)
@@ -61,10 +64,14 @@ fun AnimatedRollingCounter(
     }
 
     var previousTarget by remember { mutableDoubleStateOf(doubleTarget) }
+    var hasChanged by remember { mutableStateOf(false) }
     val isIncreasing = doubleTarget >= previousTarget
 
     LaunchedEffect(doubleTarget) {
-        previousTarget = doubleTarget
+        if (doubleTarget != previousTarget) {
+            hasChanged = true
+            previousTarget = doubleTarget
+        }
     }
 
     Row(
@@ -82,27 +89,38 @@ fun AnimatedRollingCounter(
             )
         }
 
-        formattedString.forEachIndexed { index, char ->
-            if (char.isDigit()) {
-                AnimatedDigit(
-                    digit = char,
-                    isIncreasing = isIncreasing,
-                    fontSize = fontSize,
-                    fontWeight = fontWeight,
-                    color = color,
-                    letterSpacing = letterSpacing,
-                    style = style
-                )
-            } else {
-                Text(
-                    text = char.toString(),
-                    fontSize = fontSize,
-                    fontWeight = fontWeight,
-                    color = color,
-                    letterSpacing = letterSpacing,
-                    style = style
-                )
+        if (hasChanged) {
+            formattedString.forEachIndexed { _, char ->
+                if (char.isDigit()) {
+                    AnimatedDigit(
+                        digit = char,
+                        isIncreasing = isIncreasing,
+                        fontSize = fontSize,
+                        fontWeight = fontWeight,
+                        color = color,
+                        letterSpacing = letterSpacing,
+                        style = style
+                    )
+                } else {
+                    Text(
+                        text = char.toString(),
+                        fontSize = fontSize,
+                        fontWeight = fontWeight,
+                        color = color,
+                        letterSpacing = letterSpacing,
+                        style = style
+                    )
+                }
             }
+        } else {
+            Text(
+                text = formattedString,
+                fontSize = fontSize,
+                fontWeight = fontWeight,
+                color = color,
+                letterSpacing = letterSpacing,
+                style = style
+            )
         }
 
         if (suffix.isNotEmpty()) {

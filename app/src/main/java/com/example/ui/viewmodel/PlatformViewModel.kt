@@ -457,6 +457,8 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
             surfaceTint = prefs.getString("lg_surface_tint", "obsidian") ?: "obsidian",
             surfaceOpacity = prefs.getFloat("lg_surface_opacity", 0.28f),
             glassTextColor = prefs.getString("lg_glass_text_color", "white") ?: "white",
+            glassTopBar = prefs.getBoolean("lg_glass_top_bar", true),
+            glassDialogs = prefs.getBoolean("lg_glass_dialogs", true),
             glassPlayer = prefs.getBoolean("lg_glass_player", true),
             glassMiniPlayer = prefs.getBoolean("lg_glass_mini_player", true),
             glassNavBar = prefs.getBoolean("lg_glass_nav_bar", true),
@@ -480,6 +482,8 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
             .putString("lg_surface_tint", newConfig.surfaceTint)
             .putFloat("lg_surface_opacity", newConfig.surfaceOpacity)
             .putString("lg_glass_text_color", newConfig.glassTextColor)
+            .putBoolean("lg_glass_top_bar", newConfig.glassTopBar)
+            .putBoolean("lg_glass_dialogs", newConfig.glassDialogs)
             .putBoolean("lg_glass_player", newConfig.glassPlayer)
             .putBoolean("lg_glass_mini_player", newConfig.glassMiniPlayer)
             .putBoolean("lg_glass_nav_bar", newConfig.glassNavBar)
@@ -498,8 +502,10 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
     fun setSurfaceTint(tint: String) = updateLiquidGlassConfig { it.copy(surfaceTint = tint) }
     fun setSurfaceOpacity(opacity: Float) = updateLiquidGlassConfig { it.copy(surfaceOpacity = opacity) }
     fun setGlassTextColor(color: String) = updateLiquidGlassConfig { it.copy(glassTextColor = color) }
-    fun setGlassPlayer(enabled: Boolean) = updateLiquidGlassConfig { it.copy(glassPlayer = enabled) }
-    fun setGlassMiniPlayer(enabled: Boolean) = updateLiquidGlassConfig { it.copy(glassMiniPlayer = enabled) }
+    fun setGlassTopBar(enabled: Boolean) = updateLiquidGlassConfig { it.copy(glassTopBar = enabled) }
+    fun setGlassDialogs(enabled: Boolean) = updateLiquidGlassConfig { it.copy(glassDialogs = enabled) }
+    fun setGlassPlayer(enabled: Boolean) = updateLiquidGlassConfig { it.copy(glassPlayer = enabled, glassDialogs = enabled) }
+    fun setGlassMiniPlayer(enabled: Boolean) = updateLiquidGlassConfig { it.copy(glassMiniPlayer = enabled, glassTopBar = enabled) }
     fun setGlassNavBar(enabled: Boolean) = updateLiquidGlassConfig { it.copy(glassNavBar = enabled) }
     fun setGlassCards(enabled: Boolean) = updateLiquidGlassConfig { it.copy(glassCards = enabled) }
 
@@ -697,11 +703,12 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
             android.util.Log.w("RemoteConfig", "RemoteConfig init skipped: ${e.message}")
         }
 
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             repository.initializeMissions()
         }
-        // Upcoming matches polling Coroutine
+        // Upcoming matches polling Coroutine (delayed to ensure smooth cold start)
         viewModelScope.launch(Dispatchers.IO) {
+            delay(5000)
             while (true) {
                 withContext(Dispatchers.Main) {
                     checkUpcomingMatches()
@@ -710,8 +717,9 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
             }
         }
         
-        // VPN Polling Coroutine
+        // VPN Polling Coroutine (delayed to prevent CPU contention during launch)
         viewModelScope.launch(Dispatchers.IO) {
+            delay(8000)
             while (true) {
                 val hasVpn = checkVpn(application.applicationContext)
                 
@@ -724,7 +732,7 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
                 } else if (!hasVpn && _isVpnActive.value) {
                     _isVpnActive.value = false
                 }
-                delay(15000) // Poll every 15 seconds to prevent battery drain and CPU stutters
+                delay(30000) // Poll every 30 seconds to prevent battery drain and CPU stutters
             }
         }
 
@@ -732,19 +740,10 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
             _dbErrorDialog.value = errorMsg
         }
         viewModelScope.launch(Dispatchers.IO) {
-            _isLoadingTournaments.value = true
-            try {
-                repository.fetchDataFromServer()
-            } catch (e: Throwable) {
-                android.util.Log.e("PlatformViewModel", "Initial server fetch failed", e)
-            } finally {
-                _isLoadingTournaments.value = false
-            }
-        }
-        viewModelScope.launch(Dispatchers.IO) {
             repository.observeLeaderboardRealtime()
         }
         viewModelScope.launch {
+            _isLoadingTournaments.value = true
             val isFirebaseAuthed = try {
                 withContext(Dispatchers.IO) {
                     auth.currentUser != null
@@ -762,7 +761,11 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
             } else {
                 prefs.edit().putBoolean("is_logged_in", false).apply()
                 _isLoggedIn.value = false
+                withContext(Dispatchers.IO) {
+                    repository.fetchDataFromServer(force = false)
+                }
             }
+            _isLoadingTournaments.value = false
             _isCheckingAuth.value = false
         }
     }
@@ -1000,7 +1003,7 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
                 val username = repository.user.firstOrNull()?.username ?: usernameForSignup ?: "Warrior"
                 prefs.edit().putBoolean("is_logged_in", true).apply()
                 _isLoggedIn.value = true
-                _toastMessage.emit("Welcome to the Arena, ${username}!")
+                _toastMessage.emit("Welcome to Velorix, ${username}!")
                 onComplete()
             } catch (e: Exception) {
                 _dbErrorDialog.value = "OTP Verification Failed: ${e.message}"

@@ -149,24 +149,38 @@ private fun BannerCard(
     banner: Banner,
     onClick: () -> Unit
 ) {
-    val style = getBannerThemeStyle(banner.gradientTheme)
+    val style = remember(banner.gradientTheme) { getBannerThemeStyle(banner.gradientTheme) }
 
-    // Liquid Glass Specular & Tint Brushes
-    val glassCardBackground = Brush.linearGradient(
-        colors = listOf(
-            Color(0xFF141824).copy(alpha = 0.88f),
-            Color(0xFF0F121B).copy(alpha = 0.92f),
-            style.accentColor.copy(alpha = 0.12f)
+    // Liquid Glass Specular & Tint Brushes memoized
+    val glassCardBackground = remember(style.accentColor) {
+        Brush.linearGradient(
+            colors = listOf(
+                Color(0xFF141824).copy(alpha = 0.88f),
+                Color(0xFF0F121B).copy(alpha = 0.92f),
+                style.accentColor.copy(alpha = 0.12f)
+            )
         )
-    )
+    }
 
-    val specularBorderBrush = Brush.linearGradient(
-        colors = listOf(
-            Color.White.copy(alpha = 0.28f),
-            style.accentColor.copy(alpha = 0.40f),
-            Color.White.copy(alpha = 0.05f)
+    val specularBorderBrush = remember(style.accentColor) {
+        Brush.linearGradient(
+            colors = listOf(
+                Color.White.copy(alpha = 0.28f),
+                style.accentColor.copy(alpha = 0.40f),
+                Color.White.copy(alpha = 0.05f)
+            )
         )
-    )
+    }
+
+    val innerRadialGlow = remember(style.accentColor) {
+        Brush.radialGradient(
+            colors = listOf(
+                style.accentColor.copy(alpha = 0.15f),
+                Color.Transparent
+            ),
+            radius = 450f
+        )
+    }
 
     Box(
         modifier = Modifier
@@ -185,15 +199,7 @@ private fun BannerCard(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            style.accentColor.copy(alpha = 0.15f),
-                            Color.Transparent
-                        ),
-                        radius = 450f
-                    )
-                )
+                .background(innerRadialGlow)
         )
 
         // Background Image with frosted glass darkening scrim if provided

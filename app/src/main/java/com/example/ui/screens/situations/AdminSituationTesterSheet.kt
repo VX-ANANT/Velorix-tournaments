@@ -2177,7 +2177,7 @@ fun AdminSituationTesterSheet(
                                     tourneyMode.contains("PER_KILL", true) && bounty > 0 -> "₹${bounty.toInt()} PER KILL BOUNTY"
                                     tourneyCategory.contains("CS", true) -> "CS $tourneyFormat CLASH"
                                     tourneyCategory.contains("LONE", true) -> "LONE WOLF $tourneyFormat"
-                                    else -> "$tourneyFormat BATTLE ROYALE"
+                                    else -> "$tourneyFormat SURVIVAL"
                                 }
                             )
 

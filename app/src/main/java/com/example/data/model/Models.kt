@@ -83,7 +83,7 @@ data class Tournament(
                 else -> when (matchMode.uppercase()) {
                     "PER_KILL", "PER_KILL_DOMINATION" -> if (killBounty > 0) "₹${killBounty.toInt()} PER KILL" else "PER-KILL DOMINATION"
                     "SURVIVAL", "SURVIVAL_WWCD", "WWCD" -> "SURVIVAL / WWCD PRIORITY"
-                    else -> if (killBounty > 0) "₹${killBounty.toInt()} PER KILL" else "$format BATTLE ROYALE"
+                    else -> if (killBounty > 0) "₹${killBounty.toInt()} PER KILL" else "$format SURVIVAL"
                 }
             }
         }
@@ -98,7 +98,7 @@ data class Transaction(
     var userId: String = "",
     var type: String = "ADD_FUNDS", // "ADD_FUNDS", "WITHDRAWAL", "ENTRY_FEE", "WINNINGS"
     var amount: Double = 0.0,
-    var detail: String = "", // e.g. "BGMI Solo Battle Royale Entry" or "Withdrawn to UPI"
+    var detail: String = "", // e.g. "BGMI Solo Survival Entry" or "Withdrawn to UPI"
     var timestamp: Long = 0, // Using default of 0 as System.currentTimeMillis() requires custom serializer, though we can just not rely on it in default
     @JsonNames("isPositive", "is_positive") var isPositive: Boolean = true,
     var status: String = "SUCCESS" // "SUCCESS", "PENDING", "REJECTED"
@@ -116,7 +116,7 @@ data class User(
     @JsonNames("avatarIdx", "avatar_idx") var avatarIdx: Int = 1,
     @JsonNames("passwordHash", "password_hash") var passwordHash: String = "",
     @JsonNames("sessionToken", "session_token") var sessionToken: String = "",
-    var bio: String = "Ready for battle",
+    var bio: String = "Ready to compete",
     @JsonNames("socialLink", "social_link") var socialLink: String = "",
     @JsonNames("dataExported", "data_exported") var dataExported: Boolean = false,
     @JsonNames("avatarUrl", "avatar_url") var avatarUrl: String = "",
