@@ -1,0 +1,59 @@
+{
+  "listing": {
+    "title": "VeloRix Tournaments",
+    "title_length": 19,
+    "short_description": "Compete in esports tournaments, track live matches, and climb leaderboards.",
+    "short_description_length": 76,
+    "full_description": "VeloRix Tournaments is an esports competition and tournament management platform designed for competitive mobile gamers. Join solo, duo, and squad matches, track match status, verify in-game IDs, and compete for top ranks on the Hall of Champions leaderboard.\n\nFEATURES GROUNDED IN APP CAPABILITIES:\n\n• TOURNAMENTS & MATCHMAKING: Browse upcoming, ongoing, and completed tournaments across multiple formats (Solo, Duo, Squad). View live entry fees, verified prize pools, slots progression, and lobby countdown timers.\n\n• TOURNAMENT LOBBY & DETAILS: Review comprehensive match rules, map specifications, prize distribution tiers, and participate in tournament lobby communication.\n\n• PLAYER PROFILES & UID VALIDATION: Connect and validate your official Free Fire and BGMI player UID (8-12 numeric digits) with instant verification feedback. Showcase win rates, match counts, and generate your personal QR player pass.\n\n• HALL OF CHAMPIONS: Track top-tier players and squads on weekly and all-time leaderboards with podium rankings.\n\n• VELORIX VAULT & ESCROW: Manage your tournament entries with in-app tokens (VT), view transaction history, and generate UPI payment requests.\n\n• HIGH-PERFORMANCE LIQUID UI: Experience hardware-accelerated animations, customizable Liquid Glass effects, dark theme styling, and instant screen switching powered by memory-optimized lazy loading and shimmer skeletons.\n\n• CUSTOMER SUPPORT: In-app support ticket submission and live communication system to resolve match discrepancies and tournament queries.\n\nCOMPLIANCE & RESPONSIBLE GAMING DISCLOSURES:\n\n• 18+ AGE RESTRICTION: VeloRix Tournaments is strictly intended for individuals who are 18 years of age or older. Age verification is required during account registration.\n\n• JURISDICTION RESTRICTION: Real-money skill gaming contests are restricted and prohibited for residents of Assam, Odisha, Telangana, Nagaland, Sikkim, and Andhra Pradesh in accordance with local regulations.\n\n• RESPONSIBLE GAMING HELPLINE: We advocate for responsible competition. If you need assistance with responsible gaming habits, please reach out to the National Gaming Support helpline or email support@velorix.gg.\n\n• COMMUNITY GUIDELINES: Toxicity, unfair third-party hacks, and cheating are strictly prohibited. Violators are subject to account suspension under our Fair Play & Security policy.",
+    "full_description_length": 2341
+  },
+  "capability_inventory": [
+    {
+      "capability": "Tournament browsing, format filters (Solo, Duo, Squad), entry fees, prize pools, and live slot progression",
+      "evidence": "app/src/main/java/com/example/ui/screens/HomeScreen.kt, app/src/main/java/com/example/ui/components/TournamentCard.kt"
+    },
+    {
+      "capability": "Tournament details display, rules matrix, prize breakdown, registered players lobby, and live countdown timer",
+      "evidence": "app/src/main/java/com/example/ui/screens/TournamentDetailsScreen.kt, app/src/main/java/com/example/ui/components/TournamentLobby.kt"
+    },
+    {
+      "capability": "Real-time in-game ID (Free Fire / BGMI UID) validation (8-12 digits) with real-time feedback",
+      "evidence": "app/src/main/java/com/example/ui/components/GameIdInputField.kt"
+    },
+    {
+      "capability": "Hall of Champions leaderboard with Weekly and All-Time podium ranks",
+      "evidence": "app/src/main/java/com/example/ui/screens/LeaderboardScreen.kt"
+    },
+    {
+      "capability": "VeloRix Vault wallet token ledger, UPI QR generation, and transaction history",
+      "evidence": "app/src/main/java/com/example/ui/screens/WalletScreen.kt, app/src/main/java/com/example/ui/components/UpiPaymentQrDialog.kt"
+    },
+    {
+      "capability": "Player profile customization, QR player pass, and stat tracking (Kills, Matches, Win Rate)",
+      "evidence": "app/src/main/java/com/example/ui/screens/ProfileScreen.kt, app/src/main/java/com/example/ui/components/PlayerQrCodeDialog.kt"
+    },
+    {
+      "capability": "Customer support ticketing and in-app chat assistance",
+      "evidence": "app/src/main/java/com/example/ui/screens/CustomerSupportScreen.kt"
+    },
+    {
+      "capability": "18+ mandatory age gate and state jurisdiction restriction compliance",
+      "evidence": "app/src/main/java/com/example/ui/screens/AuthScreen.kt, app/src/main/java/com/example/ui/screens/LegalComplianceScreen.kt"
+    },
+    {
+      "capability": "Destination code splitting, lazy loading, and custom shimmer skeleton transitions",
+      "evidence": "app/src/main/java/com/example/ui/navigation/LazyDestinationLoader.kt, app/src/main/java/com/example/ui/components/ScreenSkeletons.kt"
+    }
+  ],
+  "disclosures_applied": [
+    {
+      "category": "Real-money skill contests & gaming",
+      "disclosure_text": "18+ Age Restriction, state jurisdiction restriction (Assam, Odisha, Telangana, Nagaland, Sikkim, Andhra Pradesh), and responsible gaming helpline contact."
+    },
+    {
+      "category": "User-generated content & lobby interactions",
+      "disclosure_text": "Community standards enforcement, anti-cheat reporting, and zero tolerance for toxic conduct."
+    }
+  ],
+  "omitted_for_lack_of_evidence": []
+}

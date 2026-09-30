@@ -1,6 +1,7 @@
 package com.example
 
 import android.os.Bundle
+import android.content.Context
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -967,9 +968,14 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
+                        NetworkStatusBanner()
+
                         InAppNotificationOverlay(
                             onNotificationClick = {
                                 navController.navigate("notifications")
+                            },
+                            onNavigateToTournament = { tourneyId ->
+                                navController.navigate("details/$tourneyId")
                             }
                         )
 
@@ -1024,76 +1030,233 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun InAppNotificationOverlay(
-    onNotificationClick: () -> Unit = {}
+fun NetworkStatusBanner(
+    modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val monitor = remember(context) { com.example.util.NetworkConnectivityMonitor.getInstance(context) }
+    val networkState by monitor.networkState.collectAsStateWithLifecycle()
+
+    var showRestoredBanner by remember { mutableStateOf(false) }
+
+    LaunchedEffect(networkState) {
+        if (networkState is com.example.util.NetworkState.JustRestored) {
+            showRestoredBanner = true
+            kotlinx.coroutines.delay(3200L)
+            showRestoredBanner = false
+            monitor.acknowledgeRestored()
+        }
+    }
+
+    val isOffline = networkState is com.example.util.NetworkState.Disconnected
+
+    androidx.compose.animation.AnimatedVisibility(
+        visible = isOffline || showRestoredBanner,
+        enter = androidx.compose.animation.slideInVertically(initialOffsetY = { -it }) + androidx.compose.animation.fadeIn(),
+        exit = androidx.compose.animation.slideOutVertically(targetOffsetY = { -it }) + androidx.compose.animation.fadeOut(),
+        modifier = modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+    ) {
+        val isRestored = showRestoredBanner && !isOffline
+        val backgroundColor = if (isRestored) Color(0xFF032B18) else Color(0xFF261204)
+        val borderColor = if (isRestored) Color(0xFF00E676) else Color(0xFFFF9100)
+        val contentColor = if (isRestored) Color(0xFFB9F6CA) else Color(0xFFFFE082)
+        val icon = if (isRestored) Icons.Rounded.CloudDone else Icons.Rounded.CloudOff
+        val text = if (isRestored) "Back Online — Real-Time Synced" else "Offline Mode — Displaying Saved Room Cache"
+
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = backgroundColor,
+            border = BorderStroke(1.dp, borderColor.copy(alpha = 0.7f)),
+            shadowElevation = 6.dp,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = borderColor,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = text,
+                    color = contentColor,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f)
+                )
+                if (isOffline) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(androidx.compose.foundation.shape.CircleShape)
+                            .background(Color(0xFFFF5252))
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun InAppNotificationOverlay(
+    onNotificationClick: () -> Unit = {},
+    onNavigateToTournament: (String) -> Unit = {}
+) {
+    val context = LocalContext.current
     val notification by com.example.service.NotificationEventBus.events.collectAsStateWithLifecycle(initialValue = null)
     var currentNotification by remember { mutableStateOf<com.example.service.NotificationEventBus.NotificationEvent?>(null) }
+    
     LaunchedEffect(notification) {
         if (notification != null) {
             currentNotification = notification
-            kotlinx.coroutines.delay(4000)
+            val displayDuration = if (notification?.actionType == "CREDENTIALS") 8000L else 4500L
+            kotlinx.coroutines.delay(displayDuration)
             if (currentNotification == notification) {
                 currentNotification = null
             }
         }
     }
-    Box(modifier = Modifier.fillMaxWidth().statusBarsPadding(), contentAlignment = Alignment.TopCenter) {
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(top = 36.dp),
+        contentAlignment = Alignment.TopCenter
+    ) {
         androidx.compose.animation.AnimatedVisibility(
             visible = currentNotification != null,
             enter = androidx.compose.animation.slideInVertically(initialOffsetY = { -it }) + androidx.compose.animation.fadeIn(),
             exit = androidx.compose.animation.slideOutVertically(targetOffsetY = { -it }) + androidx.compose.animation.fadeOut(),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(horizontal = 16.dp, vertical = 4.dp)
         ) {
             currentNotification?.let { notif ->
                 androidx.compose.material3.Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
+                            val tourneyId = notif.tournamentId
                             currentNotification = null
-                            onNotificationClick()
+                            if (!tourneyId.isNullOrBlank()) {
+                                onNavigateToTournament(tourneyId)
+                            } else {
+                                onNotificationClick()
+                            }
                         },
                     colors = androidx.compose.material3.CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        containerColor = Color(0xFF141824),
+                        contentColor = Color.White
                     ),
-                    elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 8.dp),
+                    elevation = androidx.compose.material3.CardDefaults.cardElevation(defaultElevation = 10.dp),
                     shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
+                    border = BorderStroke(1.dp, Color(0xFF00E5FF).copy(alpha = 0.5f))
                 ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.NotificationsActive,
-                                contentDescription = "Notification",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(24.dp)
-                            )
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(Color(0xFF00E5FF).copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (notif.actionType == "CREDENTIALS") Icons.Rounded.Key else Icons.Default.NotificationsActive,
+                                    contentDescription = "Notification",
+                                    tint = Color(0xFF00E5FF),
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = notif.title,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                    color = Color.White
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = notif.body,
+                                    fontSize = 12.sp,
+                                    lineHeight = 16.sp,
+                                    color = Color(0xFFB0BEC5),
+                                    maxLines = 2,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                )
+                            }
+                            IconButton(
+                                onClick = { currentNotification = null },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Dismiss",
+                                    tint = Color(0xFF78909C),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
                         }
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Column {
-                            Text(
-                                text = notif.title,
-                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                                fontSize = 14.sp
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = notif.body,
-                                fontSize = 12.sp,
-                                lineHeight = 16.sp
-                            )
+
+                        // Quick Actions for credentials or tournament navigation
+                        if (notif.roomId != null && notif.roomPassword != null) {
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Button(
+                                    onClick = {
+                                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                                        val clip = android.content.ClipData.newPlainText(
+                                            "Room Credentials",
+                                            "ID: ${notif.roomId} | Pass: ${notif.roomPassword}"
+                                        )
+                                        clipboard?.setPrimaryClip(clip)
+                                        Toast.makeText(context, "Room ID & Password copied!", Toast.LENGTH_SHORT).show()
+                                    },
+                                    modifier = Modifier.weight(1f).height(36.dp),
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.ContentCopy,
+                                        contentDescription = null,
+                                        tint = Color(0xFF00E5FF),
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Copy ID & Pass", fontSize = 12.sp, color = Color.White)
+                                }
+
+                                if (!notif.tournamentId.isNullOrBlank()) {
+                                    Button(
+                                        onClick = {
+                                            val tourneyId = notif.tournamentId
+                                            currentNotification = null
+                                            onNavigateToTournament(tourneyId)
+                                        },
+                                        modifier = Modifier.weight(1f).height(36.dp),
+                                        shape = RoundedCornerShape(10.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E5FF)),
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                                    ) {
+                                        Text("Open Match", fontSize = 12.sp, color = Color.Black, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
                         }
                     }
                 }

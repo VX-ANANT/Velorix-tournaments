@@ -704,6 +704,25 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
         }
     }
     
+    private fun prefetchImages(urls: List<String>) {
+        try {
+            val app = getApplication<Application>()
+            val imageLoader = coil.Coil.imageLoader(app)
+            urls.filter { it.isNotBlank() && (it.startsWith("http://") || it.startsWith("https://")) }
+                .take(8)
+                .forEach { url ->
+                    val request = coil.request.ImageRequest.Builder(app)
+                        .data(url)
+                        .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
+                        .diskCachePolicy(coil.request.CachePolicy.ENABLED)
+                        .build()
+                    imageLoader.enqueue(request)
+                }
+        } catch (_: Throwable) {
+            // Non-critical image prefetch
+        }
+    }
+    
     init {
         val isEmulator = com.example.EnvUtils.isEmu()
 
@@ -773,6 +792,11 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
         }
         viewModelScope.launch(Dispatchers.IO) {
             repository.observeLeaderboardRealtime()
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            banners.collect { list ->
+                prefetchImages(list.map { it.imageUrl })
+            }
         }
         viewModelScope.launch(Dispatchers.IO) {
             _isLoadingTournaments.value = true

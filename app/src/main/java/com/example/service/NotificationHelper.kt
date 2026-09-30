@@ -496,7 +496,14 @@ object NotificationHelper {
         val title = "Room ID & Password Released!"
         val content = "Room ID: $roomId | Password: $roomPass. Join the Free Fire custom room immediately!"
 
-        NotificationEventBus.postEvent(title, "$tournamentTitle: Room ID: $roomId | Password: $roomPass")
+        NotificationEventBus.postEvent(
+            title = title,
+            body = "$tournamentTitle: Room ID: $roomId | Password: $roomPass",
+            tournamentId = tournamentId,
+            roomId = roomId,
+            roomPassword = roomPass,
+            actionType = "CREDENTIALS"
+        )
 
         persistNotificationToDb(
             context,
