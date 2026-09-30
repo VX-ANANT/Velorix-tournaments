@@ -36,6 +36,7 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.util.rememberArtworkPalette
 val DeepSpaceBlack = Color(0xFF09090B)
 val CardSurfaceLight = Color(0xFF18181B)
 private data class TacticalBadgeStyle(
@@ -70,6 +71,7 @@ fun TournamentCard(
     onJoinClick: () -> Unit
 ) {
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val palette = rememberArtworkPalette(imageUrl = thumbnailUrl, title = title)
     val isFull by remember(filledSlots, maxSlots) {
         derivedStateOf { filledSlots >= maxSlots }
     }
@@ -81,7 +83,7 @@ fun TournamentCard(
     }
 
     // Compute tactical badge styling with remember
-    val badgeStyle = remember(categoryBadge, matchCategory, matchMode, killBounty, format) {
+    val badgeStyle = remember(categoryBadge, matchCategory, matchMode, killBounty, format, palette.accentColor) {
         val tacticalBadgeText = when {
             categoryBadge.isNotBlank() -> categoryBadge
             matchCategory.equals("CLASH_SQUAD", true) || matchCategory.equals("CS", true) -> when (matchMode.uppercase()) {
@@ -113,7 +115,7 @@ fun TournamentCard(
             isLoneWolf -> Color(0xEE7C2D12)
             isClashSquad -> Color(0xEE0C4A6E)
             isSurvival -> Color(0xEE064E3B)
-            else -> Color(0xEE1E293B)
+            else -> palette.accentColor.copy(alpha = 0.20f)
         }
         val border = when {
             isHeadshotOnly -> Color(0xFFEF4444)
@@ -121,7 +123,7 @@ fun TournamentCard(
             isLoneWolf -> Color(0xFFF97316)
             isClashSquad -> Color(0xFF38BDF8)
             isSurvival -> Color(0xFF10B981)
-            else -> Color(0xFFF59E0B)
+            else -> palette.accentColor.copy(alpha = 0.85f)
         }
         val text = when {
             isHeadshotOnly -> Color(0xFFFCA5A5)
@@ -129,7 +131,7 @@ fun TournamentCard(
             isLoneWolf -> Color(0xFFFDBA74)
             isClashSquad -> Color(0xFFBAE6FD)
             isSurvival -> Color(0xFF6EE7B7)
-            else -> Color(0xFFFDE68A)
+            else -> Color(0xFFFFFFFF) // 180° opposite contrast text, NO YELLOW
         }
         TacticalBadgeStyle(tacticalBadgeText, bg, border, text)
     }
@@ -138,7 +140,7 @@ fun TournamentCard(
         isGlassCard && liquidGlassConfig.enableLiquidGlass && liquidGlassConfig.glassCards
     }
 
-    val cardContainerColor = remember(isGlassEnabled, liquidGlassConfig.surfaceTint, liquidGlassConfig.surfaceOpacity, liquidGlassConfig.vibrancy) {
+    val cardContainerColor = remember(isGlassEnabled, liquidGlassConfig.surfaceTint, liquidGlassConfig.surfaceOpacity, liquidGlassConfig.vibrancy, palette.cardBackground) {
         if (isGlassEnabled) {
             val baseTint = when (liquidGlassConfig.surfaceTint.lowercase()) {
                 "crimson" -> Color(0xFF1E030B)
@@ -150,12 +152,11 @@ fun TournamentCard(
             }
             baseTint.copy(alpha = (liquidGlassConfig.surfaceOpacity * 0.9f * liquidGlassConfig.vibrancy).coerceIn(0.12f, 0.88f))
         } else {
-            CardSurfaceLight
+            palette.cardBackground
         }
     }
 
-    val outlineColor = MaterialTheme.colorScheme.outline
-    val cardBorder = remember(isGlassEnabled, liquidGlassConfig.lensRefractionAmount, liquidGlassConfig.chromaticAberration, outlineColor) {
+    val cardBorder = remember(isGlassEnabled, liquidGlassConfig.lensRefractionAmount, liquidGlassConfig.chromaticAberration) {
         if (isGlassEnabled) {
             val specular = liquidGlassConfig.lensRefractionAmount.coerceIn(0.05f, 0.5f)
             val borderColors = if (liquidGlassConfig.chromaticAberration) {
@@ -173,12 +174,11 @@ fun TournamentCard(
             }
             BorderStroke(1.dp, Brush.verticalGradient(borderColors))
         } else {
-            BorderStroke(1.dp, outlineColor.copy(alpha = 0.2f))
+            BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
         }
     }
 
-    val onSurfaceColor = MaterialTheme.colorScheme.onSurface
-    val cardTitleColor = remember(isGlassEnabled, liquidGlassConfig.glassTextColor, onSurfaceColor) {
+    val cardTitleColor = remember(isGlassEnabled, liquidGlassConfig.glassTextColor, palette.highContrastText) {
         if (isGlassEnabled) {
             when (liquidGlassConfig.glassTextColor.lowercase()) {
                 "platinum" -> Color(0xFFE2E8F0)
@@ -186,7 +186,7 @@ fun TournamentCard(
                 else -> Color.White
             }
         } else {
-            onSurfaceColor
+            palette.highContrastText
         }
     }
 
@@ -220,6 +220,7 @@ fun TournamentCard(
                 ambientColor = Color.Black.copy(alpha = 0.35f),
                 spotColor = Color.Black.copy(alpha = 0.5f)
             )
+            .clip(RoundedCornerShape(24.dp))
             .drawBehind {
                 if (isGlassEnabled) {
                     val glareHeight = size.height * liquidGlassConfig.lensRefractionHeight.coerceIn(0.2f, 0.9f)
@@ -278,15 +279,21 @@ fun TournamentCard(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                 )
-                // Dark Gradient overlay for text readability and cinematic look
-                Box(modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        androidx.compose.ui.graphics.Brush.verticalGradient(
-                            colors = listOf(Color.Black.copy(alpha = 0.4f), Color.Transparent, CardSurfaceLight),
-                            startY = 0f
+                // Gradient Uncover Overlay: Smoothly uncovers the artwork above and dissolves into cardContainerColor below
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                0.00f to Color.Black.copy(alpha = 0.35f),
+                                0.20f to Color.Transparent,
+                                0.40f to Color.Transparent,
+                                0.65f to cardContainerColor.copy(alpha = 0.45f),
+                                0.82f to cardContainerColor.copy(alpha = 0.88f),
+                                0.96f to cardContainerColor.copy(alpha = 0.98f),
+                                1.00f to cardContainerColor
+                            )
                         )
-                    )
                 )
 
                 // Top Badges Row: Left = Heavy Tactical Mode Badge, Right = Match Status
@@ -394,13 +401,13 @@ fun TournamentCard(
                             imageVector = androidx.compose.ui.graphics.vector.ImageVector.vectorResource(com.example.R.drawable.ic_iconsax_landscape),
                             contentDescription = "Map",
                             modifier = Modifier.size(12.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = palette.mutedText
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = mapFormatText,
                             fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = palette.mutedText
                         )
                     }
 
@@ -419,7 +426,7 @@ fun TournamentCard(
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-                // Metadata Stats
+                // Metadata Stats (180° Contrast Text - No Yellow)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -430,14 +437,14 @@ fun TournamentCard(
                             text = "PRIZE POOL",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = palette.mutedText
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = prizePoolText,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.secondary
+                            color = palette.highContrastText
                         )
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -445,14 +452,14 @@ fun TournamentCard(
                             text = "ENTRY FEE",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = palette.mutedText
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = entryFeeText,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = palette.highContrastText
                         )
                     }
                     Column(horizontalAlignment = Alignment.End) {
@@ -460,14 +467,14 @@ fun TournamentCard(
                             text = "SLOTS",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = palette.mutedText
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = slotsText,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = palette.highContrastText
                         )
                     }
                 }
@@ -479,8 +486,8 @@ fun TournamentCard(
                         .fillMaxWidth()
                         .height(6.dp)
                         .clip(RoundedCornerShape(6.dp)),
-                    color = MaterialTheme.colorScheme.secondary,
-                    trackColor = Color(0xFF2A2A35)
+                    color = palette.accentColor,
+                    trackColor = Color.White.copy(alpha = 0.12f)
                 )
                 if (liveUpdate != null) {
                     Spacer(modifier = Modifier.height(16.dp))
@@ -507,7 +514,7 @@ fun TournamentCard(
                                     text = "ALIVE: ${liveUpdate.alivePlayers}/${liveUpdate.totalPlayers}",
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
+                                    color = palette.highContrastText
                                 )
                             }
                             Spacer(modifier = Modifier.height(8.dp))
@@ -518,12 +525,12 @@ fun TournamentCard(
                                 Text(
                                     text = "Top Player: ${liveUpdate.topPlayer}",
                                     fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = palette.mutedText
                                 )
                                 Text(
                                     text = "${liveUpdate.topKills} Kills",
                                     fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = palette.mutedText
                                 )
                             }
                         }
@@ -566,25 +573,26 @@ fun TournamentCard(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(52.dp)
+                                    .clip(RoundedCornerShape(18.dp))
                                     .graphicsLayer {
                                         scaleX = buttonScale
                                         scaleY = buttonScale
                                     }
-                                    
                                     .testTag("join_now_action_button"),
-                                shape = RoundedCornerShape(16.dp),
+                                shape = RoundedCornerShape(18.dp),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.secondary,
-                                    contentColor = MaterialTheme.colorScheme.onSurface,
-                                    disabledContainerColor = Color(0xFF3A3A45),
-                                    disabledContentColor = Color(0xFF888888)
+                                    containerColor = palette.accentColor,
+                                    contentColor = palette.onAccentColor,
+                                    disabledContainerColor = Color(0xFF2E313C),
+                                    disabledContentColor = Color(0xFF7E8494)
                                 )
                             ) {
                                 Text(
                                     text = joinButtonText,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 15.sp,
-                                    letterSpacing = 0.5.sp
+                                    letterSpacing = 0.5.sp,
+                                    modifier = Modifier.align(Alignment.CenterVertically)
                                 )
                             }
                         } else {
@@ -593,19 +601,21 @@ fun TournamentCard(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(52.dp)
+                                    .clip(RoundedCornerShape(18.dp))
                                     .testTag("view_details_button"),
-                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary),
-                                shape = RoundedCornerShape(16.dp),
+                                border = BorderStroke(1.5.dp, palette.accentColor),
+                                shape = RoundedCornerShape(18.dp),
                                 colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = MaterialTheme.colorScheme.secondary,
-                                    containerColor = Color.Transparent
+                                    contentColor = palette.accentColor,
+                                    containerColor = palette.accentColor.copy(alpha = 0.12f)
                                 )
                             ) {
                                 Text(
                                     text = "REGISTERED",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 13.sp,
-                                    letterSpacing = 0.5.sp
+                                    letterSpacing = 0.5.sp,
+                                    modifier = Modifier.align(Alignment.CenterVertically)
                                 )
                             }
                         }
@@ -615,12 +625,13 @@ fun TournamentCard(
                         onClick = remindMeClick,
                         modifier = Modifier
                             .height(52.dp)
+                            .clip(RoundedCornerShape(18.dp))
                             .testTag("remind_me_button"),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)),
-                        shape = RoundedCornerShape(16.dp),
+                        border = BorderStroke(1.dp, palette.highContrastText.copy(alpha = 0.25f)),
+                        shape = RoundedCornerShape(18.dp),
                         contentPadding = PaddingValues(horizontal = 16.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.onSurface,
+                            contentColor = palette.highContrastText,
                             containerColor = Color.Transparent
                         )
                     ) {
@@ -628,7 +639,8 @@ fun TournamentCard(
                             text = "REMIND",
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp,
-                            letterSpacing = 0.5.sp
+                            letterSpacing = 0.5.sp,
+                            modifier = Modifier.align(Alignment.CenterVertically)
                         )
                     }
                 }

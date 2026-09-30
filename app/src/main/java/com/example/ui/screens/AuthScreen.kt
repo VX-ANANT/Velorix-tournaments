@@ -28,13 +28,23 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
@@ -60,6 +70,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -260,9 +271,9 @@ fun AuthScreen(
                         .padding(bottom = 6.dp)
                 )
 
-                // Clean Subtitle - "Sign in with" / "Register with to continue" (Adaptive 180° opposite color)
+                // Clean Subtitle - "Sign in to continue" / "Register to continue" (Adaptive 180° opposite color)
                 Text(
-                    text = if (isSignUpMode) "Register with to continue" else "Sign in with to continue",
+                    text = if (isSignUpMode) "Register to continue" else "Sign in to continue",
                     style = MaterialTheme.typography.bodyLarge.copy(
                         color = adaptiveTextColor.copy(alpha = 0.95f),
                         fontWeight = FontWeight.SemiBold,
@@ -320,29 +331,35 @@ fun AuthScreen(
 }
 
 /**
- * Standalone Liquid Glass effect for individual text input boxes matching the bottom nav bar.
- * Applies the frosted glass blur via Haze, translucent obsidian gradient, specular rim border,
- * lens glare reflection, and depth shadow directly to the exact edges of the text box itself.
+ * Standalone Liquid Glass effect for individual text input boxes.
+ * Applies the frosted glass blur via Haze, neutral translucent glass gradient,
+ * crisp white specular rim border, full-height surface sheen, and depth shadow.
  */
 @Composable
 fun Modifier.glassTextBox(
     hazeState: HazeState? = null,
-    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(16.dp)
+    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(16.dp),
+    cornerRadius: Dp = 16.dp,
+    isFocusedOverride: Boolean? = null
 ): Modifier {
-    var isFocused by remember { mutableStateOf(false) }
+    var internalFocused by remember { mutableStateOf(false) }
+    val isFocused = isFocusedOverride ?: internalFocused
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val cornerRadiusPx = with(density) { cornerRadius.toPx() }
+
+    // Pure neutral frosted glass specular rim (zero blue or pink colored tints)
     val specularRim = Brush.verticalGradient(
-        0.0f to Color(0xFF38BDF8).copy(alpha = if (isFocused) 0.90f else 0.55f),
-        0.20f to Color.White.copy(alpha = if (isFocused) 0.65f else 0.35f),
-        0.75f to Color(0xFFF43F5E).copy(alpha = if (isFocused) 0.35f else 0.15f),
-        1.0f to Color.White.copy(alpha = if (isFocused) 0.70f else 0.40f)
+        0.0f to Color.White.copy(alpha = if (isFocused) 0.55f else 0.22f),
+        0.45f to Color.White.copy(alpha = if (isFocused) 0.28f else 0.10f),
+        1.0f to Color.White.copy(alpha = if (isFocused) 0.38f else 0.14f)
     )
 
     return this
         .shadow(
-            elevation = 8.dp,
+            elevation = 4.dp,
             shape = shape,
-            ambientColor = Color.Black.copy(alpha = 0.30f),
-            spotColor = Color.Black.copy(alpha = 0.45f)
+            ambientColor = Color.Black.copy(alpha = 0.20f),
+            spotColor = Color.Black.copy(alpha = 0.30f)
         )
         .clip(shape)
         .then(
@@ -356,31 +373,142 @@ fun Modifier.glassTextBox(
             }
         )
         .background(
-            Brush.verticalGradient(
+            brush = Brush.verticalGradient(
                 colors = listOf(
-                    Color(0x350E121E), // ~21% translucent obsidian glass matching bottom nav bar
-                    Color(0x55090C16)  // ~33% translucent deep glass tint matching bottom nav bar
+                    Color.White.copy(alpha = if (isFocused) 0.09f else 0.065f), // Natural sheer frosted glass highlight
+                    Color.White.copy(alpha = if (isFocused) 0.04f else 0.022f) // Smooth translucent glass falloff
                 )
-            )
+            ),
+            shape = shape // Passing shape eliminates sharp inner corners
         )
         .drawBehind {
-            // Upper curvature glare & lens refraction highlight
+            // Smooth, continuous top specular highlight across the full container
             drawRoundRect(
                 brush = Brush.verticalGradient(
-                    0.0f to Color.White.copy(alpha = 0.14f),
-                    0.50f to Color.White.copy(alpha = 0.03f),
+                    0.0f to Color.White.copy(alpha = if (isFocused) 0.12f else 0.05f),
+                    0.40f to Color.White.copy(alpha = 0.01f),
                     1.0f to Color.Transparent
                 ),
-                size = androidx.compose.ui.geometry.Size(size.width, size.height * 0.50f),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx(), 16.dp.toPx())
+                size = size,
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(cornerRadiusPx, cornerRadiusPx)
             )
         }
         .border(
-            width = if (isFocused) 1.5.dp else 1.dp,
+            width = if (isFocused) 1.2.dp else 1.dp,
             brush = specularRim,
             shape = shape
         )
-        .onFocusChanged { isFocused = it.isFocused }
+        .onFocusChanged { internalFocused = it.isFocused }
+}
+
+/**
+ * Premium Liquid Glass text input with guaranteed vertical icon centering in height
+ * and complete elimination of sharp inner edges by using BasicTextField inside a clipped glass container.
+ */
+@Composable
+fun GlassTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    modifier: Modifier = Modifier,
+    leadingIcon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    trailingIcon: @Composable (() -> Unit)? = null,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    singleLine: Boolean = true,
+    hazeState: HazeState? = null,
+    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(16.dp),
+    cornerRadius: Dp = 16.dp,
+    textColor: Color = Color.White,
+    mutedTextColor: Color = Color(0xFFCBD5E1),
+    testTag: String = ""
+) {
+    var isFocused by remember { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(54.dp)
+            .glassTextBox(
+                hazeState = hazeState,
+                shape = shape,
+                cornerRadius = cornerRadius,
+                isFocusedOverride = isFocused
+            )
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) {
+                focusRequester.requestFocus()
+            }
+            .testTag(testTag),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (leadingIcon != null) {
+                Icon(
+                    imageVector = leadingIcon,
+                    contentDescription = null,
+                    tint = if (isFocused) textColor else mutedTextColor.copy(alpha = 0.80f),
+                    modifier = Modifier
+                        .size(20.dp)
+                        .align(Alignment.CenterVertically)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+            }
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .align(Alignment.CenterVertically),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                if (value.isEmpty()) {
+                    Text(
+                        text = placeholder,
+                        color = mutedTextColor.copy(alpha = 0.55f),
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Normal
+                        )
+                    )
+                }
+                BasicTextField(
+                    value = value,
+                    onValueChange = onValueChange,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focusRequester)
+                        .onFocusChanged { isFocused = it.isFocused },
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(
+                        color = textColor,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium
+                    ),
+                    cursorBrush = SolidColor(textColor),
+                    visualTransformation = visualTransformation,
+                    keyboardOptions = keyboardOptions,
+                    singleLine = singleLine
+                )
+            }
+
+            if (trailingIcon != null) {
+                Spacer(modifier = Modifier.width(8.dp))
+                Box(
+                    modifier = Modifier.align(Alignment.CenterVertically),
+                    contentAlignment = Alignment.Center
+                ) {
+                    trailingIcon()
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -431,7 +559,7 @@ fun LoginScreen(
 
     var emailOrPhone by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    
+    var isPasswordVisible by remember { mutableStateOf(false) }
     
     var showForgotPasswordDialog by remember { mutableStateOf(false) }
 
@@ -477,55 +605,48 @@ fun LoginScreen(
     }
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        OutlinedTextField(
+        GlassTextField(
             value = emailOrPhone,
             onValueChange = { emailOrPhone = it },
-            modifier = Modifier
-                .fillMaxWidth()
-                .glassTextBox(hazeState = hazeState)
-                .testTag("email_input"),
-            label = { Text("Email or Phone", color = mutedTextColor) },
-            leadingIcon = { Icon(androidx.compose.ui.graphics.vector.ImageVector.vectorResource(com.example.R.drawable.ic_iconsax_profile), contentDescription = null, tint = textColor) },
+            placeholder = "Email or Phone",
+            leadingIcon = androidx.compose.ui.graphics.vector.ImageVector.vectorResource(com.example.R.drawable.ic_iconsax_profile),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            hazeState = hazeState,
             shape = RoundedCornerShape(16.dp),
-            singleLine = true,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent,
-                focusedTextColor = textColor,
-                unfocusedTextColor = textColor,
-                focusedBorderColor = Color.Transparent,
-                unfocusedBorderColor = Color.Transparent,
-                focusedLabelColor = textColor,
-                unfocusedLabelColor = mutedTextColor
-            )
+            cornerRadius = 16.dp,
+            textColor = textColor,
+            mutedTextColor = mutedTextColor,
+            testTag = "email_input"
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
-        OutlinedTextField(
+        GlassTextField(
             value = password,
             onValueChange = { password = it },
-            modifier = Modifier
-                .fillMaxWidth()
-                .glassTextBox(hazeState = hazeState)
-                .testTag("password_input"),
-            label = { Text("Password", color = mutedTextColor) },
-            leadingIcon = { Icon(androidx.compose.ui.graphics.vector.ImageVector.vectorResource(com.example.R.drawable.ic_iconsax_lock), contentDescription = null, tint = textColor) },
-            visualTransformation = PasswordVisualTransformation(),
+            placeholder = "Password",
+            leadingIcon = androidx.compose.ui.graphics.vector.ImageVector.vectorResource(com.example.R.drawable.ic_iconsax_lock),
+            trailingIcon = {
+                IconButton(
+                    onClick = { isPasswordVisible = !isPasswordVisible },
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isPasswordVisible) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff,
+                        contentDescription = if (isPasswordVisible) "Hide password" else "Show password",
+                        tint = mutedTextColor.copy(alpha = 0.85f),
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            },
+            visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            hazeState = hazeState,
             shape = RoundedCornerShape(16.dp),
-            singleLine = true,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent,
-                focusedTextColor = textColor,
-                unfocusedTextColor = textColor,
-                focusedBorderColor = Color.Transparent,
-                unfocusedBorderColor = Color.Transparent,
-                focusedLabelColor = textColor,
-                unfocusedLabelColor = mutedTextColor
-            )
+            cornerRadius = 16.dp,
+            textColor = textColor,
+            mutedTextColor = mutedTextColor,
+            testTag = "password_input"
         )
         
         Spacer(modifier = Modifier.height(8.dp))
@@ -545,7 +666,7 @@ fun LoginScreen(
                 val method = if (emailOrPhone.contains("@")) "email" else "phone"
                 viewModel.login(emailOrPhone, password, method, onComplete = onAuthSuccess)
             },
-            modifier = Modifier.fillMaxWidth().height(56.dp).testTag("submit_login_button"),
+            modifier = Modifier.fillMaxWidth().height(54.dp).clip(RoundedCornerShape(16.dp)).testTag("submit_login_button"),
             shape = RoundedCornerShape(16.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color.White,
@@ -615,7 +736,7 @@ fun LoginScreen(
         Spacer(modifier = Modifier.height(20.dp))
 
         Text(
-            text = "Don't have an account? Register with to continue",
+            text = "Don't have an account? Register to continue",
             style = MaterialTheme.typography.bodyMedium.copy(color = textColor, fontWeight = FontWeight.Bold),
             modifier = Modifier.clickable { onSwitchToSignUp() }.padding(8.dp).align(Alignment.CenterHorizontally).testTag("toggle_auth_mode")
         )
@@ -671,112 +792,85 @@ fun RegistrationScreen(
     var username by remember { mutableStateOf("") }
     var emailOrPhone by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var isRegPasswordVisible by remember { mutableStateOf(false) }
     var referralCode by remember { mutableStateOf("") }
     var isAgeConfirmed by remember { mutableStateOf(false) }
     var isStateCompliant by remember { mutableStateOf(true) }
     var isTermsAccepted by remember { mutableStateOf(true) }
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        OutlinedTextField(
+        GlassTextField(
             value = username,
             onValueChange = { username = it },
-            modifier = Modifier
-                .fillMaxWidth()
-                .glassTextBox(hazeState = hazeState)
-                .testTag("reg_username_input"),
-            label = { Text("Username", color = mutedTextColor) },
-            leadingIcon = { Icon(androidx.compose.ui.graphics.vector.ImageVector.vectorResource(com.example.R.drawable.ic_iconsax_profile), contentDescription = null, tint = textColor) },
+            placeholder = "Username",
+            leadingIcon = androidx.compose.ui.graphics.vector.ImageVector.vectorResource(com.example.R.drawable.ic_iconsax_profile),
+            hazeState = hazeState,
             shape = RoundedCornerShape(16.dp),
-            singleLine = true,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent,
-                focusedTextColor = textColor,
-                unfocusedTextColor = textColor,
-                focusedBorderColor = Color.Transparent,
-                unfocusedBorderColor = Color.Transparent,
-                focusedLabelColor = textColor,
-                unfocusedLabelColor = mutedTextColor
-            )
+            cornerRadius = 16.dp,
+            textColor = textColor,
+            mutedTextColor = mutedTextColor,
+            testTag = "reg_username_input"
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
-        OutlinedTextField(
+        GlassTextField(
             value = emailOrPhone,
             onValueChange = { emailOrPhone = it },
-            modifier = Modifier
-                .fillMaxWidth()
-                .glassTextBox(hazeState = hazeState)
-                .testTag("reg_email_input"),
-            label = { Text("Email or Phone", color = mutedTextColor) },
-            leadingIcon = { Icon(androidx.compose.ui.graphics.vector.ImageVector.vectorResource(com.example.R.drawable.ic_iconsax_mail), contentDescription = null, tint = textColor) },
+            placeholder = "Email or Phone",
+            leadingIcon = androidx.compose.ui.graphics.vector.ImageVector.vectorResource(com.example.R.drawable.ic_iconsax_mail),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            hazeState = hazeState,
             shape = RoundedCornerShape(16.dp),
-            singleLine = true,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent,
-                focusedTextColor = textColor,
-                unfocusedTextColor = textColor,
-                focusedBorderColor = Color.Transparent,
-                unfocusedBorderColor = Color.Transparent,
-                focusedLabelColor = textColor,
-                unfocusedLabelColor = mutedTextColor
-            )
+            cornerRadius = 16.dp,
+            textColor = textColor,
+            mutedTextColor = mutedTextColor,
+            testTag = "reg_email_input"
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
-        OutlinedTextField(
+        GlassTextField(
             value = password,
             onValueChange = { password = it },
-            modifier = Modifier
-                .fillMaxWidth()
-                .glassTextBox(hazeState = hazeState)
-                .testTag("reg_password_input"),
-            label = { Text("Password", color = mutedTextColor) },
-            leadingIcon = { Icon(androidx.compose.ui.graphics.vector.ImageVector.vectorResource(com.example.R.drawable.ic_iconsax_lock), contentDescription = null, tint = textColor) },
-            visualTransformation = PasswordVisualTransformation(),
+            placeholder = "Password (min 6 characters)",
+            leadingIcon = androidx.compose.ui.graphics.vector.ImageVector.vectorResource(com.example.R.drawable.ic_iconsax_lock),
+            trailingIcon = {
+                IconButton(
+                    onClick = { isRegPasswordVisible = !isRegPasswordVisible },
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isRegPasswordVisible) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff,
+                        contentDescription = if (isRegPasswordVisible) "Hide password" else "Show password",
+                        tint = mutedTextColor.copy(alpha = 0.85f),
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            },
+            visualTransformation = if (isRegPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            hazeState = hazeState,
             shape = RoundedCornerShape(16.dp),
-            singleLine = true,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent,
-                focusedTextColor = textColor,
-                unfocusedTextColor = textColor,
-                focusedBorderColor = Color.Transparent,
-                unfocusedBorderColor = Color.Transparent,
-                focusedLabelColor = textColor,
-                unfocusedLabelColor = mutedTextColor
-            )
+            cornerRadius = 16.dp,
+            textColor = textColor,
+            mutedTextColor = mutedTextColor,
+            testTag = "reg_password_input"
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
-        OutlinedTextField(
+        GlassTextField(
             value = referralCode,
             onValueChange = { referralCode = it.uppercase().filter { ch -> ch.isLetterOrDigit() } },
-            modifier = Modifier
-                .fillMaxWidth()
-                .glassTextBox(hazeState = hazeState)
-                .testTag("reg_referral_input"),
-            label = { Text("Referral Code (Optional)", color = mutedTextColor) },
-            placeholder = { Text("e.g. VRX-NAME-9999", color = mutedTextColor.copy(alpha = 0.6f)) },
-            leadingIcon = { Icon(Icons.Default.CardGiftcard, contentDescription = null, tint = textColor) },
+            placeholder = "Referral Code (Optional, e.g. VRX-NAME-9999)",
+            leadingIcon = Icons.Default.CardGiftcard,
+            hazeState = hazeState,
             shape = RoundedCornerShape(16.dp),
-            singleLine = true,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent,
-                focusedTextColor = textColor,
-                unfocusedTextColor = textColor,
-                focusedBorderColor = Color.Transparent,
-                unfocusedBorderColor = Color.Transparent,
-                focusedLabelColor = textColor,
-                unfocusedLabelColor = mutedTextColor
-            )
+            cornerRadius = 16.dp,
+            textColor = textColor,
+            mutedTextColor = mutedTextColor,
+            testTag = "reg_referral_input"
         )
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -930,7 +1024,7 @@ fun RegistrationScreen(
                     onComplete = { if (it) onAuthSuccess() }
                 )
             },
-            modifier = Modifier.fillMaxWidth().height(56.dp).testTag("submit_register_button"),
+            modifier = Modifier.fillMaxWidth().height(54.dp).clip(RoundedCornerShape(16.dp)).testTag("submit_register_button"),
             shape = RoundedCornerShape(16.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color.White,
@@ -1000,7 +1094,7 @@ fun RegistrationScreen(
         Spacer(modifier = Modifier.height(20.dp))
 
         Text(
-            text = "Already have an account? Sign in with to continue",
+            text = "Already have an account? Sign in to continue",
             style = MaterialTheme.typography.bodyMedium.copy(color = textColor, fontWeight = FontWeight.Bold),
             modifier = Modifier.clickable { onSwitchToLogin() }.padding(8.dp).align(Alignment.CenterHorizontally).testTag("toggle_auth_mode")
         )
@@ -1089,27 +1183,65 @@ fun AuthOptionButton(
     enabled: Boolean = true,
     onClick: () -> Unit
 ) {
-    OutlinedButton(
-        onClick = onClick,
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    Surface(
+        onClick = {
+            if (enabled) {
+                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                onClick()
+            }
+        },
         enabled = enabled,
+        interactionSource = interactionSource,
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = if (isPressed) 0.50f else 0.30f)),
+        color = Color(0x33000000),
         modifier = Modifier
             .fillMaxWidth()
-            .height(56.dp)
-            .testTag("google_login_button"),
-        shape = RoundedCornerShape(16.dp),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.35f)),
-        colors = ButtonDefaults.outlinedButtonColors(
-            containerColor = Color(0x33000000),
-            contentColor = Color.White
-        )
+            .height(54.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .testTag("google_login_button")
     ) {
-        if (painter != null) {
-            Image(painter = painter, contentDescription = null, modifier = Modifier.size(22.dp))
-        } else if (icon != null) {
-            Icon(imageVector = icon, contentDescription = null, tint = Color.Unspecified, modifier = Modifier.size(22.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            if (painter != null) {
+                Image(
+                    painter = painter,
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .align(Alignment.CenterVertically)
+                )
+            } else if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = Color.Unspecified,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .align(Alignment.CenterVertically)
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    color = Color.White,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 15.sp
+                ),
+                modifier = Modifier.align(Alignment.CenterVertically)
+            )
         }
-        Spacer(modifier = Modifier.width(12.dp))
-        Text(text, style = MaterialTheme.typography.bodyLarge.copy(color = Color.White, fontWeight = FontWeight.Medium, fontSize = 15.sp))
     }
 }
 

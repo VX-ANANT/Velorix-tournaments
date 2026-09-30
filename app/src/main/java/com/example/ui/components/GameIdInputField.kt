@@ -1,5 +1,6 @@
 package com.example.ui.components
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,6 +20,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.example.R
@@ -101,6 +103,15 @@ fun GameIdInputField(
     val successGreen = Color(0xFF10B981)
     val focusedBorderColor = if (isError) errorRed else if (isValid) successGreen else MaterialTheme.colorScheme.primary
 
+    val alertIcon = ImageVector.vectorResource(id = R.drawable.ic_untitledui_alert_triangle)
+    val checkIcon = ImageVector.vectorResource(id = R.drawable.ic_untitledui_check_circle)
+    val shieldIcon = ImageVector.vectorResource(id = R.drawable.ic_untitledui_shield_tick)
+    val leadingIconVector = when {
+        isError -> alertIcon
+        isValid -> checkIcon
+        else -> shieldIcon
+    }
+
     Column(modifier = modifier) {
         OutlinedTextField(
             value = value,
@@ -112,16 +123,17 @@ fun GameIdInputField(
             label = { Text(label) },
             placeholder = { Text(placeholder, color = Color(0xFF64748B)) },
             leadingIcon = {
-                Icon(
-                    imageVector = when {
-                        isError -> ImageVector.vectorResource(id = R.drawable.ic_untitledui_alert_triangle)
-                        isValid -> ImageVector.vectorResource(id = R.drawable.ic_untitledui_check_circle)
-                        else -> ImageVector.vectorResource(id = R.drawable.ic_untitledui_shield_tick)
-                    },
-                    contentDescription = "Game ID Icon",
-                    tint = if (isError) errorRed else if (isValid) successGreen else MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
-                )
+                Box(
+                    modifier = Modifier.size(44.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = leadingIconVector,
+                        contentDescription = "Game ID Icon",
+                        tint = if (isError) errorRed else if (isValid) successGreen else MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             },
             trailingIcon = {
                 if (isNotBlank) {
@@ -169,9 +181,10 @@ fun GameIdInputField(
             },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             singleLine = true,
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(16.dp),
             modifier = Modifier
                 .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
                 .testTag(testTag),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = focusedBorderColor,

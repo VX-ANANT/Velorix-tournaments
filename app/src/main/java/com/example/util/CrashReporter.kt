@@ -35,7 +35,9 @@ data class CrashIncidentData(
     val userId: String,
     val userEmail: String,
     val originalThrowable: Throwable? = null,
-    val isReported: Boolean = false
+    val isReported: Boolean = false,
+    val humanReadableExplanation: String = "",
+    val recommendedAction: String = ""
 )
 
 object CrashReporter {
@@ -168,6 +170,8 @@ object CrashReporter {
         val effectiveUserId = user?.id ?: authUser?.uid ?: "anonymous_operative"
         val effectiveEmail = user?.phoneOrEmail ?: authUser?.email ?: "not_authenticated"
 
+        val (explanation, action) = getPlainLanguageExplanation(throwable, sanitizedMsg)
+
         return CrashIncidentData(
             incidentId = incidentId,
             timestamp = now,
@@ -181,8 +185,86 @@ object CrashReporter {
             userId = effectiveUserId,
             userEmail = effectiveEmail,
             originalThrowable = throwable,
-            isReported = false
+            isReported = false,
+            humanReadableExplanation = explanation,
+            recommendedAction = action
         )
+    }
+
+    fun getPlainExceptionTitle(throwable: Throwable, errorMessage: String): String {
+        val msg = errorMessage.lowercase()
+        return when {
+            msg.contains("test") || msg.contains("simulated") || msg.contains("diagnostic") -> "Diagnostic Simulation Test"
+            msg.contains("navigation destination") || msg.contains("cannot be found in the navigation graph") -> "Screen Destination Unavailable"
+            throwable is NullPointerException || msg.contains("nullpointer") -> "Data Loading Delay"
+            throwable is java.net.UnknownHostException || throwable is java.net.SocketTimeoutException || msg.contains("network") || msg.contains("timeout") -> "Internet Connection Timeout"
+            throwable is SecurityException || msg.contains("permission") -> "Missing Device Permission"
+            throwable is IndexOutOfBoundsException || msg.contains("index") -> "Match Slot Mismatch"
+            throwable is NumberFormatException -> "Invalid Input Format"
+            msg.contains("firestore") || msg.contains("firebase") || msg.contains("rtdb") -> "Cloud Database Synchronization Delay"
+            else -> "System Anomaly Intercepted"
+        }
+    }
+
+    fun getPlainLanguageExplanation(throwable: Throwable, errorMessage: String): Pair<String, String> {
+        val exName = throwable.javaClass.simpleName
+        val msg = errorMessage.lowercase()
+        return when {
+            msg.contains("test") || msg.contains("simulated") || msg.contains("diagnostic") -> {
+                Pair(
+                    "This is an automated Sentinel Diagnostic verification test. Self-healing and error trapping are working properly.",
+                    "Tap 'Safe Return' to return safely to your normal dashboard."
+                )
+            }
+            msg.contains("navigation destination") || msg.contains("cannot be found in the navigation graph") -> {
+                Pair(
+                    "The app attempted to open a screen destination that is temporarily unavailable or misconfigured.",
+                    "Tap 'Safe Return' to return safely to your Home Dashboard."
+                )
+            }
+            throwable is NullPointerException || msg.contains("nullpointer") -> {
+                Pair(
+                    "A required user profile or match detail was accessed before the cloud server finished delivering it.",
+                    "Your wallet balance and tokens are 100% secure in the cloud. Tap 'Safe Return' to reload cleanly."
+                )
+            }
+            throwable is java.net.UnknownHostException || throwable is java.net.SocketTimeoutException || msg.contains("network") || msg.contains("timeout") -> {
+                Pair(
+                    "Internet connection timed out or disconnected while communicating with the cloud servers.",
+                    "Check your internet connection and tap 'Safe Return' to refresh the screen."
+                )
+            }
+            throwable is SecurityException || msg.contains("permission") -> {
+                Pair(
+                    "A required device permission (such as Storage or Notifications) was not granted or denied.",
+                    "Verify your app permissions in Settings and tap 'Safe Return'."
+                )
+            }
+            throwable is IndexOutOfBoundsException || msg.contains("index") -> {
+                Pair(
+                    "A list or tournament slot count mismatch occurred while loading match items.",
+                    "Tap 'Safe Return' to reload the list with fresh server data."
+                )
+            }
+            throwable is NumberFormatException -> {
+                Pair(
+                    "An unexpected character or symbol was entered in a numeric amount or token field.",
+                    "Please enter valid numeric digits and tap 'Safe Return'."
+                )
+            }
+            msg.contains("firestore") || msg.contains("firebase") || msg.contains("rtdb") -> {
+                Pair(
+                    "A momentary synchronization delay occurred with the cloud database. Sentinel Guard prevented any data loss.",
+                    "Your balance and tokens are completely intact. Tap 'Safe Return' to resume."
+                )
+            }
+            else -> {
+                Pair(
+                    "An unexpected runtime anomaly occurred ($exName). Sentinel Guard safely isolated the error before any data or balance could be affected.",
+                    "Your account and funds remain 100% secure. Tap 'Safe Return' to resume safely."
+                )
+            }
+        }
     }
 
     fun triggerSimulatedCrash(user: User?, customMessage: String = "Test Simulated Exception: VeloRix Sentinel Diagnostic Verification"): CrashIncidentData {

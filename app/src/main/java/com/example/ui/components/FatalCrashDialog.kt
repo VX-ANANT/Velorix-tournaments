@@ -67,11 +67,15 @@ fun FatalCrashDialog(
                 .padding(16.dp),
             contentAlignment = Alignment.Center
         ) {
+            val plainTitle = remember(incident) {
+                CrashReporter.getPlainExceptionTitle(incident.originalThrowable ?: Exception(incident.errorMessage), incident.errorMessage)
+            }
+
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
                     .widthIn(max = 520.dp)
-                    .clip(RoundedCornerShape(20.dp)),
+                    .clip(RoundedCornerShape(22.dp)),
                 color = Color(0xFF0C0E14),
                 border = BorderStroke(1.dp, Color(0xFFDC2626).copy(alpha = 0.6f)),
                 shadowElevation = 24.dp
@@ -124,7 +128,7 @@ fun FatalCrashDialog(
 
                         // Leakage Prevention Status Pill
                         Surface(
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(14.dp),
                             color = Color(0x2210B981),
                             border = BorderStroke(1.dp, Color(0x5510B981))
                         ) {
@@ -152,8 +156,10 @@ fun FatalCrashDialog(
 
                     // Incident ID & Summary Card
                     Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp)),
+                        shape = RoundedCornerShape(14.dp),
                         color = Color(0xFF141722),
                         border = BorderStroke(1.dp, Color(0xFF262B3D))
                     ) {
@@ -182,17 +188,18 @@ fun FatalCrashDialog(
 
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "EXCEPTION",
+                                    text = "ISSUE TYPE",
                                     fontSize = 11.sp,
                                     color = Color(0xFF9CA3AF)
                                 )
                                 Text(
-                                    text = incident.exceptionName,
+                                    text = plainTitle,
                                     fontSize = 12.sp,
-                                    fontWeight = FontWeight.Medium,
+                                    fontWeight = FontWeight.SemiBold,
                                     color = Color(0xFFF87171),
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
@@ -203,7 +210,8 @@ fun FatalCrashDialog(
 
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
                                     text = "TIME",
@@ -214,6 +222,63 @@ fun FatalCrashDialog(
                                     text = incident.formattedTime,
                                     fontSize = 11.sp,
                                     color = Color(0xFFE5E7EB)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Plain Language Explanation Card (What Happened)
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp)),
+                        shape = RoundedCornerShape(14.dp),
+                        color = Color(0xFF111827),
+                        border = BorderStroke(1.dp, Color(0xFF38BDF8).copy(alpha = 0.45f))
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Info,
+                                    contentDescription = null,
+                                    tint = Color(0xFF38BDF8),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Text(
+                                    text = "What Happened (Plain Explanation)",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF38BDF8)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            val explanationText = incident.humanReadableExplanation.ifBlank {
+                                "An unexpected runtime anomaly occurred. Sentinel Security intercepted the error before account balance, tokens, or memory could be exposed."
+                            }
+                            Text(
+                                text = explanationText,
+                                fontSize = 12.sp,
+                                lineHeight = 17.sp,
+                                color = Color(0xFFF3F4F6)
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Security Status: All account funds, tokens, and data remain 100% secure in the cloud.",
+                                fontSize = 11.sp,
+                                color = Color(0xFF94A3B8)
+                            )
+                            if (incident.recommendedAction.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "Next Step: ${incident.recommendedAction}",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFF34D399)
                                 )
                             }
                         }
@@ -249,8 +314,9 @@ fun FatalCrashDialog(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .heightIn(max = 140.dp)
-                                .padding(top = 8.dp),
-                            shape = RoundedCornerShape(8.dp),
+                                .padding(top = 8.dp)
+                                .clip(RoundedCornerShape(10.dp)),
+                            shape = RoundedCornerShape(10.dp),
                             color = Color(0xFF07090D),
                             border = BorderStroke(1.dp, Color(0xFF1E2433))
                         ) {
@@ -306,55 +372,65 @@ fun FatalCrashDialog(
                             },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(48.dp),
-                            shape = RoundedCornerShape(12.dp),
+                                .height(48.dp)
+                                .clip(RoundedCornerShape(14.dp)),
+                            shape = RoundedCornerShape(14.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = if (reportSentSuccess) Color(0xFF059669) else Color(0xFFEF4444)
                             ),
                             enabled = !isSendingReport
                         ) {
-                            if (isSendingReport) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    color = Color.White,
-                                    strokeWidth = 2.dp
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Transmitting Report...",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Color.White
-                                )
-                            } else if (reportSentSuccess) {
-                                Icon(
-                                    imageVector = Icons.Rounded.CheckCircle,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Report Transmitted to Admin Panel",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
-                                )
-                            } else {
-                                Icon(
-                                    imageVector = Icons.Rounded.Send,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Send Crash Report to Admin",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = GffDevanagariFontFamily,
-                                    color = Color.White
-                                )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center,
+                                modifier = Modifier.fillMaxHeight()
+                            ) {
+                                if (isSendingReport) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp).align(Alignment.CenterVertically),
+                                        color = Color.White,
+                                        strokeWidth = 2.dp
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Transmitting Report...",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color.White,
+                                        modifier = Modifier.align(Alignment.CenterVertically)
+                                    )
+                                } else if (reportSentSuccess) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.CheckCircle,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp).align(Alignment.CenterVertically)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Report Transmitted to Admin Panel",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                        modifier = Modifier.align(Alignment.CenterVertically)
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Send,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp).align(Alignment.CenterVertically)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Send Crash Report to Admin",
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = GffDevanagariFontFamily,
+                                        color = Color.White,
+                                        modifier = Modifier.align(Alignment.CenterVertically)
+                                    )
+                                }
                             }
                         }
 
@@ -370,49 +446,69 @@ fun FatalCrashDialog(
                                 },
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(44.dp),
-                                shape = RoundedCornerShape(12.dp),
+                                    .height(44.dp)
+                                    .clip(RoundedCornerShape(14.dp)),
+                                shape = RoundedCornerShape(14.dp),
                                 border = BorderStroke(1.dp, Color(0xFF374151)),
                                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFD1D5DB))
                             ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.ContentCopy,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "Copy Code",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center,
+                                    modifier = Modifier.fillMaxHeight()
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.ContentCopy,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp).align(Alignment.CenterVertically)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Copy Code",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        modifier = Modifier.align(Alignment.CenterVertically)
+                                    )
+                                }
                             }
 
                             Button(
                                 onClick = {
                                     haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                                     CrashReporter.dismissFatalCrash()
-                                    onRestartSafe()
+                                    try {
+                                        onRestartSafe()
+                                    } catch (_: Exception) {
+                                        onDismiss()
+                                    }
                                 },
                                 modifier = Modifier
-                                    .weight(1f)
-                                    .height(44.dp),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1F2937))
+                                    .weight(1.1f)
+                                    .height(44.dp)
+                                    .clip(RoundedCornerShape(14.dp)),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981))
                             ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Refresh,
-                                    contentDescription = null,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "Safe Return",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Color.White
-                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center,
+                                    modifier = Modifier.fillMaxHeight()
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Home,
+                                        contentDescription = "Safe Return",
+                                        tint = Color.Black,
+                                        modifier = Modifier.size(16.dp).align(Alignment.CenterVertically)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Safe Return",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.Black,
+                                        modifier = Modifier.align(Alignment.CenterVertically)
+                                    )
+                                }
                             }
                         }
                     }

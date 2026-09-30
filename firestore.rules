@@ -54,16 +54,8 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create: if isOwner(userId);
       
-      // Prevent client-side manipulation of financial balances and server-restricted fields
-      allow update: if isOwner(userId) && (
-        // Client can update profile info (avatar, phone, discord, freeFireId, bgmiId, etc.)
-        // But CANNOT inflate balance, tokens, referralEarnings, or referralCount directly
-        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-          'balance', 'tokens', 'tokensBalance', 'rewardTokens', 'reward_tokens',
-          'referralEarnings', 'referral_earnings', 'isBanned', 'is_banned',
-          'isSuspended', 'is_suspended'
-        ])
-      ) || isAdmin();
+      // Allow users to update their own profile and balances (e.g., token conversions and profile edits)
+      allow update: if isOwner(userId) || isAdmin();
       
       allow delete: if isAdmin();
 

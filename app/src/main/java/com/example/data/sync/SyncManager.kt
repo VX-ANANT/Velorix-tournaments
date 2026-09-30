@@ -23,6 +23,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArraySet
 import java.util.concurrent.atomic.AtomicBoolean
@@ -376,49 +378,50 @@ class SyncManager private constructor(private val context: Context) {
 
     /**
      * Actively fetches the latest 'global_app_state' node from Realtime Database
-     * and notifies observers.
+     * on background threads (Dispatchers.IO + Dispatchers.Default) and notifies observers.
      */
     fun refreshGlobalState() {
-        globalStateRef.get().addOnSuccessListener { snapshot ->
-            if (snapshot.exists()) {
-                try {
-                    val eventId = snapshot.child("eventId").getValue(String::class.java).orEmpty()
-                    if (eventId.isNotBlank() && !recentLocalEventIds.contains(eventId)) {
-                        val eventType = snapshot.child("eventType").getValue(String::class.java).orEmpty()
-                        val source = snapshot.child("source").getValue(String::class.java) ?: "UNKNOWN"
-                        val tournamentId = snapshot.child("tournamentId").getValue(String::class.java)
-                        val affectedUserId = snapshot.child("affectedUserId").getValue(String::class.java)
-                        val version = snapshot.child("version").getValue(Long::class.java) ?: 0L
-                        val lastUpdatedAt = snapshot.child("lastUpdatedAt").getValue(Long::class.java) ?: System.currentTimeMillis()
+        schedulerScope.launch(Dispatchers.IO) {
+            try {
+                val snapshot = globalStateRef.get().await()
+                if (snapshot.exists()) {
+                    withContext(Dispatchers.Default) {
+                        val eventId = snapshot.child("eventId").getValue(String::class.java).orEmpty()
+                        if (eventId.isNotBlank() && !recentLocalEventIds.contains(eventId)) {
+                            val eventType = snapshot.child("eventType").getValue(String::class.java).orEmpty()
+                            val source = snapshot.child("source").getValue(String::class.java) ?: "UNKNOWN"
+                            val tournamentId = snapshot.child("tournamentId").getValue(String::class.java)
+                            val affectedUserId = snapshot.child("affectedUserId").getValue(String::class.java)
+                            val version = snapshot.child("version").getValue(Long::class.java) ?: 0L
+                            val lastUpdatedAt = snapshot.child("lastUpdatedAt").getValue(Long::class.java) ?: System.currentTimeMillis()
 
-                        val payload = mutableMapOf<String, Any?>()
-                        val payloadSnap = snapshot.child("payload")
-                        if (payloadSnap.exists()) {
-                            for (child in payloadSnap.children) {
-                                val key = child.key ?: continue
-                                payload[key] = child.value
+                            val payload = mutableMapOf<String, Any?>()
+                            val payloadSnap = snapshot.child("payload")
+                            if (payloadSnap.exists()) {
+                                for (child in payloadSnap.children) {
+                                    val key = child.key ?: continue
+                                    payload[key] = child.value
+                                }
                             }
-                        }
 
-                        val parsedState = GlobalAppState(
-                            eventId = eventId,
-                            eventType = eventType,
-                            source = source,
-                            tournamentId = tournamentId,
-                            affectedUserId = affectedUserId,
-                            version = version,
-                            lastUpdatedAt = lastUpdatedAt,
-                            payload = payload
-                        )
-                        _globalAppState.value = parsedState
-                        dispatchSyncEvent(parsedState)
+                            val parsedState = GlobalAppState(
+                                eventId = eventId,
+                                eventType = eventType,
+                                source = source,
+                                tournamentId = tournamentId,
+                                affectedUserId = affectedUserId,
+                                version = version,
+                                lastUpdatedAt = lastUpdatedAt,
+                                payload = payload
+                            )
+                            _globalAppState.value = parsedState
+                            dispatchSyncEvent(parsedState)
+                        }
                     }
-                } catch (e: Throwable) {
-                    Log.w(TAG, "Error in manual refreshGlobalState: ${e.message}")
                 }
+            } catch (e: Throwable) {
+                Log.w(TAG, "Error in manual refreshGlobalState: ${e.message}")
             }
-        }.addOnFailureListener { e ->
-            Log.w(TAG, "Failed to refresh global_app_state: ${e.message}")
         }
     }
 

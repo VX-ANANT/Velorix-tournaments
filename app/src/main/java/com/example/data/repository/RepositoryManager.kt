@@ -34,7 +34,9 @@ class RepositoryManager private constructor(context: Context) {
         const val KEY_DEPOSIT_REQUESTS = "listener_deposit_requests"
         const val KEY_WITHDRAW_REQUESTS = "listener_withdraw_requests"
         const val KEY_USER_REPORTS = "listener_user_reports"
-
+        const val KEY_FS_TOURNAMENTS = "fs_listener_tournaments"
+        const val KEY_FS_MATCHES = "fs_listener_matches"
+        const val KEY_FS_NOTIFICATIONS = "fs_listener_notifications"
 
         @Volatile
         private var INSTANCE: RepositoryManager? = null
@@ -75,6 +77,34 @@ class RepositoryManager private constructor(context: Context) {
 
     // Thread-safe map tracking all active RTDB listeners
     private val activeListeners = ConcurrentHashMap<String, RegisteredListener>()
+    // Thread-safe map tracking active Cloud Firestore listeners
+    private val activeFirestoreListeners = ConcurrentHashMap<String, com.google.firebase.firestore.ListenerRegistration>()
+
+    /**
+     * Registers and tracks a Cloud Firestore snapshot listener.
+     * Safely detaches any existing listener with the same key to avoid duplicate subscriptions.
+     */
+    @Synchronized
+    fun registerFirestoreListener(key: String, registration: com.google.firebase.firestore.ListenerRegistration) {
+        removeFirestoreListener(key)
+        activeFirestoreListeners[key] = registration
+        Log.d(TAG, "Registered Firestore listener: [$key] (Total active: ${activeFirestoreListeners.size})")
+    }
+
+    /**
+     * Safely removes and unregisters the Cloud Firestore snapshot listener identified by [key].
+     */
+    @Synchronized
+    fun removeFirestoreListener(key: String) {
+        activeFirestoreListeners.remove(key)?.let { reg ->
+            try {
+                reg.remove()
+                Log.d(TAG, "Unregistered Firestore listener: [$key]")
+            } catch (e: Exception) {
+                Log.w(TAG, "Notice removing Firestore listener [$key]: ${e.message}")
+            }
+        }
+    }
 
     /**
      * Registers and starts a ValueEventListener on the provided Firebase Query/Reference.
@@ -149,7 +179,18 @@ class RepositoryManager private constructor(context: Context) {
                 }
             }
             activeListeners.clear()
-            Log.d(TAG, "All RTDB listeners successfully detached.")
+
+            Log.d(TAG, "Cleaning up all Firestore listeners (Count: ${activeFirestoreListeners.size})...")
+            for ((key, reg) in activeFirestoreListeners) {
+                try {
+                    reg.remove()
+                    Log.d(TAG, "Removed Firestore listener: [$key]")
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed removing Firestore listener for [$key]: ${e.message}")
+                }
+            }
+            activeFirestoreListeners.clear()
+            Log.d(TAG, "All RTDB and Firestore listeners successfully detached.")
         } catch (e: Exception) {
             Log.e(TAG, "Error during removeAllListeners", e)
         }

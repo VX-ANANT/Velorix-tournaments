@@ -1489,6 +1489,80 @@ fun AdminSituationTesterSheet(
 
             Spacer(Modifier.height(18.dp))
 
+            // Dynamic Feature Flags & Modular Feature Control
+            Text("AUTOMATIC FEATURE MODULE CONTROLS", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF38BDF8), letterSpacing = 0.8.sp)
+            Spacer(Modifier.height(4.dp))
+            Text("Any new feature registered in FeatureRegistry automatically shows up here with real-time cloud toggle.", fontSize = 11.sp, color = Color(0xFF94A3B8))
+            Spacer(Modifier.height(8.dp))
+
+            val allFeatures = com.example.data.system.FeatureRegistry.registeredFeatures
+            allFeatures.forEach { feat ->
+                val isFeatureEnabled = if (systemConfig.featureFlags.containsKey(feat.id)) {
+                    systemConfig.featureFlags[feat.id] == true
+                } else {
+                    feat.defaultEnabled
+                }
+
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF161A26)),
+                    shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(1.dp, if (isFeatureEnabled) Color(0xFF1E293B) else Color(0xFFEF4444).copy(alpha = 0.3f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(feat.title, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = Color(0xFF1E293B)
+                                ) {
+                                    Text(
+                                        text = feat.category.label,
+                                        fontSize = 9.sp,
+                                        color = Color(0xFF38BDF8),
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.height(2.dp))
+                            Text(feat.description, fontSize = 11.sp, color = Color(0xFF94A3B8), maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = if (isFeatureEnabled) "STATUS: ACTIVE (Operatives have full access)" else "STATUS: DISABLED (Admin test bypass only)",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (isFeatureEnabled) Color(0xFF34D399) else Color(0xFFEF4444)
+                            )
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Switch(
+                            checked = isFeatureEnabled,
+                            onCheckedChange = { isChecked ->
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                viewModel.toggleFeatureFlag(feat.id, isChecked)
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = Color(0xFF10B981),
+                                uncheckedThumbColor = Color(0xFF64748B),
+                                uncheckedTrackColor = Color(0xFF1E293B)
+                            )
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(18.dp))
+
             // Section: App Banners & Announcements System
             Text("BANNER & ANNOUNCEMENT SYSTEM", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF94A3B8), letterSpacing = 0.8.sp)
             Spacer(Modifier.height(8.dp))

@@ -101,16 +101,22 @@
 
 ## SYSTEM SPECIFICATIONS & DETAILED WORKFLOW DOCUMENTATION
 
-Comprehensive deep-dive architecture, design systems, synchronization pipelines, and operational guidelines:
+Comprehensive deep-dive architecture, design systems, synchronization pipelines, tournament orchestration, and operational guidelines:
 
 | DOCUMENTATION MODULE | DESCRIPTION & SCOPE | KEY TECH & INVARIANTS | DIRECT LINK |
 | :--- | :--- | :--- | :---: |
+| **🏆 Tournament Lifecycle Specification** | Complete 6-state FSM (Draft → Upcoming → Lobby Locked → Live Scrim → Verification → Completed/Cancelled), slot allocation mutex, quorum triggers, and T-15 gate. | Finite State Machine, Atomic Mutex, RTDB Delta, Quorum Engine | [`TOURNAMENT_LIFECYCLE.md`](./TOURNAMENT_LIFECYCLE.md) |
+| **💰 Wallet Escrow & Economy Spec** | Dual-token model (VT & Combat Tokens), atomic escrow vault, UPI UTR rate-limiting, and tiered referral commission engine. | Double-Entry Ledger, UPI Intent API, Escrow Mutex, Anti-Replay Guard | [`WALLET_ESCROW_AND_ECONOMY.md`](./WALLET_ESCROW_AND_ECONOMY.md) |
+| **🛡️ Anti-Cheat, Hardware & VPN Policy** | Strict VPN/proxy prohibition, emulator vs mobile segregation, root/hook detection, and Gemini 3.6 Flash neural OCR scoreboard analysis. | Hardware Fingerprinting, Network Transport Audit, Gemini Multimodal Sentry | [`ANTI_CHEAT_AND_VPN_POLICY.md`](./ANTI_CHEAT_AND_VPN_POLICY.md) |
+| **🎮 Match Handling & Game Lifecycle** | Three-phase tournament topology (Upcoming, Live Scrims, Completed), dynamic credentials, Top 3 podium, and Room DB caching strategy. | Jetpack Compose M3, Room MatchDao, StateFlow Pipeline, SFX Engine | [`GAME_LIFECYCLE_AND_MATCH_HANDLING.md`](./GAME_LIFECYCLE_AND_MATCH_HANDLING.md) |
 | **🎨 Design System Specification** | Pure AMOLED Black (`#000000`) theme, M3 design tokens, typography scale, Michael Jackson signature SFX audio catalog, accessibility, and high refresh-rate enforcement. | Jetpack Compose M3, SoundPool, WCAG AAA, Orbitron/Inter Fonts | [`DESIGN.md`](./DESIGN.md) |
 | **⚡ End-to-End Workflow Architecture** | Complete 4-stage operational pipeline: player onboarding, UPI instant escrow & wallet accounting, match lifecycle, and real-time state synchronization. | Android Room 2.6, UPI Intent API, Kotlin Coroutines, Rate Limiters | [`WORKFLOW.md`](./WORKFLOW.md) |
 | **🔄 Admin-to-Client Sync Architecture** | Firebase Realtime Database Single Source of Truth (SSOT), `SyncManager` background lifecycle scheduler, and 5-min periodic polling. | Firebase RTDB, ValueEventListener, SupervisorJob, StateFlow | [`SYNC_ARCHITECTURE.md`](./SYNC_ARCHITECTURE.md) |
 | **🏛️ System Architecture Abstract** | Clean Architecture, domain use-cases, repository contracts, unidirectional data flow, and error boundary models. | Clean MVVM/MVI, Domain Invariants, Dependency Inversion | [`ARCHITECTURE.md`](./ARCHITECTURE.md) |
 | **⚖️ Fair Play & Anti-Cheat Policy** | Anti-cheat integrity detection, emulator/root isolation, ban rules, and tournament conduct policies. | Integrity Sentry, Device Fingerprinting, Watchdog Bot | [`FAIR_PLAY_POLICY.md`](./FAIR_PLAY_POLICY.md) |
 | **📜 Government & Regulatory Compliance** | Skill-based competitive gaming regulatory declarations, tax compliance, and KYC guidelines. | Legal Invariants, Age Verification, Payout Auditing | [`GOVERNMENT_COMPLIANCE.md`](./GOVERNMENT_COMPLIANCE.md) |
+| **💸 Refund & Cancellation Policy** | Automated escrow refunds on match cancellation or failed quorum, deposit disputes, and withdrawal timelines. | Consumer Protection, Instant Escrow Reversal, Audit Logs | [`REFUND_AND_CANCELLATION.md`](./REFUND_AND_CANCELLATION.md) |
+| **🎯 Responsible Gaming Policy** | Daily deposit limits, self-exclusion tools, player break periods, and minor protection safeguards. | Responsible Play, Player Welfare, Account Limits | [`RESPONSIBLE_GAMING.md`](./RESPONSIBLE_GAMING.md) |
 
 ---
 

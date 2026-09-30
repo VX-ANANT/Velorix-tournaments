@@ -44,6 +44,8 @@ import com.example.data.model.SituationPreviewType
 import com.example.data.model.SystemAppConfig
 import com.example.ui.screens.*
 import com.example.ui.screens.situations.*
+import com.example.ui.navigation.LazyDestinationLoader
+import com.example.ui.components.*
 import com.example.ui.theme.MyApplicationTheme
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
@@ -533,6 +535,9 @@ class MainActivity : ComponentActivity() {
                         }
 
                         val isEmuDevice = remember { EnvUtils.isEmu() }
+                        androidx.activity.compose.BackHandler(enabled = currentTabState != "home") {
+                            currentTabState = "home"
+                        }
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -554,72 +559,102 @@ class MainActivity : ComponentActivity() {
                                 ) { targetTab ->
                                     when (targetTab) {
                                         "home" -> {
-                                            HomeScreen(
-                                                viewModel = viewModel,
-                                                onNavigateToTournament = { id ->
-                                                    navController.navigate("details/$id")
-                                                },
-                                                onNavigateToWallet = {
-                                                    currentTabState = "wallet"
-                                                },
-                                                onNavigateToProfile = {
-                                                    currentTabState = "profile"
-                                                },
-                                                onNavigateToSupport = {
-                                                    currentTabState = "support"
-                                                },
-                                                onNavigateToNotifications = {
-                                                    navController.navigate("notifications")
-                                                },
-                                                onNavigateToLeaderboard = {
-                                                    currentTabState = "leaderboard"
-                                                }
-                                            )
+                                            LazyDestinationLoader(
+                                                destinationKey = "tab_home",
+                                                skeleton = { HomeScreenSkeleton() }
+                                            ) {
+                                                HomeScreen(
+                                                    viewModel = viewModel,
+                                                    onNavigateToTournament = { id ->
+                                                        navController.navigate("details/$id")
+                                                    },
+                                                    onNavigateToWallet = {
+                                                        currentTabState = "wallet"
+                                                    },
+                                                    onNavigateToProfile = {
+                                                        currentTabState = "profile"
+                                                    },
+                                                    onNavigateToSupport = {
+                                                        currentTabState = "support"
+                                                    },
+                                                    onNavigateToNotifications = {
+                                                        navController.navigate("notifications")
+                                                    },
+                                                    onNavigateToLeaderboard = {
+                                                        currentTabState = "leaderboard"
+                                                    }
+                                                )
+                                            }
                                         }
                                         "matches" -> {
-                                            MatchesScreen(
-                                                viewModel = viewModel,
-                                                onNavigateToTournament = { id ->
-                                                    navController.navigate("details/$id")
-                                                }
-                                            )
+                                            LazyDestinationLoader(
+                                                destinationKey = "tab_matches",
+                                                skeleton = { MatchesScreenSkeleton() }
+                                            ) {
+                                                MatchesScreen(
+                                                    viewModel = viewModel,
+                                                    onNavigateToTournament = { id ->
+                                                        navController.navigate("details/$id")
+                                                    }
+                                                )
+                                            }
                                         }
                                         "leaderboard" -> {
-                                            LeaderboardScreen(viewModel = viewModel)
+                                            LazyDestinationLoader(
+                                                destinationKey = "tab_leaderboard",
+                                                skeleton = { LeaderboardScreenSkeleton() }
+                                            ) {
+                                                LeaderboardScreen(viewModel = viewModel)
+                                            }
                                         }
                                         "wallet" -> {
-                                            WalletScreen(viewModel = viewModel)
+                                            LazyDestinationLoader(
+                                                destinationKey = "tab_wallet",
+                                                skeleton = { WalletScreenSkeleton() }
+                                            ) {
+                                                WalletScreen(viewModel = viewModel)
+                                            }
                                         }
                                         "profile" -> {
-                                            ProfileScreen(
-                                                viewModel = viewModel,
-                                                onLogout = {
-                                                    navController.navigate("auth") {
-                                                        popUpTo("main") { inclusive = true }
+                                            LazyDestinationLoader(
+                                                destinationKey = "tab_profile",
+                                                skeleton = { ProfileScreenSkeleton() }
+                                            ) {
+                                                ProfileScreen(
+                                                    viewModel = viewModel,
+                                                    onLogout = {
+                                                        navController.navigate("auth") {
+                                                            popUpTo("main") { inclusive = true }
+                                                        }
+                                                    },
+                                                    onNavigateToSupport = {
+                                                        currentTabState = "support"
+                                                    },
+                                                    onNavigateToNotifications = {
+                                                        navController.navigate("notifications")
+                                                    },
+                                                    onNavigateToSettings = {
+                                                        navController.navigate("settings")
+                                                    },
+                                                    onNavigateToAbout = {
+                                                        navController.navigate("about")
+                                                    },
+                                                    onOpenAdminSituations = {
+                                                        showAdminSituationSheet = true
                                                     }
-                                                },
-                                                onNavigateToSupport = {
-                                                    currentTabState = "support"
-                                                },
-                                                onNavigateToNotifications = {
-                                                    navController.navigate("notifications")
-                                                },
-                                                onNavigateToSettings = {
-                                                    navController.navigate("settings")
-                                                },
-                                                onNavigateToAbout = {
-                                                    navController.navigate("about")
-                                                },
-                                                onOpenAdminSituations = {
-                                                    showAdminSituationSheet = true
-                                                }
-                                            )
+                                                )
+                                            }
                                         }
                                         "support" -> {
-                                            com.example.ui.screens.CustomerSupportScreen(
-                                                platformViewModel = viewModel,
-                                                onNavigateBack = { currentTabState = "home" }
-                                            )
+                                            LazyDestinationLoader(
+                                                destinationKey = "tab_support",
+                                                skeleton = { GenericScreenSkeleton(title = "Customer Support") }
+                                            ) {
+                                                com.example.ui.screens.CustomerSupportScreen(
+                                                    platformViewModel = viewModel,
+                                                    onNavigateBack = { currentTabState = "home" }
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -671,13 +706,18 @@ class MainActivity : ComponentActivity() {
                         }
                     ) { backStackEntry ->
                         val tournamentId = backStackEntry.arguments?.getString("tournamentId") ?: ""
-                        TournamentDetailsScreen(
-                            viewModel = viewModel,
-                            tournamentId = tournamentId,
-                            onNavigateBack = {
-                                navController.navigateUp()
-                            }
-                        )
+                        LazyDestinationLoader(
+                            destinationKey = "dest_details_$tournamentId",
+                            skeleton = { TournamentDetailsSkeleton() }
+                        ) {
+                            TournamentDetailsScreen(
+                                viewModel = viewModel,
+                                tournamentId = tournamentId,
+                                onNavigateBack = {
+                                    navController.navigateUp()
+                                }
+                            )
+                        }
                     }
 
                     // 5. NOTIFICATION CENTER SCREEN
@@ -708,15 +748,20 @@ class MainActivity : ComponentActivity() {
                             ) + fadeOut(tween(250))
                         }
                     ) {
-                        com.example.ui.screens.NotificationCenterScreen(
-                            viewModel = viewModel,
-                            onNavigateBack = {
-                                navController.navigateUp()
-                            },
-                            onNavigateToTournament = { tourneyId ->
-                                navController.navigate("details/$tourneyId")
-                            }
-                        )
+                        LazyDestinationLoader(
+                            destinationKey = "dest_notifications",
+                            skeleton = { NotificationCenterSkeleton() }
+                        ) {
+                            com.example.ui.screens.NotificationCenterScreen(
+                                viewModel = viewModel,
+                                onNavigateBack = {
+                                    navController.navigateUp()
+                                },
+                                onNavigateToTournament = { tourneyId ->
+                                    navController.navigate("details/$tourneyId")
+                                }
+                            )
+                        }
                     }
 
                     // 6. DEDICATED SETTINGS SCREEN
@@ -747,25 +792,30 @@ class MainActivity : ComponentActivity() {
                             ) + fadeOut(tween(250))
                         }
                     ) {
-                        com.example.ui.screens.SettingsScreen(
-                            viewModel = viewModel,
-                            onNavigateBack = {
-                                navController.navigateUp()
-                            },
-                            onNavigateToSupport = {
-                                navController.navigate("main")
-                                currentTabState = "support"
-                            },
-                            onOpenAdminSituations = {
-                                showAdminSituationSheet = true
-                            },
-                            onNavigateToLegal = { tab ->
-                                navController.navigate("legal_compliance/${tab.name}")
-                            },
-                            onNavigateToLiquidGlass = {
-                                navController.navigate("liquid_glass_settings")
-                            }
-                        )
+                        LazyDestinationLoader(
+                            destinationKey = "dest_settings",
+                            skeleton = { SettingsScreenSkeleton() }
+                        ) {
+                            com.example.ui.screens.SettingsScreen(
+                                viewModel = viewModel,
+                                onNavigateBack = {
+                                    navController.navigateUp()
+                                },
+                                onNavigateToSupport = {
+                                    navController.navigate("main")
+                                    currentTabState = "support"
+                                },
+                                onOpenAdminSituations = {
+                                    showAdminSituationSheet = true
+                                },
+                                onNavigateToLegal = { tab ->
+                                    navController.navigate("legal_compliance/${tab.name}")
+                                },
+                                onNavigateToLiquidGlass = {
+                                    navController.navigate("liquid_glass_settings")
+                                }
+                            )
+                        }
                     }
 
                     // 6.5. DEDICATED LIQUID GLASS (BETA) ADVANCED CUSTOMIZATION
@@ -796,12 +846,17 @@ class MainActivity : ComponentActivity() {
                             ) + fadeOut(tween(250))
                         }
                     ) {
-                        com.example.ui.screens.LiquidGlassSettingsScreen(
-                            viewModel = viewModel,
-                            onNavigateBack = {
-                                navController.navigateUp()
-                            }
-                        )
+                        LazyDestinationLoader(
+                            destinationKey = "dest_liquid_glass",
+                            skeleton = { GenericScreenSkeleton(title = "Liquid Glass Settings") }
+                        ) {
+                            com.example.ui.screens.LiquidGlassSettingsScreen(
+                                viewModel = viewModel,
+                                onNavigateBack = {
+                                    navController.navigateUp()
+                                }
+                            )
+                        }
                     }
 
                     // 7. DEDICATED ABOUT SCREEN (MINIMAL XIAOMI & VERCEL STYLE)
@@ -832,14 +887,19 @@ class MainActivity : ComponentActivity() {
                             ) + fadeOut(tween(250))
                         }
                     ) {
-                        com.example.ui.screens.AboutScreen(
-                            onNavigateBack = {
-                                navController.navigateUp()
-                            },
-                            onNavigateToLegal = { tab ->
-                                navController.navigate("legal_compliance/${tab.name}")
-                            }
-                        )
+                        LazyDestinationLoader(
+                            destinationKey = "dest_about",
+                            skeleton = { GenericScreenSkeleton(title = "About VeloRix") }
+                        ) {
+                            com.example.ui.screens.AboutScreen(
+                                onNavigateBack = {
+                                    navController.navigateUp()
+                                },
+                                onNavigateToLegal = { tab ->
+                                    navController.navigate("legal_compliance/${tab.name}")
+                                }
+                            )
+                        }
                     }
 
                     // 8. DEDICATED LEGAL & COMPLIANCE PAGE (FULL-PAGE MINIMALIST ARCHITECTURE)
@@ -876,12 +936,17 @@ class MainActivity : ComponentActivity() {
                         } catch (_: Exception) {
                             com.example.ui.components.LegalTab.TERMS
                         }
-                        com.example.ui.screens.LegalComplianceScreen(
-                            initialTab = initialTab,
-                            onNavigateBack = {
-                                navController.navigateUp()
-                            }
-                        )
+                        LazyDestinationLoader(
+                            destinationKey = "dest_legal_$tabName",
+                            skeleton = { GenericScreenSkeleton(title = "Legal & Compliance") }
+                        ) {
+                            com.example.ui.screens.LegalComplianceScreen(
+                                initialTab = initialTab,
+                                onNavigateBack = {
+                                    navController.navigateUp()
+                                }
+                            )
+                        }
                     }
                     } // End of NavHost
                         } // End of activeSituation == NONE check
@@ -931,9 +996,23 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onRestartSafe = {
                                     CrashReporter.dismissFatalCrash()
-                                    navController.navigate("home") {
-                                        popUpTo("home") { inclusive = true }
+                                    currentTabState = "home"
+                                    showAdminSituationSheet = false
+                                    showExplicitDeveloperPopup = false
+                                    viewModel.clearDbError()
+                                    try {
+                                        navController.navigate("main") {
+                                            popUpTo("main") { inclusive = false }
+                                            launchSingleTop = true
+                                        }
+                                    } catch (e: Exception) {
+                                        try {
+                                            navController.navigate("main")
+                                        } catch (_: Exception) {
+                                            (this@MainActivity as? android.app.Activity)?.recreate()
+                                        }
                                     }
+                                    Toast.makeText(context, "Safely returned to Home Dashboard", Toast.LENGTH_SHORT).show()
                                 }
                             )
                         }

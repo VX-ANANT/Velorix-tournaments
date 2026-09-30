@@ -39,10 +39,14 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -120,26 +124,26 @@ class PlatformRepository(
     private val _lastSyncedTimestamp = kotlinx.coroutines.flow.MutableStateFlow(System.currentTimeMillis())
     val lastSyncedTimestamp: kotlinx.coroutines.flow.StateFlow<Long> = _lastSyncedTimestamp.asStateFlow()
 
-    val user: Flow<User?> = db.userDao().getUser()
-    suspend fun getUserSync(): User? = db.userDao().getUserSync()
-    val tournaments: Flow<List<Tournament>> = db.tournamentDao().getAll()
-    val transactions: Flow<List<Transaction>> = db.transactionDao().getAll()
-    val matchStats: Flow<List<com.example.data.model.MatchStat>> = db.matchStatDao().getAll()
-    val leaderboard: Flow<List<LeaderboardPlayer>> = db.leaderboardDao().getAll()
+    val user: Flow<User?> = db.userDao().getUser().flowOn(Dispatchers.IO).distinctUntilChanged()
+    suspend fun getUserSync(): User? = withContext(Dispatchers.IO) { db.userDao().getUserSync() }
+    val tournaments: Flow<List<Tournament>> = db.tournamentDao().getAll().flowOn(Dispatchers.IO).distinctUntilChanged()
+    val transactions: Flow<List<Transaction>> = db.transactionDao().getAll().flowOn(Dispatchers.IO).distinctUntilChanged()
+    val matchStats: Flow<List<com.example.data.model.MatchStat>> = db.matchStatDao().getAll().flowOn(Dispatchers.IO).distinctUntilChanged()
+    val leaderboard: Flow<List<LeaderboardPlayer>> = db.leaderboardDao().getAll().flowOn(Dispatchers.IO).distinctUntilChanged()
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val searchHistory: Flow<List<String>> = user.flatMapLatest { u ->
         val uid = u?.id?.takeIf { it.isNotBlank() } ?: "guest"
         db.searchHistoryDao().getRecentSearches(uid)
-    }
-    val missions: Flow<List<Mission>> = db.missionDao().getAllMissions()
-    val banners: Flow<List<Banner>> = db.bannerDao().getActiveBanners()
-    val notifications: Flow<List<AppNotification>> = db.appNotificationDao().getAllNotifications()
-    val unreadNotificationCount: Flow<Int> = db.appNotificationDao().getUnreadCount()
+    }.flowOn(Dispatchers.IO).distinctUntilChanged()
+    val missions: Flow<List<Mission>> = db.missionDao().getAllMissions().flowOn(Dispatchers.IO).distinctUntilChanged()
+    val banners: Flow<List<Banner>> = db.bannerDao().getActiveBanners().flowOn(Dispatchers.IO).distinctUntilChanged()
+    val notifications: Flow<List<AppNotification>> = db.appNotificationDao().getAllNotifications().flowOn(Dispatchers.IO).distinctUntilChanged()
+    val unreadNotificationCount: Flow<Int> = db.appNotificationDao().getUnreadCount().flowOn(Dispatchers.IO).distinctUntilChanged()
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val userReports: Flow<List<com.example.data.model.UserReport>> = user.flatMapLatest { u ->
         val uid = u?.id?.takeIf { it.isNotBlank() } ?: "guest"
         db.userReportDao().getReportsByUser(uid)
-    }
+    }.flowOn(Dispatchers.IO).distinctUntilChanged()
 
     private val _systemConfig = kotlinx.coroutines.flow.MutableStateFlow(com.example.data.model.SystemAppConfig())
     val systemConfig: kotlinx.coroutines.flow.StateFlow<com.example.data.model.SystemAppConfig> = _systemConfig.asStateFlow()
@@ -151,10 +155,12 @@ class PlatformRepository(
         _situationPreview.value = type
     }
 
+    private val repositoryJob = kotlinx.coroutines.SupervisorJob()
+    val repositoryScope = CoroutineScope(repositoryJob + Dispatchers.Default)
 
     init {
         startConnectionMonitoring()
-        CoroutineScope(Dispatchers.IO).launch {
+        repositoryScope.launch(Dispatchers.IO) {
             cleanupAllMockData()
             initializeMissions()
         }
@@ -204,7 +210,7 @@ class PlatformRepository(
                 }
 
                 override fun onUserStatusChanged(userId: String, newStatus: String, reason: String?) {
-                    CoroutineScope(Dispatchers.IO).launch {
+                    repositoryScope.launch(Dispatchers.IO) {
                         try {
                             val localUser = db.userDao().getUserSync()
                             if (localUser != null && localUser.id == userId) {
@@ -359,7 +365,7 @@ class PlatformRepository(
     fun startRealtimeNotificationsSync() {
         val notifListener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                CoroutineScope(Dispatchers.IO).launch {
+                repositoryScope.launch(Dispatchers.Default) {
                     try {
                         val list = mutableListOf<AppNotification>()
                         for (child in snapshot.children) {
@@ -369,7 +375,9 @@ class PlatformRepository(
                             }
                         }
                         if (list.isNotEmpty()) {
-                            db.appNotificationDao().insertAll(list)
+                            withContext(Dispatchers.IO) {
+                                db.appNotificationDao().insertAll(list)
+                            }
                             Log.i(TAG, "Realtime synced ${list.size} notification(s) from Firebase RTDB")
                         }
                     } catch (e: Exception) {
@@ -389,12 +397,12 @@ class PlatformRepository(
             notificationsRef.addValueEventListener(notifListener)
         }
 
-        // Firestore broadcast notifications sync
+        // Firestore broadcast notifications sync (with listener tracking to prevent memory leaks)
         try {
-            FirebaseFirestore.getInstance().collection("notifications")
+            val notifFsReg = FirebaseFirestore.getInstance().collection("notifications")
                 .addSnapshotListener { snapshot, error ->
                     if (error != null || snapshot == null || snapshot.isEmpty) return@addSnapshotListener
-                    CoroutineScope(Dispatchers.IO).launch {
+                    repositoryScope.launch(Dispatchers.Default) {
                         try {
                             val list = mutableListOf<AppNotification>()
                             for (doc in snapshot.documents) {
@@ -404,7 +412,9 @@ class PlatformRepository(
                                 }
                             }
                             if (list.isNotEmpty()) {
-                                db.appNotificationDao().insertAll(list)
+                                withContext(Dispatchers.IO) {
+                                    db.appNotificationDao().insertAll(list)
+                                }
                                 Log.i(TAG, "Realtime synced ${list.size} notification(s) from Firestore")
                             }
                         } catch (e: Exception) {
@@ -412,6 +422,7 @@ class PlatformRepository(
                         }
                     }
                 }
+            listenerManager?.registerFirestoreListener(RepositoryManager.KEY_FS_NOTIFICATIONS, notifFsReg)
         } catch (e: Exception) {
             Log.w(TAG, "Notice setting up Firestore notifications sync: ${e.message}")
         }
@@ -625,8 +636,6 @@ class PlatformRepository(
         }
 
         val mockIds = setOf(
-            "tourney_ff_1", "tourney_ff_2", "tourney_bgmi_1", "tourney_ff_3",
-            "tourney_1", "tourney_2", "tourney_3", "tourney_4",
             "mock_1", "mock_2", "sample_1", "sample_2",
             "tourney_sample", "tournament_mock", "mock_tourney_1",
             "test", "demo", "sample", "mock", "tournament"
@@ -636,18 +645,11 @@ class PlatformRepository(
             lowerId.startsWith("sample") ||
             lowerId.startsWith("dummy") ||
             lowerId.startsWith("test_tourney") ||
-            lowerId.startsWith("demo_tourney") ||
-            lowerId.startsWith("tourney_ff_") ||
-            lowerId.startsWith("tourney_bgmi_")
+            lowerId.startsWith("demo_tourney")
         ) {
             return true
         }
         val mockKeywords = listOf(
-            "bermuda solo survival",
-            "erangel squad championship",
-            "clash squad open",
-            "pro league finals",
-            "sunday showdown",
             "mock tournament",
             "sample match",
             "dummy match",
@@ -740,6 +742,71 @@ class PlatformRepository(
         // No-op: Only 100% live data synced from Firebase Realtime Database and Cloud Firestore. No mock data is seeded.
     }
 
+    private val rtdbTournamentsCache = java.util.concurrent.ConcurrentHashMap<String, Tournament>()
+    private val fsTournamentsCache = java.util.concurrent.ConcurrentHashMap<String, Tournament>()
+    private val fsMatchesCache = java.util.concurrent.ConcurrentHashMap<String, Tournament>()
+    private var tournamentSyncJob: kotlinx.coroutines.Job? = null
+    private val tournamentSyncMutex = kotlinx.coroutines.sync.Mutex()
+
+    private suspend fun syncMergedTournamentsToDb(source: String, incoming: List<Tournament>) {
+        when (source) {
+            "RTDB" -> {
+                rtdbTournamentsCache.clear()
+                incoming.forEach { rtdbTournamentsCache[it.id] = it }
+            }
+            "FS_TOURNAMENTS" -> {
+                fsTournamentsCache.clear()
+                incoming.forEach { fsTournamentsCache[it.id] = it }
+            }
+            "FS_MATCHES" -> {
+                fsMatchesCache.clear()
+                incoming.forEach { fsMatchesCache[it.id] = it }
+            }
+        }
+
+        tournamentSyncMutex.withLock {
+            tournamentSyncJob?.cancel()
+            tournamentSyncJob = repositoryScope.launch(Dispatchers.Default) {
+                kotlinx.coroutines.delay(250L) // 250ms debouncing window to throttle rapid listener bursts
+
+                val mergedMap = mutableMapOf<String, Tournament>()
+                fsMatchesCache.forEach { (id, t) -> mergedMap[id] = t }
+                fsTournamentsCache.forEach { (id, t) -> mergedMap[id] = t }
+                rtdbTournamentsCache.forEach { (id, t) -> mergedMap[id] = t }
+
+                val mergedList = mergedMap.values
+                    .filter { !isMockTournament(it.id, it.title) }
+                    .sortedByDescending { it.id }
+
+                val localTournaments = withContext(Dispatchers.IO) { db.tournamentDao().getAllSync() }
+
+                // Check if identical to prevent continuous UI trigger loops
+                if (localTournaments == mergedList) {
+                    _lastSyncedTimestamp.value = System.currentTimeMillis()
+                    _isSyncing.value = false
+                    return@launch
+                }
+
+                detectAndDispatchTournamentNotifications(localTournaments, mergedList)
+
+                withContext(Dispatchers.IO) {
+                    val mergedIds = mergedList.map { it.id }.toSet()
+                    for (t in localTournaments) {
+                        if (t.id !in mergedIds || isMockTournament(t.id, t.title)) {
+                            db.tournamentDao().delete(t.id)
+                        }
+                    }
+                    if (mergedList.isNotEmpty()) {
+                        db.tournamentDao().insertAll(mergedList)
+                        Log.i(TAG, "Merged & synchronized ${mergedList.size} tournament(s) to Room DB (source: $source)")
+                    }
+                }
+                _lastSyncedTimestamp.value = System.currentTimeMillis()
+                _isSyncing.value = false
+            }
+        }
+    }
+
     /**
      * Realtime listener for Tournaments added, edited, or deleted in Admin Panel.
      * Managed via RepositoryManager to prevent memory leaks and ghost updates.
@@ -751,9 +818,9 @@ class PlatformRepository(
         val tournamentListener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 _isSyncing.value = true
-                CoroutineScope(Dispatchers.IO).launch {
+                repositoryScope.launch(Dispatchers.Default) {
                     try {
-                        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: db.userDao().getUserSync()?.id
+                        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: withContext(Dispatchers.IO) { db.userDao().getUserSync()?.id }
                         val list = mutableListOf<Tournament>()
                         for (child in snapshot.children) {
                             val parsed = parseTournamentFromDataSnapshot(child, currentUserId)
@@ -761,25 +828,9 @@ class PlatformRepository(
                                 list.add(parsed)
                             }
                         }
-                        val validIds = list.map { it.id }.toSet()
-                        val localTournaments = db.tournamentDao().getAllSync()
-
-                        // Detect real-time updates: Room ID & Password released, cancelled, schedule change, upcoming registrations
-                        detectAndDispatchTournamentNotifications(localTournaments, list)
-
-                        for (t in localTournaments) {
-                            if (t.id !in validIds || isMockTournament(t.id, t.title)) {
-                                db.tournamentDao().delete(t.id)
-                            }
-                        }
-                        if (list.isNotEmpty()) {
-                            db.tournamentDao().insertAll(list)
-                            Log.i(TAG, "Realtime synced ${list.size} tournament(s) from Firebase RTDB tournaments")
-                        }
-                        _lastSyncedTimestamp.value = System.currentTimeMillis()
+                        syncMergedTournamentsToDb("RTDB", list)
                     } catch (e: Exception) {
                         Log.w(TAG, "Notice processing RTDB tournaments: ${e.message}")
-                    } finally {
                         _isSyncing.value = false
                     }
                 }
@@ -1232,15 +1283,15 @@ class PlatformRepository(
         try {
             val firestore = FirebaseFirestore.getInstance()
             
-            firestore.collection("tournaments")
+            val tournamentsFsReg = firestore.collection("tournaments")
                 .addSnapshotListener { snapshot, error ->
                     if (error != null) {
                         Log.w(TAG, "Firestore tournaments listener notice: ${error.message}")
                         return@addSnapshotListener
                     }
-                    CoroutineScope(Dispatchers.IO).launch {
+                    repositoryScope.launch(Dispatchers.Default) {
                         try {
-                            val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: db.userDao().getUserSync()?.id
+                            val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: withContext(Dispatchers.IO) { db.userDao().getUserSync()?.id }
                             val list = mutableListOf<Tournament>()
                             if (snapshot != null && !snapshot.isEmpty) {
                                 for (doc in snapshot.documents) {
@@ -1250,32 +1301,23 @@ class PlatformRepository(
                                     }
                                 }
                             }
-                            val localTournaments = db.tournamentDao().getAllSync()
-                            detectAndDispatchTournamentNotifications(localTournaments, list)
-                            for (t in localTournaments) {
-                                if (isMockTournament(t.id, t.title)) {
-                                    db.tournamentDao().delete(t.id)
-                                }
-                            }
-                            if (list.isNotEmpty()) {
-                                db.tournamentDao().insertAll(list)
-                                Log.i(TAG, "Realtime synced ${list.size} tournament(s) from Firestore tournaments")
-                            }
+                            syncMergedTournamentsToDb("FS_TOURNAMENTS", list)
                         } catch (e: Exception) {
                             Log.e(TAG, "Error parsing Firestore tournaments", e)
                         }
                     }
                 }
+            listenerManager?.registerFirestoreListener(RepositoryManager.KEY_FS_TOURNAMENTS, tournamentsFsReg)
 
-            firestore.collection("matches")
+            val matchesFsReg = firestore.collection("matches")
                 .addSnapshotListener { snapshot, error ->
                     if (error != null) {
                         Log.w(TAG, "Firestore matches listener notice: ${error.message}")
                         return@addSnapshotListener
                     }
-                    CoroutineScope(Dispatchers.IO).launch {
+                    repositoryScope.launch(Dispatchers.Default) {
                         try {
-                            val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: db.userDao().getUserSync()?.id
+                            val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: withContext(Dispatchers.IO) { db.userDao().getUserSync()?.id }
                             val list = mutableListOf<Tournament>()
                             if (snapshot != null && !snapshot.isEmpty) {
                                 for (doc in snapshot.documents) {
@@ -1285,21 +1327,13 @@ class PlatformRepository(
                                     }
                                 }
                             }
-                            val localTournaments = db.tournamentDao().getAllSync()
-                            for (t in localTournaments) {
-                                if (isMockTournament(t.id, t.title)) {
-                                    db.tournamentDao().delete(t.id)
-                                }
-                            }
-                            if (list.isNotEmpty()) {
-                                db.tournamentDao().insertAll(list)
-                                Log.i(TAG, "Realtime synced ${list.size} tournament(s) from Firestore matches")
-                            }
+                            syncMergedTournamentsToDb("FS_MATCHES", list)
                         } catch (e: Exception) {
                             Log.e(TAG, "Error parsing Firestore matches", e)
                         }
                     }
                 }
+            listenerManager?.registerFirestoreListener(RepositoryManager.KEY_FS_MATCHES, matchesFsReg)
         } catch (e: Exception) {
             Log.e(TAG, "Error setting up Firestore tournaments sync", e)
         }
@@ -1312,7 +1346,7 @@ class PlatformRepository(
     fun startRealtimeLeaderboardSync() {
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                CoroutineScope(Dispatchers.IO).launch {
+                repositoryScope.launch(Dispatchers.Default) {
                     val players = mutableListOf<LeaderboardPlayer>()
                     for (child in snapshot.children) {
                         try {
@@ -1329,9 +1363,13 @@ class PlatformRepository(
                             Log.w(TAG, "Error parsing leaderboard player: ${e.message}")
                         }
                     }
-                    db.leaderboardDao().clearAll()
-                    if (players.isNotEmpty()) {
-                        db.leaderboardDao().insertAll(players)
+                    withContext(Dispatchers.IO) {
+                        val current = db.leaderboardDao().getAllSync()
+                        if (current != players) {
+                            if (players.isNotEmpty()) {
+                                db.leaderboardDao().insertAll(players)
+                            }
+                        }
                     }
                 }
             }
@@ -1425,10 +1463,10 @@ class PlatformRepository(
         startFirestoreBannersSync()
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                CoroutineScope(Dispatchers.IO).launch {
+                repositoryScope.launch(Dispatchers.Default) {
                     try {
                         if (!snapshot.exists()) {
-                            db.bannerDao().clearAll()
+                            withContext(Dispatchers.IO) { db.bannerDao().clearAll() }
                             return@launch
                         }
                         val list = mutableListOf<Banner>()
@@ -1438,9 +1476,14 @@ class PlatformRepository(
                                 list.add(parsed)
                             }
                         }
-                        db.bannerDao().clearAll()
-                        if (list.isNotEmpty()) {
-                            db.bannerDao().insertAll(list)
+                        withContext(Dispatchers.IO) {
+                            val current = db.bannerDao().getAllSync()
+                            if (current != list) {
+                                db.bannerDao().clearAll()
+                                if (list.isNotEmpty()) {
+                                    db.bannerDao().insertAll(list)
+                                }
+                            }
                         }
                     } catch (e: Exception) {
                         Log.e(TAG, "Error syncing banners from RTDB: ${e.message}")
@@ -1561,11 +1604,11 @@ class PlatformRepository(
     fun startRealtimeMissionsSync() {
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                CoroutineScope(Dispatchers.IO).launch {
+                repositoryScope.launch(Dispatchers.Default) {
                     try {
-                        val userItem = db.userDao().getUserSync() ?: user.firstOrNull()
+                        val userItem = withContext(Dispatchers.IO) { db.userDao().getUserSync() } ?: user.firstOrNull()
                         val today = getTodayIstDate()
-                        val currentLocal = db.missionDao().getAllMissions().firstOrNull() ?: emptyList()
+                        val currentLocal = withContext(Dispatchers.IO) { db.missionDao().getAllMissions().firstOrNull() } ?: emptyList()
                         val localDaily = currentLocal.find { it.id == "m_daily_checkin" }
                         val isDailyClaimed = (userItem?.lastLoginClaimDate == today) || (localDaily?.isClaimed == true)
 
@@ -1603,7 +1646,9 @@ class PlatformRepository(
 
                         // Also sync live missions from Firestore if present
                         try {
-                            val fsDocs = FirebaseFirestore.getInstance().collection("missions").get().await()
+                            val fsDocs = withContext(Dispatchers.IO) {
+                                FirebaseFirestore.getInstance().collection("missions").get().await()
+                            }
                             for (doc in fsDocs.documents) {
                                 val mId = doc.id
                                 if (list.any { it.id == mId }) continue
@@ -1654,8 +1699,12 @@ class PlatformRepository(
                             }
                         }
 
-                        db.missionDao().deleteAll()
-                        db.missionDao().insertAll(mergedList)
+                        withContext(Dispatchers.IO) {
+                            if (currentLocal != mergedList) {
+                                db.missionDao().deleteAll()
+                                db.missionDao().insertAll(mergedList)
+                            }
+                        }
                     } catch (e: Exception) {
                         Log.e(TAG, "Error syncing live missions: ${e.message}")
                     }
@@ -1678,18 +1727,28 @@ class PlatformRepository(
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (!snapshot.exists()) return
-                CoroutineScope(Dispatchers.IO).launch {
+                repositoryScope.launch(Dispatchers.Default) {
                     try {
                         val fetchedUser = parseUserFromSnapshot(snapshot, userId)
-                        val local = db.userDao().getUserSync()
+                        val local = withContext(Dispatchers.IO) { db.userDao().getUserSync() }
                         val today = getTodayIstDate()
                         val mergedUser = if (local != null && local.id == userId) {
+                            val maxConverted = maxOf(fetchedUser.totalTokensConverted, local.totalTokensConverted)
+                            val safeTokens = if (local.totalTokensConverted > fetchedUser.totalTokensConverted) {
+                                val diff = local.totalTokensConverted - fetchedUser.totalTokensConverted
+                                (fetchedUser.tokens - diff).coerceAtLeast(0).let { minOf(it, local.tokens) }
+                            } else if (fetchedUser.totalTokensConverted > local.totalTokensConverted) {
+                                fetchedUser.tokens
+                            } else {
+                                minOf(local.tokens, fetchedUser.tokens)
+                            }
+                            val safeBalance = maxOf(local.balance, fetchedUser.balance)
                             fetchedUser.copy(
                                 loginStreak = maxOf(fetchedUser.loginStreak, local.loginStreak),
                                 lastLoginClaimDate = if (fetchedUser.lastLoginClaimDate.isNotBlank()) fetchedUser.lastLoginClaimDate else local.lastLoginClaimDate,
-                                totalTokensConverted = maxOf(fetchedUser.totalTokensConverted, local.totalTokensConverted),
-                                balance = fetchedUser.balance,
-                                tokens = fetchedUser.tokens,
+                                totalTokensConverted = maxConverted,
+                                balance = safeBalance,
+                                tokens = safeTokens,
                                 dailyMissionsTokensClaimed = if (fetchedUser.lastMissionClaimDate == today && fetchedUser.dailyMissionsTokensClaimed > 0) {
                                     if (local.lastMissionClaimDate == today) maxOf(fetchedUser.dailyMissionsTokensClaimed, local.dailyMissionsTokensClaimed) else fetchedUser.dailyMissionsTokensClaimed
                                 } else if (local.lastMissionClaimDate == today) {
@@ -1703,14 +1762,20 @@ class PlatformRepository(
                                     local.lastMissionClaimDate
                                 } else {
                                     fetchedUser.lastMissionClaimDate
-                                }
+                                },
+                                isFounder = fetchedUser.isFounder || local.isFounder,
+                                founderTier = if (fetchedUser.founderTier.isNotBlank()) fetchedUser.founderTier else local.founderTier,
+                                reservedTokens = maxOf(local.reservedTokens, fetchedUser.reservedTokens)
                             )
                         } else {
                             fetchedUser
                         }
-                        db.userDao().clearAll()
-                        db.userDao().insert(mergedUser)
-                        Log.d(TAG, "Realtime user profile updated: ${mergedUser.username}, tokens: ${mergedUser.tokens}, balance: ${mergedUser.balance}")
+                        if (local != mergedUser) {
+                            withContext(Dispatchers.IO) {
+                                db.userDao().insert(mergedUser)
+                            }
+                            Log.d(TAG, "Realtime user profile updated: ${mergedUser.username}, tokens: ${mergedUser.tokens}, balance: ${mergedUser.balance}")
+                        }
                     } catch (e: Exception) {
                         Log.e(TAG, "Error updating user in realtime: ${e.message}")
                     }
@@ -1728,18 +1793,26 @@ class PlatformRepository(
             userQuery.addValueEventListener(listener)
         }
 
-        // Firestore real-time sync for User Profile
+        // Firestore real-time sync for User Profile (with listener tracking)
         try {
-            FirebaseFirestore.getInstance().collection("users").document(userId)
+            val userFsReg = FirebaseFirestore.getInstance().collection("users").document(userId)
                 .addSnapshotListener { doc, error ->
                     if (error != null || doc == null || !doc.exists()) return@addSnapshotListener
-                    CoroutineScope(Dispatchers.IO).launch {
+                    repositoryScope.launch(Dispatchers.Default) {
                         try {
-                            val fsTokens = (doc.get("tokens") as? Number)?.toInt()
-                                ?: (doc.get("tokenBalance") as? Number)?.toInt()
-                                ?: (doc.get("tokensBalance") as? Number)?.toInt()
-                                ?: (doc.get("rewardTokens") as? Number)?.toInt()
-                                ?: (doc.get("activityPoints") as? Number)?.toInt() ?: 0
+                            val fsTokens = if (doc.contains("tokens")) {
+                                (doc.get("tokens") as? Number)?.toInt() ?: 0
+                            } else if (doc.contains("tokenBalance")) {
+                                (doc.get("tokenBalance") as? Number)?.toInt() ?: 0
+                            } else if (doc.contains("tokensBalance")) {
+                                (doc.get("tokensBalance") as? Number)?.toInt() ?: 0
+                            } else if (doc.contains("rewardTokens")) {
+                                (doc.get("rewardTokens") as? Number)?.toInt() ?: 0
+                            } else if (doc.contains("activityPoints")) {
+                                (doc.get("activityPoints") as? Number)?.toInt() ?: 0
+                            } else {
+                                0
+                            }
                             val fsBalance = (doc.get("balance") as? Number)?.toDouble()
                                 ?: (doc.get("walletBalance") as? Number)?.toDouble()
                                 ?: (doc.get("wallet_balance") as? Number)?.toDouble() ?: 0.0
@@ -1763,14 +1836,24 @@ class PlatformRepository(
                             val fsSuspendReason = doc.getString("suspendReason") ?: doc.getString("suspend_reason") ?: ""
                             val fsRole = doc.getString("role") ?: doc.getString("adminRole") ?: ""
 
-                            val local = db.userDao().getUserSync()
+                            val local = withContext(Dispatchers.IO) { db.userDao().getUserSync() }
                             if (local != null && local.id == userId) {
+                                val maxConverted = maxOf(local.totalTokensConverted, fsTotalConverted)
+                                val safeTokens = if (local.totalTokensConverted > fsTotalConverted) {
+                                    val diff = local.totalTokensConverted - fsTotalConverted
+                                    (fsTokens - diff).coerceAtLeast(0).let { minOf(it, local.tokens) }
+                                } else if (fsTotalConverted > local.totalTokensConverted) {
+                                    fsTokens
+                                } else {
+                                    minOf(local.tokens, fsTokens)
+                                }
+                                val safeBalance = maxOf(local.balance, fsBalance)
                                 val updated = local.copy(
-                                    balance = if (doc.contains("balance") || doc.contains("walletBalance") || doc.contains("wallet_balance")) fsBalance else local.balance,
-                                    tokens = if (doc.contains("tokens") || doc.contains("tokenBalance") || doc.contains("tokensBalance")) fsTokens else local.tokens,
+                                    balance = safeBalance,
+                                    tokens = safeTokens,
                                     loginStreak = maxOf(local.loginStreak, fsStreak),
                                     lastLoginClaimDate = if (fsLastClaim.isNotBlank()) fsLastClaim else local.lastLoginClaimDate,
-                                    totalTokensConverted = maxOf(local.totalTokensConverted, fsTotalConverted),
+                                    totalTokensConverted = maxConverted,
                                     dailyMissionsTokensClaimed = if (fsLastMissionClaim == today && fsDailyClaimed > 0) {
                                         if (local.lastMissionClaimDate == today) maxOf(fsDailyClaimed, local.dailyMissionsTokensClaimed) else fsDailyClaimed
                                     } else if (local.lastMissionClaimDate == today) {
@@ -1789,14 +1872,17 @@ class PlatformRepository(
                                     suspendReason = if (fsSuspendReason.isNotBlank()) fsSuspendReason else local.suspendReason,
                                     role = if (fsRole.isNotBlank()) fsRole else local.role
                                 )
-                                db.userDao().update(updated)
-                                Log.d(TAG, "User profile updated from Firestore real-time listener")
+                                if (local != updated) {
+                                    withContext(Dispatchers.IO) { db.userDao().update(updated) }
+                                    Log.d(TAG, "User profile updated from Firestore real-time listener")
+                                }
                             }
                         } catch (e: Exception) {
                             Log.w(TAG, "Notice updating user from Firestore snapshot: ${e.message}")
                         }
                     }
                 }
+            listenerManager?.registerFirestoreListener("fs_user_$userId", userFsReg)
         } catch (e: Exception) {
             Log.w(TAG, "Notice setting up Firestore user listener: ${e.message}")
         }
@@ -1805,15 +1891,18 @@ class PlatformRepository(
         try {
             rtdb.getReference("banned_users").child(userId).addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(banSnap: DataSnapshot) {
-                    CoroutineScope(Dispatchers.IO).launch {
-                        val local = db.userDao().getUserSync()
+                    repositoryScope.launch(Dispatchers.Default) {
+                        val local = withContext(Dispatchers.IO) { db.userDao().getUserSync() }
                         if (local != null && local.id == userId) {
                             if (banSnap.exists()) {
                                 val reason = banSnap.child("banReason").value?.toString()
                                     ?: banSnap.child("reason").value?.toString()
                                     ?: "Account banned by administrator for policy violation."
                                 val banType = banSnap.child("banType").value?.toString() ?: "PERMANENT"
-                                db.userDao().update(local.copy(isBanned = true, banReason = reason, banType = banType))
+                                val updated = local.copy(isBanned = true, banReason = reason, banType = banType)
+                                if (local != updated) {
+                                    withContext(Dispatchers.IO) { db.userDao().update(updated) }
+                                }
                             }
                         }
                     }
@@ -1828,14 +1917,17 @@ class PlatformRepository(
         try {
             rtdb.getReference("suspended_users").child(userId).addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(suspendSnap: DataSnapshot) {
-                    CoroutineScope(Dispatchers.IO).launch {
-                        val local = db.userDao().getUserSync()
+                    repositoryScope.launch(Dispatchers.Default) {
+                        val local = withContext(Dispatchers.IO) { db.userDao().getUserSync() }
                         if (local != null && local.id == userId) {
                             if (suspendSnap.exists()) {
                                 val reason = suspendSnap.child("suspendReason").value?.toString()
                                     ?: suspendSnap.child("reason").value?.toString()
                                     ?: "Account temporarily under security review."
-                                db.userDao().update(local.copy(isSuspended = true, suspendReason = reason))
+                                val updated = local.copy(isSuspended = true, suspendReason = reason)
+                                if (local != updated) {
+                                    withContext(Dispatchers.IO) { db.userDao().update(updated) }
+                                }
                             }
                         }
                     }
@@ -1851,7 +1943,7 @@ class PlatformRepository(
             val txQuery = transactionsRef.orderByChild("userId").equalTo(userId)
             val txListener = object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    CoroutineScope(Dispatchers.IO).launch {
+                    repositoryScope.launch(Dispatchers.Default) {
                         try {
                             val list = mutableListOf<Transaction>()
                             for (child in snapshot.children) {
@@ -1861,7 +1953,12 @@ class PlatformRepository(
                                 }
                             }
                             if (list.isNotEmpty()) {
-                                db.transactionDao().insertAll(list)
+                                withContext(Dispatchers.IO) {
+                                    val currentTxs = db.transactionDao().getAllSync()
+                                    if (currentTxs != list) {
+                                        db.transactionDao().insertAll(list)
+                                    }
+                                }
                             }
                         } catch (e: Exception) {
                             Log.e(TAG, "Error syncing transactions in realtime", e)
@@ -1873,7 +1970,11 @@ class PlatformRepository(
                     Log.w(TAG, "Transactions sync cancelled: ${error.message}")
                 }
             }
-            txQuery.addValueEventListener(txListener)
+            if (listenerManager != null) {
+                listenerManager.registerValueEventListener(RepositoryManager.KEY_TRANSACTIONS, txQuery, txListener)
+            } else {
+                txQuery.addValueEventListener(txListener)
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error setting up user transactions listener", e)
         }
@@ -1883,7 +1984,7 @@ class PlatformRepository(
             val userNotifsRef = usersRef.child(userId).child("notifications")
             val userNotifsListener = object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    CoroutineScope(Dispatchers.IO).launch {
+                    repositoryScope.launch(Dispatchers.Default) {
                         try {
                             val list = mutableListOf<AppNotification>()
                             for (child in snapshot.children) {
@@ -1893,7 +1994,9 @@ class PlatformRepository(
                                 }
                             }
                             if (list.isNotEmpty()) {
-                                db.appNotificationDao().insertAll(list)
+                                withContext(Dispatchers.IO) {
+                                    db.appNotificationDao().insertAll(list)
+                                }
                             }
                         } catch (e: Exception) {
                             Log.w(TAG, "Notice processing user RTDB notifications: ${e.message}")
@@ -1920,7 +2023,7 @@ class PlatformRepository(
                 .collection("notifications")
                 .addSnapshotListener { snapshot, error ->
                     if (error != null || snapshot == null || snapshot.isEmpty) return@addSnapshotListener
-                    CoroutineScope(Dispatchers.IO).launch {
+                    repositoryScope.launch(Dispatchers.Default) {
                         try {
                             val list = mutableListOf<AppNotification>()
                             for (doc in snapshot.documents) {
@@ -1930,7 +2033,9 @@ class PlatformRepository(
                                 }
                             }
                             if (list.isNotEmpty()) {
-                                db.appNotificationDao().insertAll(list)
+                                withContext(Dispatchers.IO) {
+                                    db.appNotificationDao().insertAll(list)
+                                }
                             }
                         } catch (e: Exception) {
                             Log.w(TAG, "Notice processing user Firestore notifications: ${e.message}")
@@ -1946,19 +2051,24 @@ class PlatformRepository(
             val depositQuery = depositRequestsRef.orderByChild("userId").equalTo(userId)
             val depositListener = object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    CoroutineScope(Dispatchers.IO).launch {
+                    repositoryScope.launch(Dispatchers.Default) {
                         try {
+                            val updates = mutableListOf<Transaction>()
                             for (child in snapshot.children) {
                                 val status = child.getStringSafe("status", "requestStatus", defaultValue = "PENDING").uppercase()
                                 val txId = child.getStringSafe("transactionId", "txId")
-                                val amount = child.getDoubleSafe("amount", "depositAmount", defaultValue = 0.0)
                                 if (txId.isNotBlank() && (status == "APPROVED" || status == "SUCCESS" || status == "REJECTED" || status == "DECLINED")) {
                                     val mappedStatus = if (status == "APPROVED" || status == "SUCCESS") "SUCCESS" else "REJECTED"
-                                    val currentTxs = db.transactionDao().getAll().firstOrNull() ?: emptyList()
+                                    val currentTxs = withContext(Dispatchers.IO) { db.transactionDao().getAllSync() }
                                     val tx = currentTxs.find { it.id == txId }
                                     if (tx != null && tx.status != mappedStatus) {
-                                        db.transactionDao().insert(tx.copy(status = mappedStatus))
+                                        updates.add(tx.copy(status = mappedStatus))
                                     }
+                                }
+                            }
+                            if (updates.isNotEmpty()) {
+                                withContext(Dispatchers.IO) {
+                                    db.transactionDao().insertAll(updates)
                                 }
                             }
                         } catch (e: Exception) {
@@ -1985,25 +2095,34 @@ class PlatformRepository(
             val withdrawQuery = withdrawRequestsRef.orderByChild("userId").equalTo(userId)
             val withdrawListener = object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    CoroutineScope(Dispatchers.IO).launch {
+                    repositoryScope.launch(Dispatchers.Default) {
                         try {
+                            val updates = mutableListOf<Transaction>()
+                            var refundedAmount = 0.0
                             for (child in snapshot.children) {
                                 val status = child.getStringSafe("status", "requestStatus", defaultValue = "PENDING").uppercase()
                                 val txId = child.getStringSafe("transactionId", "txId")
                                 val amount = child.getDoubleSafe("amount", "withdrawAmount", defaultValue = 0.0)
                                 if (txId.isNotBlank() && (status == "APPROVED" || status == "SUCCESS" || status == "REJECTED" || status == "DECLINED")) {
                                     val mappedStatus = if (status == "APPROVED" || status == "SUCCESS") "SUCCESS" else "REJECTED"
-                                    val currentTxs = db.transactionDao().getAll().firstOrNull() ?: emptyList()
+                                    val currentTxs = withContext(Dispatchers.IO) { db.transactionDao().getAllSync() }
                                     val tx = currentTxs.find { it.id == txId }
                                     if (tx != null && tx.status != mappedStatus) {
-                                        db.transactionDao().insert(tx.copy(status = mappedStatus))
+                                        updates.add(tx.copy(status = mappedStatus))
                                         // If rejected, refund balance if not already refunded
                                         if (mappedStatus == "REJECTED" && amount > 0) {
-                                            val u = db.userDao().getUserSync()
-                                            if (u != null) {
-                                                val refunded = u.copy(balance = u.balance + amount)
-                                                db.userDao().update(refunded)
-                                            }
+                                            refundedAmount += amount
+                                        }
+                                    }
+                                }
+                            }
+                            if (updates.isNotEmpty()) {
+                                withContext(Dispatchers.IO) {
+                                    db.transactionDao().insertAll(updates)
+                                    if (refundedAmount > 0) {
+                                        val u = db.userDao().getUserSync()
+                                        if (u != null) {
+                                            db.userDao().update(u.copy(balance = u.balance + refundedAmount))
                                         }
                                     }
                                 }
@@ -2322,6 +2441,7 @@ class PlatformRepository(
      * Cleanup resources when repository is destroyed.
      */
     fun cleanup() {
+        repositoryJob.cancel()
         stopAllRealtimeSync()
     }
 
@@ -2691,87 +2811,111 @@ class PlatformRepository(
     /**
      * Converts Tokens to VT Tokens (Wallet Balance) at 10 Tokens = 1 VT Token.
      */
-    suspend fun convertTokensToVt(tokensToConvert: Int): ConvertResult {
-        val userItem = db.userDao().getUserSync() ?: user.firstOrNull() ?: return ConvertResult.Failure("User not found")
+    suspend fun convertTokensToVt(tokensToConvert: Int): ConvertResult = withContext(Dispatchers.IO) {
+        val userItem = db.userDao().getUserSync() ?: user.firstOrNull() ?: return@withContext ConvertResult.Failure("User not found")
         if (tokensToConvert < 10) {
-            return ConvertResult.Failure("Minimum 10 Tokens required to convert (10 Tokens = 1 VT)")
+            return@withContext ConvertResult.Failure("Minimum 10 Tokens required to convert (10 Tokens = 1 VT)")
         }
         if (userItem.tokens < tokensToConvert) {
-            return ConvertResult.Failure("Insufficient Tokens. You have ${userItem.tokens} Tokens.")
+            return@withContext ConvertResult.Failure("Insufficient Tokens. You have ${userItem.tokens} Tokens.")
         }
 
         val convertedVt = (tokensToConvert / 10).toDouble()
         val remainderTokens = tokensToConvert % 10
         val actualTokensDeducted = tokensToConvert - remainderTokens
         val newTotalTokensConverted = userItem.totalTokensConverted + actualTokensDeducted
+        val newRemainingTokens = (userItem.tokens - actualTokensDeducted).coerceAtLeast(0)
+        val newWalletBalance = userItem.balance + convertedVt
 
         val updatedUser = userItem.copy(
-            tokens = userItem.tokens - actualTokensDeducted,
-            balance = userItem.balance + convertedVt,
+            tokens = newRemainingTokens,
+            balance = newWalletBalance,
             totalTokensConverted = newTotalTokensConverted
         )
 
+        val txId = UUID.randomUUID().toString()
+        val timestamp = System.currentTimeMillis()
         val newTx = Transaction(
+            id = txId,
             userId = userItem.id,
             type = "TOKEN_CONVERSION",
             amount = convertedVt,
             detail = "Converted $actualTokensDeducted Tokens -> $convertedVt VT (Rate: 10 Tokens = 1 VT)",
             isPositive = true,
-            timestamp = System.currentTimeMillis()
+            timestamp = timestamp
         )
 
         try {
             db.userDao().update(updatedUser)
             db.transactionDao().insert(newTx)
+            syncUserToRealtimeDb(updatedUser)
 
-            CoroutineScope(Dispatchers.IO).launch {
-                try {
-                    usersRef.child(userItem.id).child("tokens").setValue(updatedUser.tokens)
-                    usersRef.child(userItem.id).child("tokenBalance").setValue(updatedUser.tokens)
-                    usersRef.child(userItem.id).child("tokensBalance").setValue(updatedUser.tokens)
-                    usersRef.child(userItem.id).child("balance").setValue(updatedUser.balance)
-                    usersRef.child(userItem.id).child("walletBalance").setValue(updatedUser.balance)
-                    usersRef.child(userItem.id).child("wallet_balance").setValue(updatedUser.balance)
-                    usersRef.child(userItem.id).child("totalTokensConverted").setValue(newTotalTokensConverted)
-                    usersRef.child(userItem.id).child("total_tokens_converted").setValue(newTotalTokensConverted)
-                    syncUserToRealtimeDb(updatedUser)
-                    transactionsRef.child(newTx.id).setValue(newTx)
-                    usersRef.child(userItem.id).child("transactions").child(newTx.id).setValue(newTx)
-                    walletRequestsRef.child(newTx.id).setValue(newTx)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to sync token conversion to RTDB: ${e.message}")
-                }
-
-                try {
-                    val firestore = FirebaseFirestore.getInstance()
-                    firestore.collection("transactions").document(newTx.id).set(newTx)
-                    firestore.collection("wallet_transactions").document(newTx.id).set(newTx)
-                    firestore.collection("users").document(userItem.id)
-                        .collection("transactions").document(newTx.id).set(newTx)
-                    firestore.collection("users").document(userItem.id).set(
-                        mapOf(
-                            "balance" to updatedUser.balance,
-                            "walletBalance" to updatedUser.balance,
-                            "wallet_balance" to updatedUser.balance,
-                            "tokens" to updatedUser.tokens,
-                            "tokenBalance" to updatedUser.tokens,
-                            "tokensBalance" to updatedUser.tokens,
-                            "totalTokensConverted" to newTotalTokensConverted,
-                            "total_tokens_converted" to newTotalTokensConverted,
-                            "tokensConverted" to newTotalTokensConverted,
-                            "lastTokenConversionAt" to FieldValue.serverTimestamp(),
-                            "updatedAt" to FieldValue.serverTimestamp()
-                        ),
-                        com.google.firebase.firestore.SetOptions.merge()
-                    )
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to sync token conversion to Firestore: ${e.message}")
-                }
+            // Atomic Multi-Path Update to Firebase Realtime Database
+            try {
+                val updates = hashMapOf<String, Any>(
+                    "tokens" to newRemainingTokens,
+                    "tokenBalance" to newRemainingTokens,
+                    "tokensBalance" to newRemainingTokens,
+                    "rewardTokens" to newRemainingTokens,
+                    "reward_tokens" to newRemainingTokens,
+                    "activityPoints" to newRemainingTokens,
+                    "coins" to newRemainingTokens,
+                    "points" to newRemainingTokens,
+                    "token_balance" to newRemainingTokens,
+                    "tokens_balance" to newRemainingTokens,
+                    "balance" to newWalletBalance,
+                    "walletBalance" to newWalletBalance,
+                    "wallet_balance" to newWalletBalance,
+                    "totalTokensConverted" to newTotalTokensConverted,
+                    "total_tokens_converted" to newTotalTokensConverted,
+                    "tokensConverted" to newTotalTokensConverted,
+                    "lastTokenConversionAt" to timestamp
+                )
+                usersRef.child(userItem.id).updateChildren(updates).await()
+                transactionsRef.child(txId).setValue(newTx).await()
+                usersRef.child(userItem.id).child("transactions").child(txId).setValue(newTx)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to sync token conversion to RTDB: ${e.message}")
             }
-            return ConvertResult.Success("Successfully converted $actualTokensDeducted Tokens to $convertedVt VT Tokens!")
+
+            // Atomic Merge to Cloud Firestore
+            try {
+                val firestore = FirebaseFirestore.getInstance()
+                firestore.collection("transactions").document(txId).set(newTx)
+                firestore.collection("wallet_transactions").document(txId).set(newTx)
+                firestore.collection("users").document(userItem.id)
+                    .collection("transactions").document(txId).set(newTx)
+                firestore.collection("users").document(userItem.id).set(
+                    mapOf(
+                        "balance" to newWalletBalance,
+                        "walletBalance" to newWalletBalance,
+                        "wallet_balance" to newWalletBalance,
+                        "tokens" to newRemainingTokens,
+                        "tokenBalance" to newRemainingTokens,
+                        "tokensBalance" to newRemainingTokens,
+                        "rewardTokens" to newRemainingTokens,
+                        "reward_tokens" to newRemainingTokens,
+                        "activityPoints" to newRemainingTokens,
+                        "coins" to newRemainingTokens,
+                        "points" to newRemainingTokens,
+                        "token_balance" to newRemainingTokens,
+                        "tokens_balance" to newRemainingTokens,
+                        "totalTokensConverted" to newTotalTokensConverted,
+                        "total_tokens_converted" to newTotalTokensConverted,
+                        "tokensConverted" to newTotalTokensConverted,
+                        "lastTokenConversionAt" to FieldValue.serverTimestamp(),
+                        "updatedAt" to FieldValue.serverTimestamp()
+                    ),
+                    com.google.firebase.firestore.SetOptions.merge()
+                ).await()
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to sync token conversion to Firestore: ${e.message}")
+            }
+
+            return@withContext ConvertResult.Success("Successfully converted $actualTokensDeducted Tokens to $convertedVt VT Tokens!")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to convert tokens locally", e)
-            return ConvertResult.Failure("Failed to convert tokens. Try again.")
+            return@withContext ConvertResult.Failure("Failed to convert tokens. Try again.")
         }
     }
 
@@ -2879,6 +3023,8 @@ class PlatformRepository(
 
     fun getTournamentById(id: String): Flow<Tournament?> {
         return tournaments.map { list -> list.find { it.id == id } }
+            .flowOn(Dispatchers.Default)
+            .distinctUntilChanged()
     }
 
     suspend fun observeLeaderboardRealtime() {
@@ -2908,9 +3054,50 @@ class PlatformRepository(
                     val userSnapshot = usersRef.child(uid).get().await()
                     if (userSnapshot.exists()) {
                         val fetchedUser = parseUserFromSnapshot(userSnapshot, uid)
-                        db.userDao().clearAll()
-                        db.userDao().insert(fetchedUser)
-                        Log.i(TAG, "User $uid successfully synced from Realtime Database: ${fetchedUser.username}")
+                        val localUser = db.userDao().getUserSync()
+                        val mergedUser = if (localUser != null && localUser.id == uid) {
+                            val maxConverted = maxOf(fetchedUser.totalTokensConverted, localUser.totalTokensConverted)
+                            val safeTokens = if (localUser.totalTokensConverted > fetchedUser.totalTokensConverted) {
+                                val diff = localUser.totalTokensConverted - fetchedUser.totalTokensConverted
+                                (fetchedUser.tokens - diff).coerceAtLeast(0).let { minOf(it, localUser.tokens) }
+                            } else if (fetchedUser.totalTokensConverted > localUser.totalTokensConverted) {
+                                fetchedUser.tokens
+                            } else {
+                                minOf(localUser.tokens, fetchedUser.tokens)
+                            }
+                            val safeBalance = maxOf(localUser.balance, fetchedUser.balance)
+                            val today = getTodayIstDate()
+                            fetchedUser.copy(
+                                balance = safeBalance,
+                                tokens = safeTokens,
+                                totalTokensConverted = maxConverted,
+                                loginStreak = maxOf(fetchedUser.loginStreak, localUser.loginStreak),
+                                lastLoginClaimDate = if (fetchedUser.lastLoginClaimDate.isNotBlank()) fetchedUser.lastLoginClaimDate else localUser.lastLoginClaimDate,
+                                dailyMissionsTokensClaimed = if (fetchedUser.lastMissionClaimDate == today && fetchedUser.dailyMissionsTokensClaimed > 0) {
+                                    if (localUser.lastMissionClaimDate == today) maxOf(fetchedUser.dailyMissionsTokensClaimed, localUser.dailyMissionsTokensClaimed) else fetchedUser.dailyMissionsTokensClaimed
+                                } else if (localUser.lastMissionClaimDate == today) {
+                                    localUser.dailyMissionsTokensClaimed
+                                } else {
+                                    0
+                                },
+                                lastMissionClaimDate = if (fetchedUser.lastMissionClaimDate == today) {
+                                    fetchedUser.lastMissionClaimDate
+                                } else if (localUser.lastMissionClaimDate == today) {
+                                    localUser.lastMissionClaimDate
+                                } else {
+                                    fetchedUser.lastMissionClaimDate
+                                },
+                                isFounder = fetchedUser.isFounder || localUser.isFounder,
+                                founderTier = if (fetchedUser.founderTier.isNotBlank()) fetchedUser.founderTier else localUser.founderTier,
+                                reservedTokens = maxOf(localUser.reservedTokens, fetchedUser.reservedTokens),
+                                isBanned = fetchedUser.isBanned || localUser.isBanned,
+                                isSuspended = fetchedUser.isSuspended || localUser.isSuspended
+                            )
+                        } else {
+                            fetchedUser
+                        }
+                        db.userDao().insert(mergedUser)
+                        Log.i(TAG, "User $uid successfully synced from Realtime Database: ${mergedUser.username}")
                     } else {
                         // Check if user exists in Firestore before creating a new one
                         var foundFirestoreUser: User? = null
@@ -2989,10 +3176,15 @@ class PlatformRepository(
                                 }
                             }
                             if (totalConverted > currentUser.totalTokensConverted) {
-                                val reconciled = currentUser.copy(totalTokensConverted = totalConverted)
+                                val tokensToDeduct = totalConverted - currentUser.totalTokensConverted
+                                val newTokens = (currentUser.tokens - tokensToDeduct).coerceAtLeast(0)
+                                val reconciled = currentUser.copy(
+                                    tokens = newTokens,
+                                    totalTokensConverted = totalConverted
+                                )
                                 db.userDao().update(reconciled)
                                 syncUserToRealtimeDb(reconciled)
-                                Log.i(TAG, "Reconciled total converted tokens for user $uid to $totalConverted")
+                                Log.i(TAG, "Reconciled total converted tokens for user $uid to $totalConverted (tokens: ${currentUser.tokens} -> $newTokens)")
                             }
                         }
                     }
@@ -3899,8 +4091,8 @@ class PlatformRepository(
                     )
                 } else {
                     existingUser = existingUser.copy(
-                        tokens = if (existingUser.tokens > 0) existingUser.tokens else fsTokens,
-                        balance = if (existingUser.balance > 0.0) existingUser.balance else fsBalance,
+                        tokens = existingUser.tokens,
+                        balance = existingUser.balance,
                         totalTokensConverted = maxOf(existingUser.totalTokensConverted, fsTotalConverted),
                         loginStreak = maxOf(existingUser.loginStreak, fsStreak),
                         lastLoginClaimDate = if (existingUser.lastLoginClaimDate.isNotBlank()) existingUser.lastLoginClaimDate else fsLastClaim
@@ -3917,8 +4109,19 @@ class PlatformRepository(
             if (existingUser == null) {
                 existingUser = localUser
             } else {
+                val maxConverted = maxOf(existingUser.totalTokensConverted, localUser.totalTokensConverted)
+                val safeTokens = if (localUser.totalTokensConverted > existingUser.totalTokensConverted) {
+                    val diff = localUser.totalTokensConverted - existingUser.totalTokensConverted
+                    (existingUser.tokens - diff).coerceAtLeast(0).let { minOf(it, localUser.tokens) }
+                } else if (existingUser.totalTokensConverted > localUser.totalTokensConverted) {
+                    existingUser.tokens
+                } else {
+                    minOf(localUser.tokens, existingUser.tokens)
+                }
                 existingUser = existingUser.copy(
-                    totalTokensConverted = maxOf(existingUser.totalTokensConverted, localUser.totalTokensConverted),
+                    tokens = safeTokens,
+                    balance = maxOf(existingUser.balance, localUser.balance),
+                    totalTokensConverted = maxConverted,
                     loginStreak = maxOf(existingUser.loginStreak, localUser.loginStreak),
                     lastLoginClaimDate = if (existingUser.lastLoginClaimDate.isNotBlank()) existingUser.lastLoginClaimDate else localUser.lastLoginClaimDate
                 )
@@ -4172,7 +4375,13 @@ class PlatformRepository(
             "tokens" to user.tokens,
             "tokenBalance" to user.tokens,
             "tokensBalance" to user.tokens,
+            "rewardTokens" to user.tokens,
+            "reward_tokens" to user.tokens,
             "activityPoints" to user.tokens,
+            "coins" to user.tokens,
+            "points" to user.tokens,
+            "token_balance" to user.tokens,
+            "tokens_balance" to user.tokens,
             "totalTokensConverted" to user.totalTokensConverted,
             "total_tokens_converted" to user.totalTokensConverted,
             "tokensConverted" to user.totalTokensConverted,
@@ -4405,12 +4614,31 @@ class PlatformRepository(
     private fun parseUserFromSnapshot(snapshot: DataSnapshot, uid: String): User {
         val username = snapshot.getStringSafe("username", "name").ifEmpty { "Player" }
         val phoneOrEmail = snapshot.getStringSafe("phoneOrEmail", "email")
-        val balance = snapshot.getDoubleSafe("balance", "walletBalance").let { if (it > 0.0) it else snapshot.getDoubleSafe("wallet_balance") }
-        val tokens = snapshot.getIntSafe("tokens", "tokenBalance", 0)
-            .let { if (it > 0) it else snapshot.getIntSafe("tokensBalance", "rewardTokens", 0) }
-            .let { if (it > 0) it else snapshot.getIntSafe("reward_tokens", "activityPoints", 0) }
-            .let { if (it > 0) it else snapshot.getIntSafe("coins", "points", 0) }
-            .let { if (it > 0) it else snapshot.getIntSafe("token_balance", "tokens_balance", 0) }
+        val balance = if (snapshot.hasChild("balance")) {
+            snapshot.getDoubleSafe("balance", defaultValue = 0.0)
+        } else if (snapshot.hasChild("walletBalance")) {
+            snapshot.getDoubleSafe("walletBalance", defaultValue = 0.0)
+        } else if (snapshot.hasChild("wallet_balance")) {
+            snapshot.getDoubleSafe("wallet_balance", defaultValue = 0.0)
+        } else {
+            0.0
+        }
+
+        val tokens = if (snapshot.hasChild("tokens")) {
+            snapshot.getIntSafe("tokens", defaultValue = 0)
+        } else if (snapshot.hasChild("tokenBalance")) {
+            snapshot.getIntSafe("tokenBalance", defaultValue = 0)
+        } else if (snapshot.hasChild("tokensBalance")) {
+            snapshot.getIntSafe("tokensBalance", defaultValue = 0)
+        } else if (snapshot.hasChild("rewardTokens")) {
+            snapshot.getIntSafe("rewardTokens", defaultValue = 0)
+        } else if (snapshot.hasChild("activityPoints")) {
+            snapshot.getIntSafe("activityPoints", defaultValue = 0)
+        } else if (snapshot.hasChild("token_balance")) {
+            snapshot.getIntSafe("token_balance", defaultValue = 0)
+        } else {
+            0
+        }
         val totalTokensConverted = snapshot.getIntSafe("totalTokensConverted", "total_tokens_converted", 0).let { if (it > 0) it else snapshot.getIntSafe("tokensConverted", null, 0) }
         val inGameName = snapshot.getStringSafe("inGameName", "ign")
         val freeFireId = snapshot.getStringSafe("freeFireId", "gameId")
@@ -4548,6 +4776,8 @@ class PlatformRepository(
      */
     fun getParticipants(tournamentId: String): Flow<List<com.example.data.model.TournamentParticipant>> {
         return db.tournamentParticipantDao().getParticipantsByTournament(tournamentId)
+            .flowOn(Dispatchers.IO)
+            .distinctUntilChanged()
     }
 
     /**
@@ -4555,6 +4785,8 @@ class PlatformRepository(
      */
     fun getMyParticipant(tournamentId: String, userId: String): Flow<com.example.data.model.TournamentParticipant?> {
         return db.tournamentParticipantDao().getParticipant(tournamentId, userId)
+            .flowOn(Dispatchers.IO)
+            .distinctUntilChanged()
     }
 
     /**
@@ -5126,6 +5358,19 @@ class PlatformRepository(
             ?: snapshot.child("bannersEnabled").getValue(Boolean::class.java)
             ?: snapshot.child("isBannersEnabled").getValue(Boolean::class.java) ?: false
 
+        val flagsMap = mutableMapOf<String, Boolean>()
+        val flagsSnap = if (snapshot.hasChild("feature_flags")) snapshot.child("feature_flags")
+            else if (snapshot.hasChild("featureFlags")) snapshot.child("featureFlags")
+            else if (snapshot.hasChild("features")) snapshot.child("features")
+            else null
+        if (flagsSnap != null && flagsSnap.exists()) {
+            for (child in flagsSnap.children) {
+                val key = child.key ?: continue
+                val value = child.getValue(Boolean::class.java) ?: true
+                flagsMap[key] = value
+            }
+        }
+
         _systemConfig.value = _systemConfig.value.copy(
             isMaintenance = isMaint,
             maintenanceTitle = if (title.isNotBlank()) title else _systemConfig.value.maintenanceTitle,
@@ -5136,8 +5381,39 @@ class PlatformRepository(
             updateUrl = if (updateUrl.isNotBlank()) updateUrl else _systemConfig.value.updateUrl,
             changelog = if (changelog.isNotBlank()) changelog else _systemConfig.value.changelog,
             showDeveloperModal = showDeveloperModal,
-            showBanners = showBanners
+            showBanners = showBanners,
+            featureFlags = if (flagsMap.isNotEmpty()) flagsMap else _systemConfig.value.featureFlags
         )
+    }
+
+    suspend fun toggleFeatureFlag(featureId: String, enabled: Boolean) {
+        withContext(Dispatchers.IO) {
+            try {
+                val updatedFlags = _systemConfig.value.featureFlags.toMutableMap()
+                updatedFlags[featureId] = enabled
+                _systemConfig.value = _systemConfig.value.copy(featureFlags = updatedFlags)
+
+                val updates = mapOf<String, Any>(
+                    "feature_flags/$featureId" to enabled,
+                    "featureFlags/$featureId" to enabled
+                )
+                rtdb.getReference("app_config").updateChildren(updates)
+                rtdb.getReference("system_config").updateChildren(updates)
+
+                val fsMap = mapOf<String, Any>(
+                    "feature_flags" to updatedFlags,
+                    "featureFlags" to updatedFlags
+                )
+                FirebaseFirestore.getInstance().collection("app_config").document("global")
+                    .set(fsMap, com.google.firebase.firestore.SetOptions.merge())
+                FirebaseFirestore.getInstance().collection("system_config").document("config")
+                    .set(fsMap, com.google.firebase.firestore.SetOptions.merge())
+
+                Log.d(TAG, "Feature flag $featureId set to $enabled in RTDB & Firestore.")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to toggle feature flag $featureId: ${e.message}")
+            }
+        }
     }
 
     suspend fun toggleShowBanners(enabled: Boolean) {

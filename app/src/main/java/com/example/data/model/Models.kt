@@ -370,7 +370,10 @@ data class SystemAppConfig(
     var showDeveloperModal: Boolean = true,
 
     @JsonNames("showBanners", "show_banners", "banners_enabled", "bannersEnabled", "isBannersEnabled")
-    var showBanners: Boolean = false
+    var showBanners: Boolean = false,
+
+    @JsonNames("featureFlags", "feature_flags", "features")
+    var featureFlags: Map<String, Boolean> = emptyMap()
 )
 
 enum class SituationPreviewType {

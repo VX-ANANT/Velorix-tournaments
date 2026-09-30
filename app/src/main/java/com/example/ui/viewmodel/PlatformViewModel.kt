@@ -36,6 +36,7 @@ import com.example.data.repository.WalletBreakdown
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.google.firebase.auth.FirebaseAuth
@@ -66,6 +67,8 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
     private val ongoingDeposits = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
 
     val userState: StateFlow<User?> = repository.user
+        .flowOn(Dispatchers.Default)
+        .distinctUntilChanged()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -73,6 +76,8 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
         )
 
     val transactions: StateFlow<List<Transaction>> = repository.transactions
+        .flowOn(Dispatchers.Default)
+        .distinctUntilChanged()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -80,6 +85,8 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
         )
 
     val tournaments: StateFlow<List<Tournament>> = repository.tournaments
+        .flowOn(Dispatchers.Default)
+        .distinctUntilChanged()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -88,13 +95,18 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
 
     val walletBreakdown: StateFlow<WalletBreakdown> = combine(userState, transactions) { u, txs ->
         repository.getWalletBreakdown(u, txs)
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = WalletBreakdown()
-    )
+    }
+        .flowOn(Dispatchers.Default)
+        .distinctUntilChanged()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = WalletBreakdown()
+        )
 
     val matchStats: StateFlow<List<com.example.data.model.MatchStat>> = repository.matchStats
+        .flowOn(Dispatchers.Default)
+        .distinctUntilChanged()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -102,6 +114,8 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
         )
 
     val leaderboard: StateFlow<List<LeaderboardPlayer>> = repository.leaderboard
+        .flowOn(Dispatchers.Default)
+        .distinctUntilChanged()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -109,6 +123,8 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
         )
 
     val searchHistory: StateFlow<List<String>> = repository.searchHistory
+        .flowOn(Dispatchers.Default)
+        .distinctUntilChanged()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -117,6 +133,8 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
 
 
     val missions: StateFlow<List<com.example.data.model.Mission>> = repository.missions
+        .flowOn(Dispatchers.Default)
+        .distinctUntilChanged()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -124,6 +142,8 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
         )
 
     val banners: StateFlow<List<Banner>> = repository.banners
+        .flowOn(Dispatchers.Default)
+        .distinctUntilChanged()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -131,6 +151,8 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
         )
 
     val notifications: StateFlow<List<com.example.data.model.AppNotification>> = repository.notifications
+        .flowOn(Dispatchers.Default)
+        .distinctUntilChanged()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -138,6 +160,8 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
         )
 
     val unreadNotificationCount: StateFlow<Int> = repository.unreadNotificationCount
+        .flowOn(Dispatchers.Default)
+        .distinctUntilChanged()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -145,6 +169,8 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
         )
 
     val userReports: StateFlow<List<com.example.data.model.UserReport>> = repository.userReports
+        .flowOn(Dispatchers.Default)
+        .distinctUntilChanged()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -205,6 +231,14 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             repository.toggleShowBanners(enabled)
             showToast(if (enabled) "In-App Banners ENABLED" else "In-App Banners DISABLED (Hidden)")
+        }
+    }
+
+    fun toggleFeatureFlag(featureId: String, enabled: Boolean) {
+        viewModelScope.launch {
+            repository.toggleFeatureFlag(featureId, enabled)
+            val status = if (enabled) "ENABLED" else "DISABLED"
+            showToast("Feature '$featureId' is now $status globally!")
         }
     }
 
@@ -355,6 +389,8 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
     }
 
     val liveMatchUpdates: StateFlow<Map<String, com.example.data.model.LiveMatchUpdate>> = repository.liveMatchUpdates
+        .flowOn(Dispatchers.Default)
+        .distinctUntilChanged()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -363,7 +399,7 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
 
     fun saveSearchQuery(query: String) {
         if (query.isNotBlank()) {
-            viewModelScope.launch {
+            viewModelScope.launch(Dispatchers.IO) {
                 repository.saveSearchQuery(query)
             }
         }
@@ -376,6 +412,8 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
         .flatMapLatest { id ->
             if (id == null) flowOf(null) else repository.getTournamentById(id)
         }
+        .flowOn(Dispatchers.Default)
+        .distinctUntilChanged()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -632,14 +670,14 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
 
     private val alertedTournaments = mutableSetOf<String>()
 
-    private fun checkUpcomingMatches() {
+    private suspend fun checkUpcomingMatches() = withContext(Dispatchers.Default) {
         val now = java.util.Calendar.getInstance()
         val currentHour = now.get(java.util.Calendar.HOUR_OF_DAY)
         val currentMinute = now.get(java.util.Calendar.MINUTE)
 
         tournaments.value.forEach { t ->
             if (t.joined && !alertedTournaments.contains(t.id)) {
-                // Parse "Today at 8:00 PM" loosely
+                // Parse "Today at 8:00 PM" loosely on CPU thread
                 try {
                     val timePart = t.dateTimeStr.split("at").lastOrNull()?.trim() ?: return@forEach
                     val sdf = java.text.SimpleDateFormat("h:mm a", java.util.Locale.US)
@@ -656,9 +694,7 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
                         val diff = matchTimeInMinutes - currentTimeInMinutes
                         if (diff in 0..15 && t.dateTimeStr.contains("Today", ignoreCase = true)) {
                             alertedTournaments.add(t.id)
-                            viewModelScope.launch {
-                                _toastMessage.emit("Reminder: ${t.title} starts in $diff mins!")
-                            }
+                            _toastMessage.emit("Reminder: ${t.title} starts in $diff mins!")
                         }
                     }
                 } catch (e: Exception) {
@@ -706,29 +742,25 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch(Dispatchers.IO) {
             repository.initializeMissions()
         }
-        // Upcoming matches polling Coroutine (delayed to ensure smooth cold start)
-        viewModelScope.launch(Dispatchers.IO) {
+        // Upcoming matches polling Coroutine (runs on Dispatchers.Default, zero main-thread work)
+        viewModelScope.launch(Dispatchers.Default) {
             delay(5000)
-            while (true) {
-                withContext(Dispatchers.Main) {
-                    checkUpcomingMatches()
-                }
+            while (coroutineContext.isActive) {
+                checkUpcomingMatches()
                 delay(60000) // check every minute
             }
         }
         
-        // VPN Polling Coroutine (delayed to prevent CPU contention during launch)
+        // VPN Polling Coroutine (runs on Dispatchers.IO, zero main-thread contention)
         viewModelScope.launch(Dispatchers.IO) {
             delay(8000)
-            while (true) {
+            while (coroutineContext.isActive) {
                 val hasVpn = checkVpn(application.applicationContext)
                 
                 // State change from OFF to ON
                 if (hasVpn && !_isVpnActive.value) {
                     _isVpnActive.value = true
-                    withContext(Dispatchers.Main) {
-                        handleVpnDetection()
-                    }
+                    handleVpnDetection()
                 } else if (!hasVpn && _isVpnActive.value) {
                     _isVpnActive.value = false
                 }
@@ -742,28 +774,22 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch(Dispatchers.IO) {
             repository.observeLeaderboardRealtime()
         }
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _isLoadingTournaments.value = true
             val isFirebaseAuthed = try {
-                withContext(Dispatchers.IO) {
-                    auth.currentUser != null
-                }
+                auth.currentUser != null
             } catch (e: Exception) { false }
             
             if (isFirebaseAuthed) {
                 _isLoggedIn.value = true
                 prefs.edit().putBoolean("is_logged_in", true).apply()
-                withContext(Dispatchers.IO) {
-                    repository.fetchDataFromServer(force = false)
-                }
+                repository.fetchDataFromServer(force = false)
                 val userItem = repository.getUserSync()
                 checkAndSetOnboardingStatus(userItem)
             } else {
                 prefs.edit().putBoolean("is_logged_in", false).apply()
                 _isLoggedIn.value = false
-                withContext(Dispatchers.IO) {
-                    repository.fetchDataFromServer(force = false)
-                }
+                repository.fetchDataFromServer(force = false)
             }
             _isLoadingTournaments.value = false
             _isCheckingAuth.value = false
@@ -859,7 +885,7 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun login(phoneOrEmail: String, passwordHash: String, loginMethod: String = "email", onComplete: () -> Unit = {}) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _isAuthLoading.value = true
             val phoneOrEmailT = phoneOrEmail.trim()
             val passwordHashT = passwordHash.trim()
@@ -870,17 +896,13 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
             }
             try {
                 kotlinx.coroutines.withTimeout(30000L) {
-                    withContext(Dispatchers.IO) {
-                        val firebaseIdentifier = if (loginMethod == "email") phoneOrEmailT else "$phoneOrEmailT@phone.velorix.com"
-                        auth.signInWithEmailAndPassword(firebaseIdentifier, passwordHashT).await()
-                        repository.fetchDataFromServer(force = true)
-                    }
+                    val firebaseIdentifier = if (loginMethod == "email") phoneOrEmailT else "$phoneOrEmailT@phone.velorix.com"
+                    auth.signInWithEmailAndPassword(firebaseIdentifier, passwordHashT).await()
+                    repository.fetchDataFromServer(force = true)
                 }
                 var userItem = repository.getUserSync()
                 if (userItem == null) {
-                    withContext(Dispatchers.IO) {
-                        repository.fetchDataFromServer(force = true)
-                    }
+                    repository.fetchDataFromServer(force = true)
                     userItem = repository.getUserSync()
                 }
                 if (userItem == null) {
@@ -896,9 +918,7 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
                         avatarIdx = 1,
                         dateOfJoining = System.currentTimeMillis()
                     )
-                    withContext(Dispatchers.IO) {
-                        repository.updateProfile(newUser)
-                    }
+                    repository.updateProfile(newUser)
                     userItem = newUser
                 }
                 val username = userItem.username
@@ -909,7 +929,9 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
                 _hasCompletedOnboarding.value = true
                 _isLoggedIn.value = true
                 _toastMessage.emit("Welcome back, ${username}!")
-                onComplete()
+                withContext(Dispatchers.Main) {
+                    onComplete()
+                }
             } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
                 _dbErrorDialog.value = "Login Timeout: Please check your internet connection."
             } catch (e: Exception) {
@@ -924,14 +946,16 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
      * Authoritative server-side referral validation query.
      */
     fun validateReferralCode(code: String, onResult: (Boolean, String) -> Unit) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val result = repository.validateReferralCodeServer(code)
-            onResult(result.first, result.second)
+            withContext(Dispatchers.Main) {
+                onResult(result.first, result.second)
+            }
         }
     }
 
     fun register(username: String, phoneOrEmail: String, passwordHash: String, loginMethod: String = "email", referralCode: String = "", onComplete: (Boolean) -> Unit = {}) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _isAuthLoading.value = true
             val phoneOrEmailT = phoneOrEmail.trim()
             val passwordHashT = passwordHash.trim()
@@ -948,16 +972,14 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
             }
             try {
                 kotlinx.coroutines.withTimeout(30000L) {
-                    withContext(Dispatchers.IO) {
-                        val firebaseIdentifier = if (loginMethod == "email") phoneOrEmailT else "$phoneOrEmailT@phone.velorix.com"
-                        auth.createUserWithEmailAndPassword(firebaseIdentifier, passwordHashT).await()
-                        repository.saveUserProfile(
-                            username = usernameT,
-                            phoneOrEmail = phoneOrEmailT,
-                            passwordHash = passwordHashT,
-                            referralCodeApplied = referralCode.trim().uppercase()
-                        )
-                    }
+                    val firebaseIdentifier = if (loginMethod == "email") phoneOrEmailT else "$phoneOrEmailT@phone.velorix.com"
+                    auth.createUserWithEmailAndPassword(firebaseIdentifier, passwordHashT).await()
+                    repository.saveUserProfile(
+                        username = usernameT,
+                        phoneOrEmail = phoneOrEmailT,
+                        passwordHash = passwordHashT,
+                        referralCodeApplied = referralCode.trim().uppercase()
+                    )
                 }
                 prefs.edit()
                     .putBoolean("is_logged_in", true)
@@ -966,13 +988,15 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
                 _hasCompletedOnboarding.value = false
                 _isLoggedIn.value = true
                 _toastMessage.emit("Account created! Complete your gaming profile.")
-                onComplete(true)
+                withContext(Dispatchers.Main) {
+                    onComplete(true)
+                }
             } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
                 _dbErrorDialog.value = "Registration Timeout: Please check your internet connection."
-                onComplete(false)
+                withContext(Dispatchers.Main) { onComplete(false) }
             } catch (e: Exception) {
                 _dbErrorDialog.value = "Registration Failed: ${e.message}"
-                onComplete(false)
+                withContext(Dispatchers.Main) { onComplete(false) }
             } finally {
                 _isAuthLoading.value = false
             }
@@ -980,21 +1004,21 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun verifyEmailOtp(email: String, otp: String, usernameForSignup: String, onComplete: () -> Unit) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _toastMessage.emit("Email Verification not directly supported via OTP in Firebase in this UI flow.")
-            onComplete()
+            withContext(Dispatchers.Main) { onComplete() }
         }
     }
 
     fun submitPhoneLogin(phone: String, onComplete: (Boolean) -> Unit = {}) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _toastMessage.emit("Verification code sent to $phone")
-            onComplete(true)
+            withContext(Dispatchers.Main) { onComplete(true) }
         }
     }
 
     fun verifyPhoneOtp(phone: String, otp: String, usernameForSignup: String? = null, onComplete: () -> Unit) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _isAuthLoading.value = true
             try {
                 if (repository.user.firstOrNull() == null) {
@@ -1004,7 +1028,7 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
                 prefs.edit().putBoolean("is_logged_in", true).apply()
                 _isLoggedIn.value = true
                 _toastMessage.emit("Welcome to Velorix, ${username}!")
-                onComplete()
+                withContext(Dispatchers.Main) { onComplete() }
             } catch (e: Exception) {
                 _dbErrorDialog.value = "OTP Verification Failed: ${e.message}"
             } finally {
@@ -1014,7 +1038,7 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun loginWithGoogle(context: android.content.Context, onComplete: () -> Unit = {}, onFallback: () -> Unit = {}) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _isAuthLoading.value = true
             android.util.Log.i("FirebaseAuth", "[loginWithGoogle] Starting Google Sign-In flow with CredentialManager...")
             try {
@@ -1040,7 +1064,7 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
                     if (credentialManager == null) {
                         android.util.Log.w("FirebaseAuth", "[loginWithGoogle] CredentialManager unavailable. Triggering fallback flow.")
                         _isAuthLoading.value = false
-                        onFallback()
+                        withContext(Dispatchers.Main) { onFallback() }
                         return@withTimeout
                     }
                     
@@ -1058,7 +1082,7 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
                     if (result == null) {
                         android.util.Log.w("FirebaseAuth", "[loginWithGoogle] CredentialManager returned null credential. Triggering fallback flow.")
                         _isAuthLoading.value = false
-                        onFallback()
+                        withContext(Dispatchers.Main) { onFallback() }
                         return@withTimeout
                     }
                     
@@ -1067,15 +1091,13 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
                         val idToken = googleIdTokenCredential.idToken
                         android.util.Log.i("FirebaseAuth", "[loginWithGoogle] Obtained Google ID Token successfully. Signing in to Firebase Auth...")
                         
-                        withContext(Dispatchers.IO) {
-                            val credential = GoogleAuthProvider.getCredential(idToken, null)
-                            val authResult = auth.signInWithCredential(credential).await()
-                            android.util.Log.i("FirebaseAuth", "[loginWithGoogle] Firebase Auth SUCCESS for UID: ${authResult.user?.uid}, Email: ${authResult.user?.email}")
-                        }
+                        val credential = GoogleAuthProvider.getCredential(idToken, null)
+                        val authResult = auth.signInWithCredential(credential).await()
+                        android.util.Log.i("FirebaseAuth", "[loginWithGoogle] Firebase Auth SUCCESS for UID: ${authResult.user?.uid}, Email: ${authResult.user?.email}")
                     } catch (e: Exception) {
                         android.util.Log.e("FirebaseAuth", "[loginWithGoogle] Firebase signInWithCredential FAILED: ${e.javaClass.simpleName} - ${e.message}", e)
                         _isAuthLoading.value = false
-                        onFallback()
+                        withContext(Dispatchers.Main) { onFallback() }
                         return@withTimeout
                     }
                     
@@ -1083,24 +1105,20 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
                     if (firebaseUser == null) {
                         android.util.Log.e("FirebaseAuth", "[loginWithGoogle] auth.currentUser is NULL after successful signInWithCredential!")
                         _isAuthLoading.value = false
-                        onFallback()
+                        withContext(Dispatchers.Main) { onFallback() }
                         return@withTimeout
                     }
 
                     android.util.Log.i("FirebaseAuth", "[loginWithGoogle] Active Firebase User verified -> UID: ${firebaseUser.uid}, DisplayName: ${firebaseUser.displayName}, Email: ${firebaseUser.email}")
 
-                    withContext(Dispatchers.IO) {
-                        android.util.Log.d("FirestoreUser", "[loginWithGoogle] Ensuring user document in Firestore for auth.uid: ${firebaseUser.uid}")
-                        repository.ensureFirestoreUserDocument(firebaseUser)
-                        repository.fetchDataFromServer(force = true)
-                    }
+                    android.util.Log.d("FirestoreUser", "[loginWithGoogle] Ensuring user document in Firestore for auth.uid: ${firebaseUser.uid}")
+                    repository.ensureFirestoreUserDocument(firebaseUser)
+                    repository.fetchDataFromServer(force = true)
                 }
                 if (_isAuthLoading.value) { // means fallback was not triggered
                     var userItem = repository.getUserSync()
                     if (userItem == null) {
-                        withContext(Dispatchers.IO) {
-                            repository.fetchDataFromServer(force = true)
-                        }
+                        repository.fetchDataFromServer(force = true)
                         userItem = repository.getUserSync()
                     }
                     if (userItem == null) {
@@ -1117,9 +1135,7 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
                             avatarIdx = 1,
                             dateOfJoining = System.currentTimeMillis()
                         )
-                        withContext(Dispatchers.IO) {
-                            repository.updateProfile(newUser)
-                        }
+                        repository.updateProfile(newUser)
                         userItem = newUser
                     }
                     val username = userItem.username
@@ -1131,7 +1147,9 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
                     _hasCompletedOnboarding.value = true
                     _isLoggedIn.value = true
                     _toastMessage.emit("Welcome back, ${username}!")
-                    onComplete()
+                    withContext(Dispatchers.Main) {
+                        onComplete()
+                    }
                 }
             } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
                 android.util.Log.e("FirebaseAuth", "[loginWithGoogle] Timeout (30s) reached during Google Sign-In flow.", e)
@@ -1142,7 +1160,7 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 android.util.Log.e("FirebaseAuth", "[loginWithGoogle] General failure during Google Sign-In flow: ${e.message}", e)
                 _isAuthLoading.value = false
-                onFallback()
+                withContext(Dispatchers.Main) { onFallback() }
             } finally {
                 if (_isAuthLoading.value) {
                     _isAuthLoading.value = false
@@ -1189,7 +1207,7 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun exportUserData() {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val userItem = repository.getUserSync()
             if (userItem != null) {
                 val updatedUser = userItem.copy(dataExported = true)
@@ -1200,11 +1218,9 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
     }
     
     fun requestAccountDeletion(reason: String, details: String) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             try {
-                withContext(Dispatchers.IO) {
-                    repository.submitAccountDeletionRequest(reason, details)
-                }
+                repository.submitAccountDeletionRequest(reason, details)
                 logout()
                 _toastMessage.emit("Account deletion request submitted. We will process it shortly.")
             } catch (e: Exception) {
@@ -1214,17 +1230,13 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun logout() {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             try {
-                withContext(Dispatchers.IO) {
-                    auth.signOut()
-                }
+                auth.signOut()
             } catch (e: Exception) {
                 android.util.Log.e("Auth", "Logout error", e)
             }
-            withContext(Dispatchers.IO) {
-                repositoryManager.onUserLogout()
-            }
+            repositoryManager.onUserLogout()
             prefs.edit().putBoolean("is_logged_in", false).apply()
             _isLoggedIn.value = false
         }
@@ -1232,30 +1244,30 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
 
     fun registerForTournament(id: String, onResult: (Boolean) -> Unit = {}) {
         if (!ongoingRegistrations.add(id)) {
-            viewModelScope.launch { _toastMessage.emit("Registration is already processing. Please wait...") }
+            viewModelScope.launch(Dispatchers.IO) { _toastMessage.emit("Registration is already processing. Please wait...") }
             onResult(false)
             return
         }
         val rateLimit = UserRateLimiter.checkAndRecord(UserRateLimiter.ActionType.TOURNAMENT_JOIN, id)
         if (rateLimit is UserRateLimiter.RateLimitResult.Denied) {
             ongoingRegistrations.remove(id)
-            viewModelScope.launch { _toastMessage.emit(rateLimit.reason) }
+            viewModelScope.launch(Dispatchers.IO) { _toastMessage.emit(rateLimit.reason) }
             startActionCooldown("tournament_join_$id", rateLimit.waitSeconds)
             onResult(false)
             return
         }
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             try {
                 joinMutex.withLock {
                     when (val result = repository.joinTournament(id)) {
                         is JoinResult.Success -> {
                             com.example.audio.SoundEffectManager.getInstance(getApplication()).playBillieGroove()
                             _toastMessage.emit(result.message)
-                            onResult(true)
+                            withContext(Dispatchers.Main) { onResult(true) }
                         }
                         is JoinResult.Failure -> {
                             _toastMessage.emit(result.message)
-                            onResult(false)
+                            withContext(Dispatchers.Main) { onResult(false) }
                         }
                     }
                 }
@@ -1268,17 +1280,17 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
     fun addWalletFunds(amount: Double, utrNumber: String = "", paymentRef: String = "") {
         val depositKey = utrNumber.trim().ifEmpty { "manual_${amount}_${System.currentTimeMillis()}" }
         if (!ongoingDeposits.add(depositKey)) {
-            viewModelScope.launch { _toastMessage.emit("Deposit request already being submitted. Please wait...") }
+            viewModelScope.launch(Dispatchers.IO) { _toastMessage.emit("Deposit request already being submitted. Please wait...") }
             return
         }
         val rateLimit = UserRateLimiter.checkAndRecord(UserRateLimiter.ActionType.WALLET_DEPOSIT)
         if (rateLimit is UserRateLimiter.RateLimitResult.Denied) {
             ongoingDeposits.remove(depositKey)
-            viewModelScope.launch { _toastMessage.emit(rateLimit.reason) }
+            viewModelScope.launch(Dispatchers.IO) { _toastMessage.emit(rateLimit.reason) }
             startActionCooldown("wallet_deposit", rateLimit.waitSeconds)
             return
         }
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             try {
                 depositMutex.withLock {
                     when (val result = repository.submitDepositRequest(amount, utrNumber, paymentRef)) {
@@ -1300,13 +1312,13 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun registerFounderPass(tierId: String, tokensReward: Int, priceInr: Double, paymentRef: String = "", onComplete: () -> Unit = {}) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             try {
                 val success = repository.registerFounderPass(tierId, tokensReward, priceInr, paymentRef)
                 if (success) {
                     com.example.audio.SoundEffectManager.getInstance(getApplication()).playSmoothStab()
                     _toastMessage.emit("Founder Pass Activated! Tier $tierId confirmed.")
-                    onComplete()
+                    withContext(Dispatchers.Main) { onComplete() }
                 }
             } catch (e: Exception) {
                 _dbErrorDialog.value = "Failed to activate Founder Pass: ${e.message}"
@@ -1317,11 +1329,11 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
     fun withdrawFunds(amount: Double, upiId: String = "") {
         val rateLimit = UserRateLimiter.checkAndRecord(UserRateLimiter.ActionType.WALLET_WITHDRAWAL)
         if (rateLimit is UserRateLimiter.RateLimitResult.Denied) {
-            viewModelScope.launch { _toastMessage.emit(rateLimit.reason) }
+            viewModelScope.launch(Dispatchers.IO) { _toastMessage.emit(rateLimit.reason) }
             startActionCooldown("wallet_withdrawal", rateLimit.waitSeconds)
             return
         }
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             when (val result = repository.withdrawFunds(amount, upiId)) {
                 is WithdrawResult.Success -> {
                     _toastMessage.emit(result.message)
@@ -1451,10 +1463,12 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
                         is JoinResult.Success -> {
                             com.example.audio.SoundEffectManager.getInstance(getApplication()).playBillieGroove()
                             _toastMessage.emit(result.message)
+                            withContext(Dispatchers.Main) {
+                                onResult(true, result.message)
+                            }
                             _showConfetti.value = true
                             delay(3000)
                             _showConfetti.value = false
-                            onResult(true, result.message)
                         }
                         is JoinResult.Failure -> {
                             _toastMessage.emit(result.message)

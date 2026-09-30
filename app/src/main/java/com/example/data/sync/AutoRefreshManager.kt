@@ -44,8 +44,8 @@ class AutoRefreshManager private constructor(private val context: Context) {
 
     companion object {
         private const val TAG = "AutoRefreshManager"
-        private const val PERIODIC_INTERVAL_MS = 35_000L // 35 seconds periodic background refresh
-        private const val DEBOUNCE_INTERVAL_MS = 5_000L  // 5 seconds debounce between immediate triggers
+        private const val PERIODIC_INTERVAL_MS = 120_000L // 2 minutes periodic background refresh (WebSockets handle live data)
+        private const val DEBOUNCE_INTERVAL_MS = 10_000L  // 10 seconds debounce between immediate triggers
 
         @Volatile
         private var INSTANCE: AutoRefreshManager? = null
