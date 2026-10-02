@@ -15,13 +15,57 @@
 package com.example.service
 
 import android.util.Log
+import com.example.data.db.AppDatabase
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 class MyFirebaseMessagingService : FirebaseMessagingService() {
+
+    private suspend fun isUserJoinedTournament(tourneyId: String): Boolean {
+        if (tourneyId.isBlank()) return false
+        try {
+            val db = AppDatabase.getDatabase(applicationContext)
+            val localUser = db.userDao().getUserSync()
+            val currentUid = localUser?.id ?: FirebaseAuth.getInstance().currentUser?.uid
+
+            // 1. Check local Room database cache
+            val localMatch = db.tournamentDao().getById(tourneyId)
+            if (localMatch?.joined == true) {
+                return true
+            }
+
+            // 2. Check local participant table
+            if (!currentUid.isNullOrBlank()) {
+                val participant = db.tournamentParticipantDao().getParticipantSync(tourneyId, currentUid)
+                if (participant != null) {
+                    return true
+                }
+            }
+
+            // 3. Fallback check against Firebase Realtime Database
+            if (!currentUid.isNullOrBlank()) {
+                val snapshot = FirebaseDatabase.getInstance().reference
+                    .child("tournaments")
+                    .child(tourneyId)
+                    .child("participants")
+                    .child(currentUid)
+                    .get()
+                    .await()
+                if (snapshot.exists()) {
+                    return true
+                }
+            }
+        } catch (e: Exception) {
+            Log.w("FCM_JOIN_CHECK", "Verification fallback error: ${e.message}")
+        }
+        return false
+    }
 
     override fun onNewToken(token: String) {
         super.onNewToken(token)
@@ -76,18 +120,29 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 )
             }
 
-            // 2. Room ID & Password Added / Released
+            // 2. Room ID & Password Added / Released (STRICT: ONLY JOINED PARTICIPANTS)
             type == "ROOM_CREDENTIALS" || type == "ROOM_RELEASED" || type == "ROOM_READY" || type == "ROOM_ALERT" -> {
                 val matchTitle = data["tournamentTitle"] ?: data["title"] ?: notification?.title ?: "Esports Match"
                 val roomId = data["roomId"] ?: data["room_id"] ?: ""
                 val roomPass = data["roomPassword"] ?: data["room_password"] ?: data["roomPass"] ?: ""
-                NotificationHelper.showRoomCredentialsNotification(
-                    context = this,
-                    tournamentTitle = matchTitle,
-                    roomId = roomId,
-                    roomPass = roomPass,
-                    tournamentId = tourneyId
-                )
+
+                CoroutineScope(Dispatchers.IO).launch {
+                    val isJoined = isUserJoinedTournament(tourneyId)
+                    if (isJoined) {
+                        NotificationHelper.showRoomCredentialsNotification(
+                            context = applicationContext,
+                            tournamentTitle = matchTitle,
+                            roomId = roomId,
+                            roomPass = roomPass,
+                            tournamentId = tourneyId
+                        )
+                    } else {
+                        Log.w(
+                            "FCM_SECURITY",
+                            "Suppressed room credentials for tournament '$tourneyId': User is NOT registered in this match."
+                        )
+                    }
+                }
             }
 
             // 3. Tournament Start Times & Pre-Match Reminders
@@ -96,14 +151,60 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 val roomId = data["roomId"] ?: data["room_id"] ?: ""
                 val roomPass = data["roomPassword"] ?: data["room_password"] ?: data["roomPass"] ?: ""
                 val timeRemaining = data["timeRemaining"] ?: data["startsIn"] ?: "15 minutes"
-                NotificationHelper.showTournamentStartingNotification(
+
+                CoroutineScope(Dispatchers.IO).launch {
+                    val isJoined = isUserJoinedTournament(tourneyId)
+                    if (isJoined) {
+                        NotificationHelper.showTournamentStartingNotification(
+                            context = applicationContext,
+                            tournamentTitle = matchTitle,
+                            roomId = roomId,
+                            roomPass = roomPass,
+                            timeRemaining = timeRemaining,
+                            tournamentId = tourneyId
+                        )
+                    } else {
+                        // User is not registered in this tournament: show upcoming tournament reminder without private room credentials
+                        NotificationHelper.showUpcomingRegistrationNotification(
+                            context = applicationContext,
+                            tournamentTitle = matchTitle,
+                            gameMode = data["game"] ?: "Free Fire",
+                            prizePoolText = data["prizePool"] ?: "",
+                            entryFee = data["entryFee"]?.toDoubleOrNull() ?: 0.0,
+                            tournamentId = tourneyId
+                        )
+                    }
+                }
+            }
+
+            // 3.5. Real-Time Wallet & Financial Updates (Deposits, Withdrawals, Winnings, Refunds)
+            type == "WALLET_UPDATE" || type == "WALLET_DEPOSIT" || type == "WALLET_WITHDRAWAL" ||
+            type == "WALLET_CREDIT" || type == "WALLET_REFUND" || type == "DEPOSIT_CONFIRMED" ||
+            type == "WITHDRAWAL_APPROVED" || type == "WINNINGS_CREDITED" || type == "WALLET" -> {
+                val amount = data["amount"]?.toDoubleOrNull() ?: 0.0
+                val newBalance = data["balance"]?.toDoubleOrNull() ?: data["newBalance"]?.toDoubleOrNull()
+                val txId = data["txId"] ?: data["transactionId"] ?: ""
+                val txType = data["txType"] ?: type
+
+                NotificationHelper.showWalletUpdateNotification(
                     context = this,
-                    tournamentTitle = matchTitle,
-                    roomId = roomId,
-                    roomPass = roomPass,
-                    timeRemaining = timeRemaining,
-                    tournamentId = tourneyId
+                    title = title,
+                    message = body,
+                    amount = amount,
+                    type = txType,
+                    newBalance = newBalance,
+                    txId = txId
                 )
+
+                // Trigger background refresh of wallet balances & transactions in local Room DB
+                CoroutineScope(Dispatchers.IO).launch {
+                    try {
+                        val repository = com.example.data.repository.RepositoryManager.getInstance(applicationContext).repository
+                        repository.fetchDataFromServer()
+                    } catch (e: Exception) {
+                        Log.d("FCM_WALLET", "Silent sync error: ${e.message}")
+                    }
+                }
             }
 
             // 4. Upcoming Tournament Registrations Open

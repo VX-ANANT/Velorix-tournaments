@@ -24,6 +24,7 @@ class RepositoryManager private constructor(context: Context) {
         private const val TAG = "RepositoryManager"
         const val KEY_TOURNAMENTS = "listener_tournaments"
         const val KEY_MATCHES = "listener_matches"
+        const val KEY_ALL_TOURNAMENTS = "listener_all_tournaments"
         const val KEY_LEADERBOARD = "listener_leaderboard"
         const val KEY_USER_PROFILE = "listener_user_profile"
         const val KEY_TRANSACTIONS = "listener_transactions"
@@ -36,6 +37,8 @@ class RepositoryManager private constructor(context: Context) {
         const val KEY_USER_REPORTS = "listener_user_reports"
         const val KEY_FS_TOURNAMENTS = "fs_listener_tournaments"
         const val KEY_FS_MATCHES = "fs_listener_matches"
+        const val KEY_FS_ALL_TOURNAMENTS = "fs_listener_all_tournaments"
+        const val KEY_FS_ADMIN_TOURNAMENTS = "fs_listener_admin_tournaments"
         const val KEY_FS_NOTIFICATIONS = "fs_listener_notifications"
 
         @Volatile
@@ -204,6 +207,11 @@ class RepositoryManager private constructor(context: Context) {
     suspend fun onUserLogout() {
         removeValueEventListener(KEY_USER_PROFILE)
         removeValueEventListener(KEY_TRANSACTIONS)
+        removeValueEventListener(KEY_USER_NOTIFICATIONS)
+        removeValueEventListener(KEY_DEPOSIT_REQUESTS)
+        removeValueEventListener(KEY_WITHDRAW_REQUESTS)
+        removeValueEventListener(KEY_USER_REPORTS)
+        removeFirestoreListener("fs_user_")
         repository.clearUserDatabase()
     }
 

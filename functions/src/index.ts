@@ -831,3 +831,283 @@ export const onTournamentRegistrationCreate = functions.database
 
     return { success: true, action: "ACCEPTED", gameId: gameId };
   });
+
+// ============================================================================
+// 7. REAL-TIME FCM NOTIFICATIONS ENGINE (CREDENTIALS, MATCHES, WALLET)
+// ============================================================================
+
+/**
+ * 7.1. Send Room ID & Password strictly to joined players when credentials are released or updated.
+ */
+export const onTournamentCredentialsUpdated = functions.database
+  .ref("/tournaments/{tournamentId}")
+  .onUpdate(async (change, context) => {
+    const before = change.before.val() || {};
+    const after = change.after.val() || {};
+    const { tournamentId } = context.params;
+
+    const beforeRoom = String(before.roomId || before.room_id || "");
+    const afterRoom = String(after.roomId || after.room_id || "");
+    const afterPass = String(after.roomPassword || after.room_password || after.roomPass || "");
+    const title = String(after.title || "Esports Tournament");
+
+    // Only trigger if roomId was newly added or changed to a non-empty value
+    const credentialsReleased = afterRoom.length > 0 && afterRoom !== beforeRoom;
+    if (!credentialsReleased) {
+      return null;
+    }
+
+    console.log(`[FCM] Room credentials released for tournament ${tournamentId}. Dispatching to joined players only.`);
+
+    // 1. Gather all joined player UIDs
+    const participantsObj = after.participants || {};
+    const joinedUids = Object.keys(participantsObj);
+
+    if (joinedUids.length === 0) {
+      console.log(`[FCM] No joined players for tournament ${tournamentId}. Skipping.`);
+      return null;
+    }
+
+    // 2. Collect FCM tokens for joined players
+    const tokenPromises = joinedUids.map(async (uid) => {
+      const snap = await rtdb.ref(`users/${uid}/fcmToken`).once("value");
+      return snap.val();
+    });
+    const tokens = (await Promise.all(tokenPromises)).filter((t): t is string => Boolean(t && t.length > 10));
+
+    // 3. Payload with credentials for joined players
+    const payloadData = {
+      type: "ROOM_CREDENTIALS",
+      tournamentId: tournamentId,
+      tournamentTitle: title,
+      roomId: afterRoom,
+      roomPassword: afterPass,
+      title: "Room ID & Password Released!",
+      body: `${title}: Room ID: ${afterRoom} | Password: ${afterPass}. Enter custom room now!`,
+    };
+
+    // 4. Send targeted multicast to joined player tokens
+    if (tokens.length > 0) {
+      try {
+        const response = await admin.messaging().sendEachForMulticast({
+          tokens: tokens,
+          data: payloadData,
+          notification: {
+            title: "Room ID & Password Released!",
+            body: `Room ID: ${afterRoom} | Pass: ${afterPass}. Enter custom room now!`,
+          },
+          android: {
+            priority: "high",
+            notification: {
+              channelId: "velorix_tournament_reminders",
+              priority: "max",
+            },
+          },
+        });
+        console.log(`[FCM] Dispatched credentials to ${response.successCount} joined players for ${tournamentId}.`);
+      } catch (err: any) {
+        console.error("[FCM] Multicast error:", err.message);
+      }
+    }
+
+    // 5. Also broadcast to tournament-specific topic for any actively listening joined clients
+    try {
+      await admin.messaging().send({
+        topic: `tournament_${tournamentId}`,
+        data: payloadData,
+        notification: {
+          title: "Room ID & Password Released!",
+          body: `Room ID: ${afterRoom} | Pass: ${afterPass}`,
+        },
+        android: {
+          priority: "high",
+          notification: {
+            channelId: "velorix_tournament_reminders",
+          },
+        },
+      });
+      console.log(`[FCM] Topic broadcast sent to tournament_${tournamentId}`);
+    } catch (topicErr: any) {
+      console.warn("[FCM] Topic broadcast warning:", topicErr.message);
+    }
+
+    return { sentToJoinedCount: joinedUids.length };
+  });
+
+/**
+ * 7.2. Real-Time Push Alerts on Tournament Start, Live Status & Winner Announcements
+ */
+export const onTournamentStatusUpdated = functions.database
+  .ref("/tournaments/{tournamentId}/status")
+  .onUpdate(async (change, context) => {
+    const beforeStatus = String(change.before.val() || "").toUpperCase();
+    const afterStatus = String(change.after.val() || "").toUpperCase();
+    const { tournamentId } = context.params;
+
+    if (beforeStatus === afterStatus) return null;
+
+    const tourneySnap = await rtdb.ref(`tournaments/${tournamentId}`).once("value");
+    const tournament = tourneySnap.val() || {};
+    const title = tournament.title || "Esports Championship";
+
+    // A. Match Starting / LIVE
+    if (afterStatus === "LIVE") {
+      const startPayload = {
+        type: "TOURNAMENT_START",
+        tournamentId: tournamentId,
+        tournamentTitle: title,
+        title: `Match is LIVE: ${title}!`,
+        body: "The custom room match has started! Check live standings.",
+      };
+
+      try {
+        await admin.messaging().send({
+          topic: `tournament_${tournamentId}`,
+          data: startPayload,
+          notification: {
+            title: `Match is LIVE: ${title}!`,
+            body: "The custom room match has started! Check live standings.",
+          },
+          android: {
+            priority: "high",
+            notification: {
+              channelId: "velorix_match_updates",
+            },
+          },
+        });
+      } catch (err: any) {
+        console.warn("[FCM] Live match push error:", err.message);
+      }
+    }
+
+    // B. Match Completed & Winnings / Prize Pool Settled
+    if (afterStatus === "COMPLETED") {
+      const winnerName = tournament.winnerName || tournament.winner || "Top Fraggers";
+      const prizePool = tournament.prizePool || 0;
+
+      const completionPayload = {
+        type: "PRIZE_ANNOUNCEMENT",
+        tournamentId: tournamentId,
+        tournamentTitle: title,
+        winner: String(winnerName),
+        prize: String(prizePool),
+        title: `Match Finished: ${title}`,
+        body: `Congratulations to ${winnerName}! Cash prizes have been credited to player wallets.`,
+      };
+
+      try {
+        await admin.messaging().send({
+          topic: `tournament_${tournamentId}`,
+          data: completionPayload,
+          notification: {
+            title: `Match Finished: ${title}`,
+            body: `Congratulations to ${winnerName}! Winnings credited to wallets.`,
+          },
+          android: {
+            priority: "high",
+            notification: {
+              channelId: "velorix_prize_announcements",
+            },
+          },
+        });
+      } catch (err: any) {
+        console.warn("[FCM] Completion prize push error:", err.message);
+      }
+    }
+
+    return null;
+  });
+
+/**
+ * 7.3. Real-Time Push Alerts on Wallet Updates (Deposit, Withdrawal, Winnings, Refund)
+ */
+export const onWalletTransactionCreated = functions.database
+  .ref("/transactions/{txId}")
+  .onCreate(async (snapshot, context) => {
+    const tx = snapshot.val() || {};
+    const { txId } = context.params;
+    const userId = tx.userId;
+
+    if (!userId) return null;
+
+    const amount = Number(tx.amount || 0);
+    const txType = String(tx.type || "WALLET_UPDATE").toUpperCase();
+    const detail = String(tx.detail || "Wallet transaction");
+
+    // Fetch user's current balance and FCM token
+    const userSnap = await rtdb.ref(`users/${userId}`).once("value");
+    const user = userSnap.val() || {};
+    const fcmToken = user.fcmToken;
+    const balance = user.balance || 0;
+
+    let notifTitle = "Wallet Balance Updated";
+    let notifBody = `${detail} (₹${amount.toFixed(0)})`;
+
+    if (txType.includes("ADD_FUNDS") || txType.includes("DEPOSIT")) {
+      notifTitle = `Deposit Confirmed! +₹${amount.toFixed(0)}`;
+      notifBody = `₹${amount.toFixed(0)} has been added to your playable balance. Current: ₹${balance.toFixed(0)}`;
+    } else if (txType.includes("WITHDRAWAL")) {
+      notifTitle = `Withdrawal Initiated: ₹${amount.toFixed(0)}`;
+      notifBody = `Your withdrawal request of ₹${amount.toFixed(0)} is being processed to UPI.`;
+    } else if (txType.includes("WINNINGS") || txType.includes("PRIZE")) {
+      notifTitle = `Cash Prize Credited! +₹${amount.toFixed(0)}`;
+      notifBody = `Congratulations! ₹${amount.toFixed(0)} tournament earnings have been credited to your wallet.`;
+    } else if (txType.includes("REFUND")) {
+      notifTitle = `Entry Fee Refunded: ₹${amount.toFixed(0)}`;
+      notifBody = `₹${amount.toFixed(0)} entry fee has been restored to your wallet balance.`;
+    }
+
+    const walletPayload = {
+      type: "WALLET_UPDATE",
+      txId: txId,
+      txType: txType,
+      amount: String(amount),
+      balance: String(balance),
+      title: notifTitle,
+      body: notifBody,
+    };
+
+    // Send directly to user's device token
+    if (fcmToken && fcmToken.length > 10) {
+      try {
+        await admin.messaging().send({
+          token: fcmToken,
+          data: walletPayload,
+          notification: {
+            title: notifTitle,
+            body: notifBody,
+          },
+          android: {
+            priority: "high",
+            notification: {
+              channelId: "velorix_wallet_updates",
+            },
+          },
+        });
+        console.log(`[FCM] Sent wallet transaction alert to User ${userId}`);
+      } catch (err: any) {
+        console.warn(`[FCM] Failed to send wallet push to token for User ${userId}:`, err.message);
+      }
+    }
+
+    // Also send to personal user topic
+    try {
+      await admin.messaging().send({
+        topic: `user_${userId}`,
+        data: walletPayload,
+        notification: {
+          title: notifTitle,
+          body: notifBody,
+        },
+        android: {
+          priority: "high",
+          notification: {
+            channelId: "velorix_wallet_updates",
+          },
+        },
+      });
+    } catch (_: any) {}
+
+    return null;
+  });
+

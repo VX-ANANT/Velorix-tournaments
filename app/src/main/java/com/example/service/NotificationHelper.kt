@@ -23,6 +23,7 @@ object NotificationHelper {
     const val CHANNEL_MATCH_UPDATES = "velorix_match_updates"
     const val CHANNEL_PRIZE_ANNOUNCEMENTS = "velorix_prize_announcements"
     const val CHANNEL_TOURNAMENT_REGISTRATIONS = "velorix_tournament_registrations"
+    const val CHANNEL_WALLET_UPDATES = "velorix_wallet_updates"
     const val CHANNEL_ENGAGEMENT = "velorix_engagement_alerts"
     const val CHANNEL_GENERAL = "velorix_general_channel"
 
@@ -66,6 +67,15 @@ object NotificationHelper {
                 enableVibration(true)
             }
 
+            val walletChannel = NotificationChannel(
+                CHANNEL_WALLET_UPDATES,
+                "Wallet & Payout Transactions",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Instant push alerts for deposits, withdrawals, refunds, and cash prizes credited"
+                enableVibration(true)
+            }
+
             val engagementChannel = NotificationChannel(
                 CHANNEL_ENGAGEMENT,
                 "Daily Esports & Activity Alerts",
@@ -83,7 +93,7 @@ object NotificationHelper {
             }
 
             notificationManager.createNotificationChannels(
-                listOf(reminderChannel, matchChannel, prizeChannel, regChannel, engagementChannel, generalChannel)
+                listOf(reminderChannel, matchChannel, prizeChannel, regChannel, walletChannel, engagementChannel, generalChannel)
             )
         }
     }
@@ -780,5 +790,72 @@ object NotificationHelper {
 
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(778899, notification)
+    }
+
+    /**
+     * Alert when wallet balance changes: deposit, withdrawal, refund, or match winnings.
+     */
+    fun showWalletUpdateNotification(
+        context: Context,
+        title: String = "",
+        message: String = "",
+        amount: Double = 0.0,
+        type: String = "WALLET_UPDATE",
+        newBalance: Double? = null,
+        txId: String = ""
+    ) {
+        createNotificationChannels(context)
+        val pendingIntent = createPendingIntent(context)
+
+        val formattedTitle = if (title.isNotBlank()) title else when (type.uppercase()) {
+            "ADD_FUNDS", "DEPOSIT", "WALLET_DEPOSIT" -> "Deposit Confirmed! +₹${amount.toInt()}"
+            "WITHDRAWAL", "WALLET_WITHDRAWAL" -> "Withdrawal Processed: ₹${amount.toInt()}"
+            "WINNINGS", "PRIZE_PAYOUT", "PRIZE" -> "Tournament Winnings Credited! +₹${amount.toInt()}"
+            "REFUND", "WALLET_REFUND" -> "Entry Fee Refunded: ₹${amount.toInt()}"
+            else -> "Wallet Balance Updated"
+        }
+
+        val formattedMessage = if (message.isNotBlank()) message else {
+            val balanceStr = if (newBalance != null && newBalance >= 0) " Current Balance: ₹${newBalance.toInt()}." else ""
+            when (type.uppercase()) {
+                "ADD_FUNDS", "DEPOSIT", "WALLET_DEPOSIT" -> "₹${amount.toInt()} has been successfully deposited into your Velorix wallet.$balanceStr"
+                "WITHDRAWAL", "WALLET_WITHDRAWAL" -> "Your withdrawal of ₹${amount.toInt()} has been initiated/approved.$balanceStr"
+                "WINNINGS", "PRIZE_PAYOUT", "PRIZE" -> "Congratulations! Your cash winnings of ₹${amount.toInt()} have been credited to your wallet.$balanceStr"
+                "REFUND", "WALLET_REFUND" -> "₹${amount.toInt()} has been refunded back to your playable balance.$balanceStr"
+                else -> "Your wallet has been updated with ₹${amount.toInt()}.$balanceStr"
+            }
+        }
+
+        NotificationEventBus.postEvent(
+            title = formattedTitle,
+            body = formattedMessage,
+            actionType = "WALLET"
+        )
+
+        persistNotificationToDb(
+            context,
+            AppNotification(
+                id = if (txId.isNotBlank()) "notif_tx_$txId" else UUID.randomUUID().toString(),
+                title = formattedTitle,
+                message = formattedMessage,
+                type = "WALLET_UPDATE",
+                timestamp = System.currentTimeMillis(),
+                isRead = false
+            )
+        )
+
+        val notification = NotificationCompat.Builder(context, CHANNEL_WALLET_UPDATES)
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle(formattedTitle)
+            .setContentText(formattedMessage)
+            .setSubText(OFFICIAL_SENDER)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(formattedMessage))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .build()
+
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.notify((System.currentTimeMillis() % 100000).toInt(), notification)
     }
 }

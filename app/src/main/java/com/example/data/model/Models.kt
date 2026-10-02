@@ -156,7 +156,9 @@ data class User(
     var isAgeVerified: Boolean = false,
     var legalConsentAccepted: Boolean = true,
     var legalConsentTimestamp: Long = 0L,
-    var coolingOffUntil: Long = 0L
+    var coolingOffUntil: Long = 0L,
+    @JsonNames("updatedAt", "updated_at", "lastModified") var updatedAt: Long = 0L,
+    @JsonNames("version", "profileVersion", "profile_version") var version: Long = 0L
 )
 
 @OptIn(ExperimentalSerializationApi::class)

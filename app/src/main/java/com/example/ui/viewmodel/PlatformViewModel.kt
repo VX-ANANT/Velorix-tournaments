@@ -801,13 +801,14 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch(Dispatchers.IO) {
             _isLoadingTournaments.value = true
             val isFirebaseAuthed = try {
-                auth.currentUser != null
+                val u = auth.currentUser
+                u != null && !u.isAnonymous && u.email != "guest_session@velorix.com" && prefs.getBoolean("is_logged_in", false)
             } catch (e: Exception) { false }
             
             if (isFirebaseAuthed) {
                 _isLoggedIn.value = true
                 prefs.edit().putBoolean("is_logged_in", true).apply()
-                repository.fetchDataFromServer(force = false)
+                repository.fetchDataFromServer(force = true)
                 val userItem = repository.getUserSync()
                 checkAndSetOnboardingStatus(userItem)
             } else {
@@ -926,24 +927,8 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
                 }
                 var userItem = repository.getUserSync()
                 if (userItem == null) {
-                    repository.fetchDataFromServer(force = true)
-                    userItem = repository.getUserSync()
-                }
-                if (userItem == null) {
                     val firebaseUser = auth.currentUser ?: throw Exception("Authentication session not found. Please try again.")
-                    val email = firebaseUser.email ?: if (phoneOrEmailT.contains("@")) phoneOrEmailT else ""
-                    val displayName = firebaseUser.displayName ?: if (email.isNotBlank()) email.substringBefore("@") else phoneOrEmailT.substringBefore("@")
-                    val newUser = User(
-                        id = firebaseUser.uid,
-                        username = displayName.ifBlank { "Player" },
-                        phoneOrEmail = phoneOrEmailT,
-                        fullName = displayName.ifBlank { "Player" },
-                        balance = 0.0,
-                        avatarIdx = 1,
-                        dateOfJoining = System.currentTimeMillis()
-                    )
-                    repository.updateProfile(newUser)
-                    userItem = newUser
+                    userItem = repository.ensureFirestoreUserDocument(firebaseUser)
                 }
                 val username = userItem.username
                 prefs.edit()
@@ -1142,25 +1127,8 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
                 if (_isAuthLoading.value) { // means fallback was not triggered
                     var userItem = repository.getUserSync()
                     if (userItem == null) {
-                        repository.fetchDataFromServer(force = true)
-                        userItem = repository.getUserSync()
-                    }
-                    if (userItem == null) {
                         val firebaseUser = auth.currentUser ?: throw Exception("Google authentication session not found.")
-                        val displayName = firebaseUser.displayName ?: firebaseUser.email?.substringBefore("@") ?: ("Player_" + (1000..9999).random())
-                        val email = firebaseUser.email ?: ""
-                        val newUser = User(
-                            id = firebaseUser.uid,
-                            username = displayName,
-                            phoneOrEmail = email,
-                            fullName = displayName,
-                            avatarUrl = firebaseUser.photoUrl?.toString() ?: "",
-                            balance = 0.0,
-                            avatarIdx = 1,
-                            dateOfJoining = System.currentTimeMillis()
-                        )
-                        repository.updateProfile(newUser)
-                        userItem = newUser
+                        userItem = repository.ensureFirestoreUserDocument(firebaseUser)
                     }
                     val username = userItem.username
                     android.util.Log.i("FirebaseAuth", "[loginWithGoogle] Google Sign-In pipeline COMPLETE. Mapped User ID: ${userItem.id}, Username: $username")
@@ -1260,9 +1228,11 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
             } catch (e: Exception) {
                 android.util.Log.e("Auth", "Logout error", e)
             }
+            repository.clearUserDatabase()
             repositoryManager.onUserLogout()
             prefs.edit().putBoolean("is_logged_in", false).apply()
             _isLoggedIn.value = false
+            repository.ensureFirebaseAuth()
         }
     }
 

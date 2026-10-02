@@ -39,6 +39,9 @@ interface TournamentDao {
 
     @Query("DELETE FROM tournaments")
     suspend fun clearAll()
+
+    @Query("UPDATE tournaments SET joined = 0")
+    suspend fun resetAllJoinedStatus()
 }
 
 @Dao
@@ -48,6 +51,12 @@ interface UserDao {
     @Query("SELECT * FROM users LIMIT 1")
     suspend fun getUserSync(): User?
 
+    @Query("SELECT * FROM users WHERE id = :userId LIMIT 1")
+    fun getUserById(userId: String): Flow<User?>
+
+    @Query("SELECT * FROM users WHERE id = :userId LIMIT 1")
+    suspend fun getUserByIdSync(userId: String): User?
+
     @Query("SELECT COUNT(*) FROM users")
     suspend fun getCount(): Int
 
@@ -56,6 +65,9 @@ interface UserDao {
 
     @Update
     suspend fun update(user: User)
+
+    @Query("DELETE FROM users WHERE id != :currentUserId")
+    suspend fun deleteOtherUsers(currentUserId: String)
     
     @Query("DELETE FROM users")
     suspend fun clearAll()
