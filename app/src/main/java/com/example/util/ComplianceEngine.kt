@@ -149,6 +149,16 @@ object ComplianceEngine {
         isEmulator: Boolean,
         isAdminBypass: Boolean = false
     ): ValidationResult {
+        // 0. Guest Session Check
+        val isGuest = user.id == "guest" || user.id.startsWith("guest") || user.phoneOrEmail == "guest_session@velorix.com" || user.phoneOrEmail.contains("guest", ignoreCase = true)
+        if (isGuest) {
+            return ValidationResult.Denied(
+                reason = "Authentication Required: Please sign in or create an operative account to join tournaments.",
+                statutoryCitation = "VeloRix Protocol 1.2 - Verified Identity Requirement",
+                auditTag = "REJECTED_GUEST_SESSION"
+            )
+        }
+
         // 1. Account Sanctions / Banned Status
         if (user.isBanned) {
             return ValidationResult.Denied(

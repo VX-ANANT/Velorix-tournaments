@@ -83,6 +83,10 @@ fun OnboardingScreen(
         else -> true
     }
 
+    androidx.activity.compose.BackHandler(enabled = currentStep > 0) {
+        currentStep--
+    }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,

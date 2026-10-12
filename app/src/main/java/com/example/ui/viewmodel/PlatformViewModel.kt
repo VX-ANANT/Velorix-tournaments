@@ -200,6 +200,10 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun toggleUserBan(userId: String, isBanned: Boolean, reason: String = "", banType: String = "PERMANENT") {
+        if (repository.isGuestSessionUid(userId)) {
+            showToast("Cannot ban guest session.")
+            return
+        }
         viewModelScope.launch {
             repository.toggleUserBan(userId, isBanned, reason, banType)
             showToast(if (isBanned) "Account SANCTIONED (Banned)" else "Account ban REVOKED")
@@ -207,6 +211,10 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun toggleUserSuspension(userId: String, isSuspended: Boolean, reason: String = "") {
+        if (repository.isGuestSessionUid(userId)) {
+            showToast("Cannot suspend guest session.")
+            return
+        }
         viewModelScope.launch {
             repository.toggleUserSuspension(userId, isSuspended, reason)
             showToast(if (isSuspended) "Account SUSPENDED" else "Account suspension LIFTED")
@@ -283,12 +291,18 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
 
     fun checkVpnStatus() {
         viewModelScope.launch(Dispatchers.IO) {
+            if (com.example.EnvUtils.isEmu() || !_isLoggedIn.value) {
+                _isVpnDetected.value = false
+                _isVpnActive.value = false
+                return@launch
+            }
             val detected = isVpnActive()
             _isVpnDetected.value = detected
         }
     }
 
     private fun isVpnActive(): Boolean {
+        if (com.example.EnvUtils.isEmu() || !_isLoggedIn.value) return false
         try {
             val cm = getApplication<Application>().getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
             if (cm != null) {
@@ -363,10 +377,10 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
             when (val result = repository.convertTokensToVt(tokens)) {
                 is com.example.data.repository.ConvertResult.Success -> {
                     _toastMessage.emit(result.message)
+                    onResult(true)
                     _showConfetti.value = true
                     kotlinx.coroutines.delay(2500)
                     _showConfetti.value = false
-                    onResult(true)
                 }
                 is com.example.data.repository.ConvertResult.Failure -> {
                     _toastMessage.emit(result.message)
@@ -645,13 +659,15 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
     val isVpnActive: StateFlow<Boolean> = _isVpnActive.asStateFlow()
 
     private fun checkVpn(context: Context): Boolean {
-        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        if (com.example.EnvUtils.isEmu() || !_isLoggedIn.value) return false
+        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
         val activeNetwork = connectivityManager.activeNetwork ?: return false
         val networkCapabilities = connectivityManager.getNetworkCapabilities(activeNetwork) ?: return false
         return networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
     }
 
     private fun handleVpnDetection() {
+        if (com.example.EnvUtils.isEmu() || !_isLoggedIn.value) return
         val currentCount = _vpnWarningCount.value
         if (currentCount >= 3) {
             _isVpnBanned.value = true
@@ -814,6 +830,9 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
             } else {
                 prefs.edit().putBoolean("is_logged_in", false).apply()
                 _isLoggedIn.value = false
+                _isVpnBanned.value = false
+                prefs.edit().remove("is_vpn_banned").apply()
+                repository.unbanGuestSessionIfBanned()
                 repository.fetchDataFromServer(force = false)
             }
             _isLoadingTournaments.value = false
@@ -1232,7 +1251,26 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
             repositoryManager.onUserLogout()
             prefs.edit().putBoolean("is_logged_in", false).apply()
             _isLoggedIn.value = false
+            _isVpnBanned.value = false
+            prefs.edit().remove("is_vpn_banned").apply()
+            repository.unbanGuestSessionIfBanned()
             repository.ensureFirebaseAuth()
+        }
+    }
+
+    fun continueAsGuest() {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.clearUserDatabase()
+            repositoryManager.onUserLogout()
+            prefs.edit().putBoolean("is_logged_in", false).apply()
+            _isLoggedIn.value = false
+            _isVpnBanned.value = false
+            prefs.edit().remove("is_vpn_banned").apply()
+            repository.unbanGuestSessionIfBanned()
+            repository.ensureFirebaseAuth()
+            withContext(Dispatchers.Main) {
+                _toastMessage.emit("Browsing in Guest Mode")
+            }
         }
     }
 

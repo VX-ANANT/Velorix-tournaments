@@ -128,17 +128,20 @@ fun WalletScreen(viewModel: PlatformViewModel) {
 
     val presetAmounts = listOf(50.0, 100.0, 200.0, 500.0)
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize(),
-        contentAlignment = Alignment.TopCenter
-    ) {
+    if (user == null) {
+        com.example.ui.components.WalletScreenSkeleton()
+    } else {
+        Box(
+            modifier = Modifier
+                .fillMaxSize(),
+            contentAlignment = Alignment.TopCenter
+        ) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
                 .widthIn(max = 760.dp)
                 .padding(horizontal = 16.dp),
-            contentPadding = PaddingValues(bottom = 90.dp)
+            contentPadding = PaddingValues(bottom = 120.dp)
         ) {
             // App Header Title
             item {
@@ -1265,6 +1268,7 @@ fun WalletScreen(viewModel: PlatformViewModel) {
                 }
             )
         }
+    }
     }
 }
 

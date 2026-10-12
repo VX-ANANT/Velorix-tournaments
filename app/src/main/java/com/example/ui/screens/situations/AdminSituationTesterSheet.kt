@@ -2,6 +2,7 @@ package com.example.ui.screens.situations
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -75,7 +76,36 @@ fun AdminSituationTesterSheet(
     var tourneyMap by remember { mutableStateOf("Bermuda") }
     var tourneyPerspective by remember { mutableStateOf("TPP") }
     var tourneyMaxSlots by remember { mutableStateOf("2") }
+    var tourneyImageUrl by remember { mutableStateOf("") }
     var isPublishingTourney by remember { mutableStateOf(false) }
+    var editingTournamentForImage by remember { mutableStateOf<Tournament?>(null) }
+    var isProcessingImage by remember { mutableStateOf(false) }
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    val tourneyImagePickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            isProcessingImage = true
+            val processed = com.example.util.TournamentImageHelper.processAndPersistPickedImage(context, uri)
+            tourneyImageUrl = processed?.preferredSyncUrl ?: uri.toString()
+            isProcessingImage = false
+        }
+    }
+
+    val tourneyEditImagePickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        val target = editingTournamentForImage
+        if (uri != null && target != null) {
+            val processed = com.example.util.TournamentImageHelper.processAndPersistPickedImage(context, uri)
+            val updatedUrl = processed?.preferredSyncUrl ?: uri.toString()
+            val updatedTournament = target.copy(imageUrl = updatedUrl)
+            viewModel.saveTournament(updatedTournament)
+            editingTournamentForImage = null
+        }
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -1352,17 +1382,24 @@ fun AdminSituationTesterSheet(
                             Text("Ban Current Account (RTDB)", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
                             Text("UID: ${user?.id?.take(10) ?: "None"}", fontSize = 11.sp, color = Color(0xFF94A3B8))
                         }
+                        val isGuest = user == null || user.id == "guest" || user.id.startsWith("guest") ||
+                                user.phoneOrEmail == "guest_session@velorix.com" ||
+                                user.phoneOrEmail.contains("guest", ignoreCase = true) ||
+                                user.username.contains("Guest", ignoreCase = true)
                         Switch(
-                            checked = user?.isBanned == true,
+                            checked = !isGuest && user?.isBanned == true,
+                            enabled = !isGuest,
                             onCheckedChange = { isChecked ->
                                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                                 val uid = user?.id ?: ""
-                                if (uid.isNotBlank()) {
+                                if (uid.isNotBlank() && !isGuest) {
                                     viewModel.toggleUserBan(
                                         userId = uid,
                                         isBanned = isChecked,
                                         reason = customBanReason
                                     )
+                                } else {
+                                    viewModel.showToast("Cannot ban a guest session account.")
                                 }
                             },
                             colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = Color(0xFFDC2626))
@@ -1407,17 +1444,24 @@ fun AdminSituationTesterSheet(
                         Text("Suspend Current Account", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
                         Text("Triggers temporary integrity hold", fontSize = 11.sp, color = Color(0xFF94A3B8))
                     }
+                    val isGuestSuspension = user == null || user.id == "guest" || user.id.startsWith("guest") ||
+                            user.phoneOrEmail == "guest_session@velorix.com" ||
+                            user.phoneOrEmail.contains("guest", ignoreCase = true) ||
+                            user.username.contains("Guest", ignoreCase = true)
                     Switch(
-                        checked = user?.isSuspended == true,
+                        checked = !isGuestSuspension && user?.isSuspended == true,
+                        enabled = !isGuestSuspension,
                         onCheckedChange = { isChecked ->
                             haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                             val uid = user?.id ?: ""
-                            if (uid.isNotBlank()) {
+                            if (uid.isNotBlank() && !isGuestSuspension) {
                                 viewModel.toggleUserSuspension(
                                     userId = uid,
                                     isSuspended = isChecked,
                                     reason = "Account under security review by administration."
                                 )
+                            } else {
+                                viewModel.showToast("Cannot suspend a guest session account.")
                             }
                         },
                         colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = Color(0xFFEA580C))
@@ -2217,6 +2261,83 @@ fun AdminSituationTesterSheet(
                             )
                         )
                     }
+                    Spacer(Modifier.height(8.dp))
+
+                    // Tournament Cover Image Upload / URL
+                    OutlinedTextField(
+                        value = tourneyImageUrl,
+                        onValueChange = { tourneyImageUrl = it },
+                        label = { Text("Cover Image URL (Direct HTTPS or pick image)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFF10B981),
+                            unfocusedBorderColor = Color(0xFF334155),
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White
+                        )
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                tourneyImagePickerLauncher.launch(
+                                    androidx.activity.result.PickVisualMediaRequest(
+                                        androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly
+                                    )
+                                )
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, Color(0xFF334155)),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Rounded.Image, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(16.dp))
+                            Spacer(Modifier.width(6.dp))
+                            Text("Pick Custom Image", fontSize = 11.sp, color = Color.White)
+                        }
+                        if (tourneyImageUrl.isNotBlank()) {
+                            TextButton(
+                                onClick = { tourneyImageUrl = "" }
+                            ) {
+                                Text("Clear", fontSize = 11.sp, color = Color(0xFFEF4444))
+                            }
+                        }
+                    }
+
+                    if (tourneyImageUrl.isNotBlank()) {
+                        Spacer(Modifier.height(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(110.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .border(1.dp, Color(0xFF10B981), RoundedCornerShape(8.dp))
+                        ) {
+                            AsyncImage(
+                                model = tourneyImageUrl,
+                                contentDescription = "Tournament Cover Preview",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                            Surface(
+                                shape = RoundedCornerShape(bottomStart = 8.dp),
+                                color = Color.Black.copy(alpha = 0.7f),
+                                modifier = Modifier.align(Alignment.TopEnd)
+                            ) {
+                                Text(
+                                    "LIVE PREVIEW",
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF10B981),
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
+
                     Spacer(Modifier.height(14.dp))
 
                     Button(
@@ -2246,6 +2367,7 @@ fun AdminSituationTesterSheet(
                                 killBounty = bounty,
                                 matchCategory = tourneyCategory,
                                 matchMode = tourneyMode,
+                                imageUrl = tourneyImageUrl.trim(),
                                 customRuleBadge = when {
                                     tourneyMode.contains("HEADSHOT", true) -> "HEADSHOT ONLY (NO BODY)"
                                     tourneyMode.contains("PER_KILL", true) && bounty > 0 -> "₹${bounty.toInt()} PER KILL BOUNTY"
@@ -2295,6 +2417,20 @@ fun AdminSituationTesterSheet(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(46.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color(0xFF1E293B))
+                            ) {
+                                AsyncImage(
+                                    model = match.displayImageUrl,
+                                    contentDescription = "Tournament Cover",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                            Spacer(Modifier.width(10.dp))
                             Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Surface(

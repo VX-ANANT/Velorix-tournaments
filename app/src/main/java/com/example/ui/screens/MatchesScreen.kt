@@ -58,6 +58,9 @@ import com.example.ui.theme.NeonGreen
 
 import com.example.ui.components.TournamentCardSkeleton
 import com.example.ui.viewmodel.PlatformViewModel
+import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextOverflow
 
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 
@@ -268,7 +271,7 @@ fun MatchesScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 90.dp)
+                    contentPadding = PaddingValues(bottom = 120.dp)
                 ) {
                     items(filteredUpcoming, key = { it.id }) { match ->
                         UpcomingJoinedRow(
@@ -368,7 +371,7 @@ fun MatchesScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 90.dp)
+                    contentPadding = PaddingValues(bottom = 120.dp)
                 ) {
                     items(filteredCompleted) { match ->
                         CompletedRow(match)
@@ -511,21 +514,42 @@ fun UpcomingJoinedRow(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Text(
-                text = match.title,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Black,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = "${match.mapType} • ${match.perspective} • ${match.dateTimeStr}",
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.SemiBold
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(54.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(MaterialTheme.colorScheme.surface)
+                ) {
+                    AsyncImage(
+                        model = match.displayImageUrl,
+                        contentDescription = "Tournament Thumbnail",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = match.title,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "${match.mapType} • ${match.perspective} • ${match.dateTimeStr}",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(14.dp))
 

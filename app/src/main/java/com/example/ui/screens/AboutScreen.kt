@@ -108,6 +108,10 @@ fun AboutScreen(
         isVisible = true
     }
 
+    androidx.activity.compose.BackHandler {
+        onNavigateBack()
+    }
+
     Scaffold(
         containerColor = screenBg,
         topBar = {

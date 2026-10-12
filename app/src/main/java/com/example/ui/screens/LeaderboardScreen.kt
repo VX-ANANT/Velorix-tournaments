@@ -218,7 +218,7 @@ fun LeaderboardScreen(viewModel: PlatformViewModel) {
                 .widthIn(max = 760.dp)
                 .align(Alignment.TopCenter)
                 .padding(horizontal = 16.dp),
-            contentPadding = PaddingValues(bottom = 90.dp)
+            contentPadding = PaddingValues(bottom = 120.dp)
         ) {
             // Header
             item {

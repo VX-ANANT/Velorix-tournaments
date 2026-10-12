@@ -49,6 +49,10 @@ fun LiquidGlassSettingsScreen(
 
     val velorixRed = Color(0xFFFF0060)
 
+    androidx.activity.compose.BackHandler {
+        onNavigateBack()
+    }
+
     Scaffold(
         containerColor = Color(0xFF000000),
         topBar = {

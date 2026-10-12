@@ -114,36 +114,34 @@ fun HomeScreen(
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val categories = listOf("All", "Survival Mode", "Clash Squad", "Lone Wolf", "Free Fire", "BGMI")
 
-    // Filtered tournaments calculation with derivedStateOf to prevent unnecessary recompositions
-    val filteredTournaments by remember {
-        derivedStateOf {
-            val q = searchQuery.trim()
-            val cat = selectedCategory
-            val fee = selectedFee
-            tournaments.filter { t ->
-                val matchesCategory = when (cat) {
-                    "All" -> true
-                    "Survival Mode" -> t.matchCategory.contains("SURVIVAL", ignoreCase = true) || 
-                                       t.matchCategory.contains("BR", ignoreCase = true) ||
-                                       t.matchCategory.contains("CLASSIC", ignoreCase = true) ||
-                                       (!t.matchCategory.contains("CLASH", ignoreCase = true) && !t.matchCategory.contains("LONE", ignoreCase = true) && (t.format.contains("SOLO", true) || t.format.contains("DUO", true) || t.format.contains("SQUAD", true)))
-                    "Clash Squad" -> t.matchCategory.contains("CLASH", ignoreCase = true) || 
-                                     t.matchCategory.contains("CS", ignoreCase = true) || 
-                                     t.title.contains("CS", ignoreCase = true) ||
-                                     t.format.contains("v", ignoreCase = true)
-                    "Lone Wolf" -> t.matchCategory.contains("LONE", ignoreCase = true) || 
-                                   t.title.contains("Lone Wolf", ignoreCase = true)
-                    "Free Fire" -> t.game.contains("Free", ignoreCase = true) || t.game.contains("FF", ignoreCase = true) || t.game.equals("Free Fire", ignoreCase = true)
-                    "BGMI" -> t.game.contains("BGMI", ignoreCase = true) || t.game.contains("PUBG", ignoreCase = true) || t.game.contains("Battleground", ignoreCase = true) || t.game.equals("BGMI", ignoreCase = true)
-                    else -> true
-                }
-                val matchesSearch = q.isBlank() || 
-                    t.title.contains(q, ignoreCase = true) ||
-                    t.game.contains(q, ignoreCase = true) ||
-                    t.mapType.contains(q, ignoreCase = true)
-                val matchesFee = fee == "All" || (fee == "Free" && t.entryFee == 0.0) || (fee == "Paid" && t.entryFee > 0.0)
-                matchesCategory && matchesSearch && matchesFee
+    // Filtered tournaments calculation strictly keyed on tournaments, query, category, and fee
+    val filteredTournaments = remember(tournaments, searchQuery, selectedCategory, selectedFee) {
+        val q = searchQuery.trim()
+        val cat = selectedCategory
+        val fee = selectedFee
+        tournaments.filter { t ->
+            val matchesCategory = when (cat) {
+                "All" -> true
+                "Survival Mode" -> t.matchCategory.contains("SURVIVAL", ignoreCase = true) || 
+                                   t.matchCategory.contains("BR", ignoreCase = true) ||
+                                   t.matchCategory.contains("CLASSIC", ignoreCase = true) ||
+                                   (!t.matchCategory.contains("CLASH", ignoreCase = true) && !t.matchCategory.contains("LONE", ignoreCase = true) && (t.format.contains("SOLO", true) || t.format.contains("DUO", true) || t.format.contains("SQUAD", true)))
+                "Clash Squad" -> t.matchCategory.contains("CLASH", ignoreCase = true) || 
+                                 t.matchCategory.contains("CS", ignoreCase = true) || 
+                                 t.title.contains("CS", ignoreCase = true) ||
+                                 t.format.contains("v", ignoreCase = true)
+                "Lone Wolf" -> t.matchCategory.contains("LONE", ignoreCase = true) || 
+                               t.title.contains("Lone Wolf", ignoreCase = true)
+                "Free Fire" -> t.game.contains("Free", ignoreCase = true) || t.game.contains("FF", ignoreCase = true) || t.game.equals("Free Fire", ignoreCase = true)
+                "BGMI" -> t.game.contains("BGMI", ignoreCase = true) || t.game.contains("PUBG", ignoreCase = true) || t.game.contains("Battleground", ignoreCase = true) || t.game.equals("BGMI", ignoreCase = true)
+                else -> true
             }
+            val matchesSearch = q.isBlank() || 
+                t.title.contains(q, ignoreCase = true) ||
+                t.game.contains(q, ignoreCase = true) ||
+                t.mapType.contains(q, ignoreCase = true)
+            val matchesFee = fee == "All" || (fee == "Free" && t.entryFee == 0.0) || (fee == "Paid" && t.entryFee > 0.0)
+            matchesCategory && matchesSearch && matchesFee
         }
     }
     val speechRecognizerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
@@ -184,7 +182,7 @@ fun HomeScreen(
                     .widthIn(max = 760.dp)
                     .align(Alignment.TopCenter)
                     .padding(horizontal = 16.dp),
-                contentPadding = PaddingValues(bottom = 90.dp)
+                contentPadding = PaddingValues(bottom = 120.dp)
             ) {
             // Top User profile and Wallet details bar
             item {
@@ -556,12 +554,8 @@ fun HomeScreen(
                 }
             } else {
                 items(filteredTournaments, key = { it.id }) { match ->
-                    val gameThumbnailUrl = remember(match.game) {
-                        if (match.game.contains("BGMI", true)) {
-                            "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80"
-                        } else {
-                            "https://images.unsplash.com/photo-1552820728-8b83bb6b773f?auto=format&fit=crop&w=800&q=80"
-                        }
+                    val gameThumbnailUrl = remember(match.imageUrl, match.game) {
+                        match.displayImageUrl
                     }
                     val joinCooldown by remember(actionCooldowns, match.id) {
                         derivedStateOf {
@@ -597,6 +591,10 @@ fun HomeScreen(
                         liveUpdate = liveUpdatesMap[match.id],
                         mapType = match.mapType,
                         perspective = match.perspective,
+                        dateTimeStr = match.dateTimeStr,
+                        status = match.status,
+                        game = match.game,
+                        rules = match.rules,
                         categoryBadge = match.displayCategoryBadge,
                         format = match.format,
                         matchCategory = match.matchCategory,

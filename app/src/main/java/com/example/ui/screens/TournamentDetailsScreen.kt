@@ -9,6 +9,9 @@ import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -125,28 +128,55 @@ fun TournamentDetailsScreen(
         label = "tournament_bg_blur"
     )
 
+    androidx.activity.compose.BackHandler {
+        if (showSlotPicker) {
+            showSlotPicker = false
+        } else if (showMatchPass) {
+            showMatchPass = false
+        } else {
+            onNavigateBack()
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
     ) {
         match?.let { t ->
+            val palette = com.example.util.rememberArtworkPalette(t.displayImageUrl, t.title)
+
+            // Ambient glowing backdrop behind header (BitChord main player style)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(380.dp)
+                    .graphicsLayer { alpha = 0.45f }
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                palette.accentColor.copy(alpha = 0.50f),
+                                palette.cardBackground.copy(alpha = 0.30f),
+                                Color.Transparent
+                            ),
+                            center = Offset(350f, 200f),
+                            radius = 900f
+                        )
+                    )
+            )
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(scrollState)
-                    .padding(bottom = 90.dp) // space for sticky button
+                    .padding(bottom = 100.dp) // space for sticky button
             ) {
-                // Parallax-style Gradient Header Cover
+                // Parallax-style Gradient Header Cover with Seamless Multi-Stop Blend (BitChord ArtworkMeshBackdrop style)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(280.dp)
+                        .height(310.dp)
                 ) {
-                    val gameThumbnailUrl = if (t.game.contains("BGMI", true)) {
-                        "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80"
-                    } else {
-                        "https://images.unsplash.com/photo-1552820728-8b83bb6b773f?auto=format&fit=crop&w=800&q=80"
-                    }
+                    val gameThumbnailUrl = t.displayImageUrl
 
                     coil.compose.AsyncImage(
                         model = gameThumbnailUrl,
@@ -155,51 +185,111 @@ fun TournamentDetailsScreen(
                         modifier = Modifier.fillMaxSize()
                     )
 
-                    // Overlay bottom shader
+                    // Multi-stop seamless artwork blend into background (BitChord ArtworkMeshBackdrop style)
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
                             .background(
                                 Brush.verticalGradient(
-                                    colors = listOf(
-                                        Color.Transparent,
-                                        MaterialTheme.colorScheme.background.copy(alpha = 0.8f),
-                                        MaterialTheme.colorScheme.background
-                                    ),
-                                    startY = 150f
+                                    colorStops = arrayOf(
+                                        0.00f to Color.Black.copy(alpha = 0.65f), // Top scrim for status bar & controls
+                                        0.22f to Color.Transparent,
+                                        0.45f to Color.Transparent,
+                                        0.68f to palette.cardBackground.copy(alpha = 0.55f),
+                                        0.88f to MaterialTheme.colorScheme.background.copy(alpha = 0.90f),
+                                        1.00f to MaterialTheme.colorScheme.background
+                                    )
                                 )
                             )
                     )
 
-                    // Top Bar back button icon overlay
-                    IconButton(
-                        onClick = onNavigateBack,
+                    // Top Bar back button and actions with frosted glass pill styling
+                    Row(
                         modifier = Modifier
-                            .padding(top = 40.dp, start = 16.dp)
-                            .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(50.dp))
+                            .fillMaxWidth()
+                            .statusBarsPadding()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Go Back",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
+                        IconButton(
+                            onClick = {
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                onNavigateBack()
+                            },
+                            modifier = Modifier
+                                .size(42.dp)
+                                .clip(RoundedCornerShape(percent = 50))
+                                .background(Color.Black.copy(alpha = 0.40f))
+                                .border(com.example.ui.components.GLASS_EDGE_WIDTH, com.example.ui.components.GLASS_EDGE_COLOR, RoundedCornerShape(percent = 50))
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Go Back",
+                                tint = Color.White
+                            )
+                        }
+
+                        // Right actions: Share / Reminder
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(
+                                onClick = {
+                                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                    simulateLocalNotification(context, t.title)
+                                },
+                                modifier = Modifier
+                                    .size(42.dp)
+                                    .clip(RoundedCornerShape(percent = 50))
+                                    .background(Color.Black.copy(alpha = 0.40f))
+                                    .border(com.example.ui.components.GLASS_EDGE_WIDTH, com.example.ui.components.GLASS_EDGE_COLOR, RoundedCornerShape(percent = 50))
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Notifications,
+                                    contentDescription = "Set Reminder",
+                                    tint = Color.White
+                                )
+                            }
+                        }
                     }
 
-                    // Game badge overlays
-                    Box(
+                    // Game badge overlays and tactical pills at bottom of header
+                    Row(
                         modifier = Modifier
                             .align(Alignment.BottomStart)
-                            .padding(16.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(if (t.game == "BGMI") MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary)
-                            .padding(horizontal = 14.dp, vertical = 6.dp)
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = t.game,
-                            color = if (t.game == "BGMI") MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onSurface,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Black
-                        )
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (t.game == "BGMI") Color(0xFFEAB308) else Color(0xFF0284C7))
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Text(
+                                text = t.game.uppercase(),
+                                color = Color.Black,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Black
+                            )
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color.Black.copy(alpha = 0.60f),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.20f))
+                        ) {
+                            Text(
+                                text = t.format.uppercase(),
+                                color = Color.White,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            )
+                        }
                     }
                 }
 
@@ -399,18 +489,17 @@ fun TournamentDetailsScreen(
                 }
             }
 
-            // Sticky Bottom Join/Action Bar
+            // Sticky Bottom Join/Action Bar (Floating frosted glass dock pill)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, MaterialTheme.colorScheme.background.copy(alpha = 0.95f), MaterialTheme.colorScheme.background)
-                        )
-                    )
-                    .padding(horizontal = 16.dp)
-                    .padding(bottom = 20.dp, top = 20.dp)
+                    .navigationBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .clip(RoundedCornerShape(26.dp))
+                    .background(Color(0xFF0F1420).copy(alpha = 0.88f))
+                    .border(com.example.ui.components.GLASS_EDGE_WIDTH, com.example.ui.components.GLASS_EDGE_COLOR, RoundedCornerShape(26.dp))
+                    .padding(horizontal = 18.dp, vertical = 12.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -531,6 +620,13 @@ fun TournamentDetailsScreen(
             }
         }
         
+        LaunchedEffect(showSuccessAnim) {
+            if (showSuccessAnim) {
+                com.example.util.VeloRixHaptics.tournamentJoinedSuccess(context)
+                com.example.audio.SoundEffectManager.getInstance(context).play(com.example.audio.SoundEffectManager.SfxType.BILLIE_GROOVE)
+            }
+        }
+
         AnimatedVisibility(
             visible = showSuccessAnim,
             enter = fadeIn(animationSpec = tween(300)) + androidx.compose.animation.scaleIn(initialScale = 0.8f, animationSpec = tween(500, easing = androidx.compose.animation.core.FastOutSlowInEasing)),
@@ -539,10 +635,18 @@ fun TournamentDetailsScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.8f)),
+                    .background(Color.Black.copy(alpha = 0.85f)),
                 contentAlignment = Alignment.Center
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                com.example.ui.components.ConfettiAnimation(
+                    modifier = Modifier.fillMaxSize(),
+                    isVisible = showSuccessAnim
+                )
+
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(24.dp)
+                ) {
                     Icon(
                         imageVector = Icons.Default.CheckCircle,
                         contentDescription = "Success",
@@ -551,18 +655,26 @@ fun TournamentDetailsScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "REGISTRATION SUCCESSFUL",
+                        text = "SLOT SECURED & REGISTERED!",
                         color = MaterialTheme.colorScheme.onSurface,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Black
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 1.sp
                     )
-                    Spacer(modifier = Modifier.height(32.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Match Room Credentials will be delivered before match start.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 13.sp,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(28.dp))
                     OutlinedButton(
                         onClick = { haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove); showSuccessAnim = false },
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
                     ) {
-                        Text("CLOSE")
+                        Text("AWESOME", fontWeight = FontWeight.Bold)
                     }
                 }
             }

@@ -341,9 +341,30 @@ fun BannedScreen(
 
             Spacer(Modifier.height(12.dp))
 
+            Button(
+                onClick = {
+                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                    viewModel.continueAsGuest()
+                    onLogout()
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
+                border = BorderStroke(1.dp, Color(0xFF334155))
+            ) {
+                Icon(Icons.Rounded.Person, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Continue as Guest", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
+            }
+
+            Spacer(Modifier.height(12.dp))
+
             OutlinedButton(
                 onClick = {
                     haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                    viewModel.logout()
                     onLogout()
                 },
                 modifier = Modifier

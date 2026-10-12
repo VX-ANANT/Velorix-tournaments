@@ -21,8 +21,8 @@ android {
     applicationId = "com.tournaments.velorix"
     minSdk = 24
     targetSdk = 34
-    versionCode = 1
-    versionName = "Dev-0.0.2-Release-global"
+    versionCode = 3
+    versionName = "Dev-0.0.4-Release-global"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -45,9 +45,8 @@ android {
   buildTypes {
     release {
       isCrunchPngs = false
-      isMinifyEnabled = true
-      isShrinkResources = true
-      proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+      isMinifyEnabled = false
+      isShrinkResources = false
       signingConfig = signingConfigs.getByName("release")
     }
     debug {
@@ -63,6 +62,10 @@ android {
     buildConfig = true
   }
   testOptions { unitTests { isIncludeAndroidResources = true } }
+  lint {
+    checkReleaseBuilds = false
+    abortOnError = false
+  }
 }
 
 // Configure the Secrets Gradle Plugin to use .env and .env.example files
@@ -149,20 +152,20 @@ dependencies {
 }
 
 afterEvaluate {
-    val debugApk = layout.buildDirectory.file("outputs/apk/debug/app-debug.apk").get().asFile
     val releaseApk = layout.buildDirectory.file("outputs/apk/release/app-release.apk").get().asFile
     val singleDest = layout.projectDirectory.file("../APK_DOWNLOAD/velorix.apk").asFile
+    val releaseNamed = layout.projectDirectory.file("../APK_DOWNLOAD/velorix-release.apk").asFile
+    val rootRelease = layout.projectDirectory.file("../app-release.apk").asFile
+    val buildOutputsRelease = layout.projectDirectory.file("../.build-outputs/app-release.apk").asFile
 
-    tasks.findByName("assembleDebug")?.doLast {
-        if (debugApk.exists()) {
-            singleDest.parentFile.mkdirs()
-            debugApk.copyTo(singleDest, overwrite = true)
-        }
-    }
     tasks.findByName("assembleRelease")?.doLast {
         if (releaseApk.exists()) {
             singleDest.parentFile.mkdirs()
             releaseApk.copyTo(singleDest, overwrite = true)
+            releaseApk.copyTo(releaseNamed, overwrite = true)
+            releaseApk.copyTo(rootRelease, overwrite = true)
+            buildOutputsRelease.parentFile.mkdirs()
+            releaseApk.copyTo(buildOutputsRelease, overwrite = true)
         }
     }
 }

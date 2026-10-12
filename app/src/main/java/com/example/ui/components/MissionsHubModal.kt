@@ -79,6 +79,7 @@ fun MissionsHubModal(
     val dailyClaimedToday = maxOf(userClaimedToday, claimedFromDailyMissions)
 
     val dailyCap = MissionsPool.DAILY_MISSION_REWARD_CAP_TOKENS
+    var showConfetti by remember { mutableStateOf(false) }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -95,6 +96,11 @@ fun MissionsHubModal(
                 .clickable(onClick = onDismiss),
             contentAlignment = Alignment.Center
         ) {
+            com.example.ui.components.ConfettiAnimation(
+                isVisible = showConfetti,
+                modifier = Modifier.fillMaxSize()
+            )
+
             Card(
                 modifier = Modifier
                     .fillMaxWidth(0.94f)
@@ -360,7 +366,12 @@ fun MissionsHubModal(
                         items(activeMissions, key = { it.id }) { mission ->
                             MissionDetailedCard(
                                 mission = mission,
-                                onClaim = { onClaimMission(mission) },
+                                onClaim = {
+                                    showConfetti = true
+                                    com.example.util.VeloRixHaptics.paymentSuccess(context)
+                                    com.example.audio.SoundEffectManager.getInstance(context).play(com.example.audio.SoundEffectManager.SfxType.BEATIT_POWER)
+                                    onClaimMission(mission)
+                                },
                                 onAction = {
                                     when (mission.actionType) {
                                         "MATCH_PLAY", "KILL_COUNT", "TOP_RANK" -> {

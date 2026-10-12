@@ -195,14 +195,11 @@ fun ProfileScreen(
         ) { padding ->
             val currentUser = user
             if (currentUser == null) {
-                Box(
+                com.example.ui.components.ProfileScreenSkeleton(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(padding),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                }
+                        .padding(padding)
+                )
             } else {
                 val user = currentUser
 
@@ -1488,7 +1485,7 @@ fun ProfileScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(40.dp))
+                Spacer(modifier = Modifier.height(120.dp))
             }
         }
     }

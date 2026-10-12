@@ -68,6 +68,11 @@ class RepositoryManager private constructor(context: Context) {
         com.example.data.sync.SyncManager.getInstance(applicationContext)
     }
 
+    // Centralized Firestore User Profile Synchronization Manager
+    val firestoreUserSyncManager: com.example.data.sync.FirestoreUserSyncManager by lazy {
+        com.example.data.sync.FirestoreUserSyncManager.getInstance(applicationContext, database)
+    }
+
     /**
      * Internal Data Holder for an active listener registration.
      */
@@ -205,6 +210,11 @@ class RepositoryManager private constructor(context: Context) {
      * - Cleans up user database
      */
     suspend fun onUserLogout() {
+        try {
+            firestoreUserSyncManager.stopAll()
+        } catch (e: Exception) {
+            Log.w(TAG, "Notice stopping firestoreUserSyncManager: ${e.message}")
+        }
         removeValueEventListener(KEY_USER_PROFILE)
         removeValueEventListener(KEY_TRANSACTIONS)
         removeValueEventListener(KEY_USER_NOTIFICATIONS)

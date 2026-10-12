@@ -13,11 +13,13 @@ import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import com.example.data.repository.PlatformRepository
 
 /**
  * FirestoreUserSyncManager
@@ -118,22 +120,36 @@ class FirestoreUserSyncManager private constructor(
             }.await()
 
             // 2. Persist authoritative user to local Room DB immediately
+            val localBeforeUpdate = db.userDao().getUserSync()
+            val authoritativeFinalUser = reconciledUser.copy(
+                passwordHash = if (reconciledUser.passwordHash.isNotBlank()) reconciledUser.passwordHash else (localBeforeUpdate?.passwordHash ?: ""),
+                sessionToken = if (reconciledUser.sessionToken.isNotBlank()) reconciledUser.sessionToken else (localBeforeUpdate?.sessionToken ?: "")
+            )
             db.userDao().deleteOtherUsers(userId)
-            db.userDao().insert(reconciledUser)
+            db.userDao().insert(authoritativeFinalUser)
+
+            // Sync daily mission state if claimed today
+            if (authoritativeFinalUser.lastLoginClaimDate == PlatformRepository.getTodayIstDate()) {
+                val currentMissions = db.missionDao().getAllMissions().firstOrNull() ?: emptyList()
+                val daily = currentMissions.find { it.id == "m_daily_checkin" }
+                if (daily != null && (!daily.isClaimed || !daily.isCompleted)) {
+                    db.missionDao().update(daily.copy(progress = 1, isCompleted = true, isClaimed = true))
+                }
+            }
 
             // 3. Replicate authoritative update to Realtime Database
             scope.launch(Dispatchers.IO) {
                 try {
-                    val rtdbMap = buildUserProfileMap(reconciledUser, reconciledUser.updatedAt, reconciledUser.version)
+                    val rtdbMap = buildUserProfileMap(authoritativeFinalUser, authoritativeFinalUser.updatedAt, authoritativeFinalUser.version)
                     rtdb.getReference("users").child(userId).updateChildren(rtdbMap).await()
-                    Log.i(TAG, "Profile update replicated to RTDB for user $userId (v${reconciledUser.version})")
+                    Log.i(TAG, "Profile update replicated to RTDB for user $userId (v${authoritativeFinalUser.version})")
                 } catch (e: Exception) {
                     Log.w(TAG, "Notice replicating profile to RTDB: ${e.message}")
                 }
             }
 
-            Log.i(TAG, "Authoritative profile update committed for ${reconciledUser.username} (v${reconciledUser.version}@${reconciledUser.updatedAt})")
-            return@withContext Result.success(reconciledUser)
+            Log.i(TAG, "Authoritative profile update committed for ${authoritativeFinalUser.username} (v${authoritativeFinalUser.version}@${authoritativeFinalUser.updatedAt})")
+            return@withContext Result.success(authoritativeFinalUser)
         } catch (e: Exception) {
             Log.e(TAG, "Failed authoritative profile update for $userId: ${e.message}", e)
             return@withContext Result.failure(e)
@@ -147,6 +163,14 @@ class FirestoreUserSyncManager private constructor(
      */
     fun startAuthoritativeUserSync(userId: String, onUserSynced: (User) -> Unit = {}): ListenerRegistration {
         stopAuthoritativeUserSync(userId)
+
+        val currentAuth = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+        val isGuest = userId.isBlank() || userId == "guest" || userId.startsWith("guest") ||
+                (currentAuth != null && currentAuth.uid == userId && (currentAuth.isAnonymous || currentAuth.email == "guest_session@velorix.com"))
+
+        if (isGuest) {
+            return ListenerRegistration { }
+        }
 
         val docRef = firestore.collection("users").document(userId)
         val registration = docRef.addSnapshotListener { snapshot, error ->
@@ -193,6 +217,14 @@ class FirestoreUserSyncManager private constructor(
 
                     db.userDao().deleteOtherUsers(userId)
                     db.userDao().insert(reconciledUser)
+
+                    if (reconciledUser.lastLoginClaimDate == PlatformRepository.getTodayIstDate()) {
+                        val currentMissions = db.missionDao().getAllMissions().firstOrNull() ?: emptyList()
+                        val daily = currentMissions.find { it.id == "m_daily_checkin" }
+                        if (daily != null && (!daily.isClaimed || !daily.isCompleted)) {
+                            db.missionDao().update(daily.copy(progress = 1, isCompleted = true, isClaimed = true))
+                        }
+                    }
 
                     Log.i(TAG, "Authoritative user profile synced across devices: ${reconciledUser.username} (v${reconciledUser.version}@${reconciledUser.updatedAt}, fromDevice=$lastWriterDevice)")
                     withContext(Dispatchers.Main) {
@@ -255,7 +287,16 @@ class FirestoreUserSyncManager private constructor(
             "tokens" to user.tokens,
             "tokenBalance" to user.tokens,
             "tokensBalance" to user.tokens,
+            "rewardTokens" to user.tokens,
+            "reward_tokens" to user.tokens,
+            "activityPoints" to user.tokens,
+            "coins" to user.tokens,
+            "points" to user.tokens,
+            "token_balance" to user.tokens,
+            "tokens_balance" to user.tokens,
             "totalTokensConverted" to user.totalTokensConverted,
+            "total_tokens_converted" to user.totalTokensConverted,
+            "tokensConverted" to user.totalTokensConverted,
             "matchesPlayed" to user.matchesPlayed,
             "totalWins" to user.totalWins,
             "totalKills" to user.totalKills,
@@ -346,11 +387,15 @@ class FirestoreUserSyncManager private constructor(
         val isFounder = doc.getBoolean("isFounder") ?: (founderTier.isNotBlank())
         val reservedTokens = (doc.get("reservedTokens") as? Number)?.toInt() ?: (local?.reservedTokens ?: 0)
 
-        val isBanned = doc.getBoolean("isBanned") ?: doc.getBoolean("banned") ?: (local?.isBanned ?: false)
-        val banReason = doc.getString("banReason") ?: doc.getString("ban_reason") ?: (local?.banReason ?: "")
-        val banType = doc.getString("banType") ?: (local?.banType ?: "PERMANENT")
-        val isSuspended = doc.getBoolean("isSuspended") ?: doc.getBoolean("suspended") ?: (local?.isSuspended ?: false)
-        val suspendReason = doc.getString("suspendReason") ?: (local?.suspendReason ?: "")
+        val isGuest = uid.isBlank() || uid == "guest" || uid.startsWith("guest") ||
+                phoneOrEmail.equals("guest_session@velorix.com", ignoreCase = true) ||
+                phoneOrEmail.contains("guest", ignoreCase = true) ||
+                username.equals("Guest", ignoreCase = true)
+        val isBanned = if (isGuest) false else (doc.getBoolean("isBanned") ?: doc.getBoolean("banned") ?: (local?.isBanned ?: false))
+        val banReason = if (isGuest) "" else (doc.getString("banReason") ?: doc.getString("ban_reason") ?: (local?.banReason ?: ""))
+        val banType = if (isGuest) "NONE" else (doc.getString("banType") ?: (local?.banType ?: "PERMANENT"))
+        val isSuspended = if (isGuest) false else (doc.getBoolean("isSuspended") ?: doc.getBoolean("suspended") ?: (local?.isSuspended ?: false))
+        val suspendReason = if (isGuest) "" else (doc.getString("suspendReason") ?: (local?.suspendReason ?: ""))
         val role = doc.getString("role") ?: (local?.role ?: "user")
 
         val updatedAt = (doc.get("updatedAtMillis") as? Number)?.toLong()

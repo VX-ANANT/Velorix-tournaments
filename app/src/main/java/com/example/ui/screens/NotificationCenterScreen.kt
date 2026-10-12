@@ -92,6 +92,10 @@ fun NotificationCenterScreen(
         }
     }
 
+    androidx.activity.compose.BackHandler {
+        onNavigateBack()
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {

@@ -53,10 +53,37 @@ data class Tournament(
     var matchMode: String = "PER_KILL", // "PER_KILL", "SURVIVAL", "HEADSHOT_ONLY", "BODY_DAMAGE_ON", "SNIPER_ONLY", "LIMITED_AMMO", "UNLIMITED_AMMO", "PISTOL_ONLY"
 
     @JsonNames("customRuleBadge", "custom_rule_badge", "ruleBadge", "badge", "ruleHighlight")
-    var customRuleBadge: String = "" // e.g. "ONLY HEADSHOT (NO BODY)", "PER KILL ₹50", "1v1 PRO DUEL"
+    var customRuleBadge: String = "", // e.g. "ONLY HEADSHOT (NO BODY)", "PER KILL ₹50", "1v1 PRO DUEL"
+
+    @JsonNames(
+        "imageUrl", "image_url", "bannerUrl", "banner_url", "image", "thumbnailUrl", "thumbnail_url",
+        "photoUrl", "photo_url", "tournamentImage", "customImage", "imgUrl", "banner",
+        "coverImage", "cover_image", "cover", "poster", "posterUrl", "poster_url",
+        "bannerImage", "banner_image", "picture", "pictureUrl", "photo", "thumbnail",
+        "thumb", "thumbUrl", "tournamentCover", "tournament_cover", "gameImage", "game_image",
+        "imageUri", "image_uri"
+    )
+    var imageUrl: String = ""
 ) {
     val isFull: Boolean
         get() = filledSlots >= maxSlots
+
+    val displayImageUrl: String
+        get() {
+            val clean = imageUrl.trim().trim('"', '\'')
+            if (clean.isNotBlank() && clean != "null" && clean != "undefined" && clean != "{}") {
+                return if (clean.startsWith("/9j/") || clean.startsWith("iVBORw0KGgo")) {
+                    "data:image/jpeg;base64,$clean"
+                } else {
+                    clean
+                }
+            }
+            return if (game.contains("BGMI", ignoreCase = true)) {
+                "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80"
+            } else {
+                "https://images.unsplash.com/photo-1552820728-8b83bb6b773f?auto=format&fit=crop&w=800&q=80"
+            }
+        }
 
     val displayCategoryBadge: String
         get() {

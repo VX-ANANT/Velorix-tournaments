@@ -34,16 +34,126 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.util.rememberArtworkPalette
 val DeepSpaceBlack = Color(0xFF09090B)
 val CardSurfaceLight = Color(0xFF18181B)
+
+/**
+ * Glowing tactical blinking/pulsing LED indicator with radiating neon halo aura.
+ */
+@Composable
+fun BlinkingLedIndicator(
+    color: Color,
+    modifier: Modifier = Modifier,
+    size: androidx.compose.ui.unit.Dp = 6.5.dp,
+    isBlinking: Boolean = true,
+    pulseSpeedMs: Int = 1100
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "blinking_led")
+    val alphaAnim by if (isBlinking) {
+        infiniteTransition.animateFloat(
+            initialValue = 0.35f,
+            targetValue = 1.0f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = pulseSpeedMs / 2, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "led_alpha"
+        )
+    } else {
+        remember { mutableFloatStateOf(1f) }
+    }
+
+    val glowScale by if (isBlinking) {
+        infiniteTransition.animateFloat(
+            initialValue = 0.85f,
+            targetValue = 1.6f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = pulseSpeedMs / 2, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "led_scale"
+        )
+    } else {
+        remember { mutableFloatStateOf(1.15f) }
+    }
+
+    Box(
+        modifier = modifier.size(size * 2),
+        contentAlignment = Alignment.Center
+    ) {
+        // Outer pulsing neon aura
+        Box(
+            modifier = Modifier
+                .size(size * 1.55f)
+                .graphicsLayer {
+                    scaleX = glowScale
+                    scaleY = glowScale
+                    alpha = (alphaAnim * 0.40f).coerceIn(0f, 1f)
+                }
+                .clip(androidx.compose.foundation.shape.CircleShape)
+                .background(color)
+        )
+        // Core bright LED bulb
+        Box(
+            modifier = Modifier
+                .size(size)
+                .graphicsLayer {
+                    alpha = if (isBlinking) alphaAnim.coerceAtLeast(0.65f) else 1f
+                }
+                .clip(androidx.compose.foundation.shape.CircleShape)
+                .background(color)
+                .border(0.75.dp, Color.White.copy(alpha = 0.75f), androidx.compose.foundation.shape.CircleShape)
+        )
+    }
+}
+
 private data class TacticalBadgeStyle(
     val text: String,
     val bgColor: Color,
     val borderColor: Color,
     val textColor: Color
+)
+
+@Composable
+fun TournamentCard(
+    tournament: com.example.data.model.Tournament,
+    modifier: Modifier = Modifier,
+    liveUpdate: com.example.data.model.LiveMatchUpdate? = null,
+    joinCooldownSeconds: Int = 0,
+    isGlassCard: Boolean = false,
+    liquidGlassConfig: com.example.data.model.LiquidGlassConfig = com.example.data.model.LiquidGlassConfig(),
+    onClick: () -> Unit,
+    onJoinClick: () -> Unit
+) = TournamentCard(
+    thumbnailUrl = tournament.displayImageUrl,
+    title = tournament.title,
+    entryFee = tournament.entryFee,
+    prizePool = tournament.prizePool,
+    filledSlots = tournament.filledSlots,
+    maxSlots = tournament.maxSlots,
+    mapType = tournament.mapType,
+    perspective = tournament.perspective,
+    modifier = modifier,
+    dateTimeStr = tournament.dateTimeStr,
+    status = tournament.status,
+    game = tournament.game,
+    rules = tournament.rules,
+    categoryBadge = tournament.displayCategoryBadge,
+    format = tournament.format,
+    matchCategory = tournament.matchCategory,
+    matchMode = tournament.matchMode,
+    killBounty = tournament.killBounty,
+    isJoined = tournament.joined,
+    joinCooldownSeconds = joinCooldownSeconds,
+    liveUpdate = liveUpdate,
+    isGlassCard = isGlassCard,
+    liquidGlassConfig = liquidGlassConfig,
+    onClick = onClick,
+    onJoinClick = onJoinClick
 )
 
 @Composable
@@ -57,6 +167,13 @@ fun TournamentCard(
     mapType: String,
     perspective: String,
     modifier: Modifier = Modifier,
+    dateTimeStr: String = "",
+    status: String = "UPCOMING",
+    game: String = "",
+    rules: String = "",
+    characterSkill: Boolean? = null,
+    gunAttributes: Boolean? = null,
+    limitedAmmo: Boolean? = null,
     categoryBadge: String = "",
     format: String = "SOLO",
     matchCategory: String = "BATTLE_ROYALE",
@@ -71,7 +188,6 @@ fun TournamentCard(
     onJoinClick: () -> Unit
 ) {
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
-    val palette = rememberArtworkPalette(imageUrl = thumbnailUrl, title = title)
     val isFull by remember(filledSlots, maxSlots) {
         derivedStateOf { filledSlots >= maxSlots }
     }
@@ -82,8 +198,59 @@ fun TournamentCard(
         }
     }
 
+    val displayTimeText = remember(dateTimeStr) {
+        when {
+            dateTimeStr.isNotBlank() -> dateTimeStr
+            else -> "Today at 8:00 PM"
+        }
+    }
+
+    // Smart detection of major room rules and specs
+    val isSkillOn: Boolean = remember(characterSkill, game, rules, matchMode, title, categoryBadge) {
+        if (characterSkill != null) return@remember characterSkill
+        val lower = "$rules $matchMode $title $categoryBadge".lowercase()
+        when {
+            lower.contains("no skill") || lower.contains("skill off") || lower.contains("skills off") || lower.contains("skill: off") || lower.contains("skill: no") || lower.contains("headshot_only") || lower.contains("only head") -> false
+            game.contains("BGMI", true) || title.contains("BGMI", true) -> false
+            else -> true
+        }
+    }
+
+    val isGunAttrOn: Boolean = remember(gunAttributes, rules, matchMode, title) {
+        if (gunAttributes != null) return@remember gunAttributes
+        val lower = "$rules $matchMode $title".lowercase()
+        lower.contains("gun attr: on") || lower.contains("gun attribute: on") || lower.contains("skins on")
+    }
+
+    val isLimitedAmmo: Boolean = remember(limitedAmmo, rules, matchMode, title) {
+        if (limitedAmmo != null) return@remember limitedAmmo
+        val lower = "$rules $matchMode $title".lowercase()
+        !lower.contains("unlimited ammo") && !lower.contains("ammo: unlimited") && !matchMode.equals("UNLIMITED_AMMO", true)
+    }
+
+    val isHeadshotOnly: Boolean = remember(matchMode, title, rules, categoryBadge) {
+        val lower = "$rules $matchMode $title $categoryBadge".lowercase()
+        lower.contains("headshot") || lower.contains("only head")
+    }
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val remindMeClick = remember(context, title, haptic) {
+        {
+            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+            try {
+                val intent = android.content.Intent(android.content.Intent.ACTION_INSERT).apply {
+                    data = android.provider.CalendarContract.Events.CONTENT_URI
+                    putExtra(android.provider.CalendarContract.Events.TITLE, "VeloRix Tournament: $title")
+                    putExtra(android.provider.CalendarContract.Events.DESCRIPTION, "Match Time: $displayTimeText. Format: $format. Prize: VT ${prizePool.toInt()}")
+                }
+                context.startActivity(intent)
+            } catch (e: Exception) {
+                android.widget.Toast.makeText(context, "Match scheduled for $displayTimeText", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
     // Compute tactical badge styling with remember
-    val badgeStyle = remember(categoryBadge, matchCategory, matchMode, killBounty, format, palette.accentColor) {
+    val badgeStyle = remember(categoryBadge, matchCategory, matchMode, killBounty, format) {
         val tacticalBadgeText = when {
             categoryBadge.isNotBlank() -> categoryBadge
             matchCategory.equals("CLASH_SQUAD", true) || matchCategory.equals("CS", true) -> when (matchMode.uppercase()) {
@@ -115,7 +282,7 @@ fun TournamentCard(
             isLoneWolf -> Color(0xEE7C2D12)
             isClashSquad -> Color(0xEE0C4A6E)
             isSurvival -> Color(0xEE064E3B)
-            else -> palette.accentColor.copy(alpha = 0.20f)
+            else -> Color(0x330284C7)
         }
         val border = when {
             isHeadshotOnly -> Color(0xFFEF4444)
@@ -123,7 +290,7 @@ fun TournamentCard(
             isLoneWolf -> Color(0xFFF97316)
             isClashSquad -> Color(0xFF38BDF8)
             isSurvival -> Color(0xFF10B981)
-            else -> palette.accentColor.copy(alpha = 0.85f)
+            else -> Color(0xFF38BDF8)
         }
         val text = when {
             isHeadshotOnly -> Color(0xFFFCA5A5)
@@ -131,7 +298,7 @@ fun TournamentCard(
             isLoneWolf -> Color(0xFFFDBA74)
             isClashSquad -> Color(0xFFBAE6FD)
             isSurvival -> Color(0xFF6EE7B7)
-            else -> Color(0xFFFFFFFF) // 180° opposite contrast text, NO YELLOW
+            else -> Color.White
         }
         TacticalBadgeStyle(tacticalBadgeText, bg, border, text)
     }
@@ -140,58 +307,43 @@ fun TournamentCard(
         isGlassCard && liquidGlassConfig.enableLiquidGlass && liquidGlassConfig.glassCards
     }
 
-    val cardContainerColor = remember(isGlassEnabled, liquidGlassConfig.surfaceTint, liquidGlassConfig.surfaceOpacity, liquidGlassConfig.vibrancy, palette.cardBackground) {
+    // Solid, opaque premium dark gaming card surface - prevents muddy background bleed through
+    val cardContainerColor = remember(isGlassEnabled, liquidGlassConfig.surfaceTint) {
         if (isGlassEnabled) {
-            val baseTint = when (liquidGlassConfig.surfaceTint.lowercase()) {
-                "crimson" -> Color(0xFF1E030B)
-                "midnight" -> Color(0xFF091122)
-                "clear" -> Color(0xFF06080E)
-                "emerald" -> Color(0xFF031A0F)
-                "gold" -> Color(0xFF1E1704)
-                else -> Color(0xFF0E131F)
+            when (liquidGlassConfig.surfaceTint.lowercase()) {
+                "crimson" -> Color(0xFF180A12)
+                "midnight" -> Color(0xFF0C1322)
+                "emerald" -> Color(0xFF091813)
+                "gold" -> Color(0xFF18150A)
+                else -> Color(0xFF0F1420)
             }
-            baseTint.copy(alpha = (liquidGlassConfig.surfaceOpacity * 0.9f * liquidGlassConfig.vibrancy).coerceIn(0.12f, 0.88f))
         } else {
-            palette.cardBackground
+            Color(0xFF0F1420)
         }
     }
 
-    val cardBorder = remember(isGlassEnabled, liquidGlassConfig.lensRefractionAmount, liquidGlassConfig.chromaticAberration) {
+    val cardBorder = remember(isGlassEnabled, liquidGlassConfig.lensRefractionAmount) {
         if (isGlassEnabled) {
-            val specular = liquidGlassConfig.lensRefractionAmount.coerceIn(0.05f, 0.5f)
-            val borderColors = if (liquidGlassConfig.chromaticAberration) {
-                listOf(
-                    Color(0xFF38BDF8).copy(alpha = (specular * 1.3f).coerceIn(0.1f, 0.6f)),
-                    Color.White.copy(alpha = (specular * 0.9f).coerceIn(0.08f, 0.5f)),
-                    Color(0xFFF43F5E).copy(alpha = (specular * 0.5f).coerceIn(0.05f, 0.35f)),
-                    Color.White.copy(alpha = (specular * 0.2f).coerceIn(0.02f, 0.15f))
+            val specular = liquidGlassConfig.lensRefractionAmount.coerceIn(0.1f, 0.45f)
+            BorderStroke(
+                1.dp,
+                Brush.verticalGradient(
+                    listOf(
+                        Color(0xFF38BDF8).copy(alpha = (specular * 1.5f).coerceIn(0.2f, 0.7f)),
+                        Color(0xFF1E293B),
+                        Color(0xFF0F172A)
+                    )
                 )
-            } else {
-                listOf(
-                    Color.White.copy(alpha = (specular * 1.2f).coerceIn(0.1f, 0.55f)),
-                    Color.White.copy(alpha = (specular * 0.2f).coerceIn(0.02f, 0.15f))
-                )
-            }
-            BorderStroke(1.dp, Brush.verticalGradient(borderColors))
+            )
         } else {
-            BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))
+            BorderStroke(1.dp, Color(0xFF1E283C))
         }
     }
 
-    val cardTitleColor = remember(isGlassEnabled, liquidGlassConfig.glassTextColor, palette.highContrastText) {
-        if (isGlassEnabled) {
-            when (liquidGlassConfig.glassTextColor.lowercase()) {
-                "platinum" -> Color(0xFFE2E8F0)
-                "adaptive" -> Color(0xFFF1F5F9)
-                else -> Color.White
-            }
-        } else {
-            palette.highContrastText
-        }
-    }
+    val cardTitleColor = Color.White
 
     val cardElevation = remember(isGlassEnabled, liquidGlassConfig.depthEffect) {
-        if (isGlassEnabled && liquidGlassConfig.depthEffect) 8.dp else 0.dp
+        if (isGlassEnabled && liquidGlassConfig.depthEffect) 6.dp else 2.dp
     }
 
     // Memoized text formatting
@@ -210,93 +362,114 @@ fun TournamentCard(
         }
     }
 
+    val interactionSource = remember { MutableInteractionSource() }
+    val isCardPressed by interactionSource.collectIsPressedAsState()
+    val cardSpringScale by animateFloatAsState(
+        targetValue = if (isCardPressed) 0.965f else 1f,
+        animationSpec = spring(dampingRatio = 0.75f, stiffness = 420f),
+        label = "cardSpringScale"
+    )
+
     Card(
         modifier = modifier
             .fillMaxWidth()
             .padding(bottom = 16.dp)
+            .graphicsLayer {
+                scaleX = cardSpringScale
+                scaleY = cardSpringScale
+            }
             .shadow(
                 elevation = cardElevation,
-                shape = RoundedCornerShape(24.dp),
-                ambientColor = Color.Black.copy(alpha = 0.35f),
-                spotColor = Color.Black.copy(alpha = 0.5f)
+                shape = RoundedCornerShape(22.dp),
+                ambientColor = Color.Black.copy(alpha = 0.5f),
+                spotColor = Color.Black.copy(alpha = 0.6f)
             )
-            .clip(RoundedCornerShape(24.dp))
-            .drawBehind {
-                if (isGlassEnabled) {
-                    val glareHeight = size.height * liquidGlassConfig.lensRefractionHeight.coerceIn(0.2f, 0.9f)
-                    val glareAlpha = (liquidGlassConfig.lensRefractionAmount * 0.35f).coerceIn(0.02f, 0.18f)
-                    drawRoundRect(
-                        brush = Brush.verticalGradient(
-                            0.0f to Color.White.copy(alpha = glareAlpha),
-                            0.65f to Color.White.copy(alpha = glareAlpha * 0.2f),
-                            1.0f to Color.Transparent
-                        ),
-                        size = androidx.compose.ui.geometry.Size(size.width, glareHeight),
-                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(48f, 48f)
-                    )
-                }
+            .clip(RoundedCornerShape(22.dp))
+            .clickable(
+                interactionSource = interactionSource,
+                indication = androidx.compose.foundation.LocalIndication.current
+            ) {
+                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                onClick()
             }
             .testTag("custom_tournament_card"),
         colors = CardDefaults.cardColors(containerColor = cardContainerColor),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(22.dp),
         border = cardBorder,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // Thumbnail Image Container (tappable to view tournament details)
+            // Thumbnail Image Container (Crisp, high-definition banner with NO color bleed)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(180.dp)
-                    .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = androidx.compose.foundation.LocalIndication.current
-                    ) {
-                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                        onClick()
-                    }
+                    .height(160.dp)
+                    .clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
             ) {
                 val context = androidx.compose.ui.platform.LocalContext.current
                 val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
                 val imageRequest = remember(thumbnailUrl, context, lifecycleOwner) {
+                    val cleanUrl = thumbnailUrl.trim().trim('"', '\'')
+                    val model = when {
+                        cleanUrl.startsWith("/9j/") || cleanUrl.startsWith("iVBORw0KGgo") -> "data:image/jpeg;base64,$cleanUrl"
+                        cleanUrl.isNotBlank() && cleanUrl != "null" && cleanUrl != "undefined" -> cleanUrl
+                        else -> if (format.contains("BGMI", true) || title.contains("BGMI", true)) {
+                            "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80"
+                        } else {
+                            "https://images.unsplash.com/photo-1552820728-8b83bb6b773f?auto=format&fit=crop&w=800&q=80"
+                        }
+                    }
                     coil.request.ImageRequest.Builder(context)
-                        .data(thumbnailUrl)
+                        .data(model)
                         .lifecycle(lifecycleOwner)
                         .crossfade(true)
-                        .memoryCacheKey(thumbnailUrl)
-                        .diskCacheKey(thumbnailUrl)
                         .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
                         .diskCachePolicy(coil.request.CachePolicy.ENABLED)
                         .size(coil.size.Size(720, 360))
                         .build()
                 }
 
-                // Main Game Background Image
+                // Main Game Background Image - Crisp and sharp banner
                 coil.compose.AsyncImage(
                     model = imageRequest,
                     contentDescription = "Game Thumbnail",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                 )
-                // Gradient Uncover Overlay: Smoothly uncovers the artwork above and dissolves into cardContainerColor below
+
+                // Smooth dissolving bottom blend into card body (BitChord artwork blend style)
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .height(48.dp)
                         .background(
                             Brush.verticalGradient(
-                                0.00f to Color.Black.copy(alpha = 0.35f),
-                                0.20f to Color.Transparent,
-                                0.40f to Color.Transparent,
-                                0.65f to cardContainerColor.copy(alpha = 0.45f),
-                                0.82f to cardContainerColor.copy(alpha = 0.88f),
-                                0.96f to cardContainerColor.copy(alpha = 0.98f),
-                                1.00f to cardContainerColor
+                                colorStops = arrayOf(
+                                    0.0f to Color.Transparent,
+                                    0.55f to cardContainerColor.copy(alpha = 0.65f),
+                                    1.0f to cardContainerColor
+                                )
                             )
                         )
                 )
 
-                // Top Badges Row: Left = Heavy Tactical Mode Badge, Right = Match Status
+                // Subtle Top Vignette strictly for badge legibility
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(55.dp)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Black.copy(alpha = 0.65f),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                )
+
+                // Top Badges Row: Left = Tactical Mode Badge, Right = Match Status
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -304,11 +477,11 @@ fun TournamentCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Left: Tactical Category Badge (Unmissable for players)
+                    // Left: Tactical Category Badge
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = badgeStyle.bgColor,
-                        border = BorderStroke(1.5.dp, badgeStyle.borderColor)
+                        color = Color(0xDD0A0F1D),
+                        border = BorderStroke(1.dp, badgeStyle.borderColor.copy(alpha = 0.8f))
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
@@ -331,163 +504,515 @@ fun TournamentCard(
                         }
                     }
 
-                    // Right: Status BADGE
-                    if (liveUpdate != null) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(50.dp))
-                                .background(Color.Red.copy(alpha = 0.9f))
-                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                    // Right: Match Status Badge with Blinking Light Indicator
+                    if (liveUpdate != null || status.equals("LIVE", true)) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xEEDC2626),
+                            border = BorderStroke(1.dp, Color(0xFFEF4444))
                         ) {
-                            Text(
-                                text = "LIVE",
-                                color = Color.White,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Row(
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                BlinkingLedIndicator(
+                                    color = Color.White,
+                                    size = 5.5.dp,
+                                    isBlinking = true,
+                                    pulseSpeedMs = 650
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "LIVE NOW",
+                                    color = Color.White,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = 0.5.sp
+                                )
+                            }
                         }
                     } else if (isJoined) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(50.dp))
-                                .background(Color(0xFF10B981))
-                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xDD064E3B),
+                            border = BorderStroke(1.dp, Color(0xFF10B981))
                         ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                BlinkingLedIndicator(
+                                    color = Color(0xFF10B981),
+                                    size = 5.5.dp,
+                                    isBlinking = false
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "JOINED",
+                                    color = Color(0xFF6EE7B7),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = 0.5.sp
+                                )
+                            }
+                        }
+                    } else if (isFull) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xDD1E293B),
+                            border = BorderStroke(1.dp, Color(0xFF475569))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(5.5.dp)
+                                        .clip(androidx.compose.foundation.shape.CircleShape)
+                                        .background(Color(0xFF94A3B8))
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "SLOTS FULL",
+                                    color = Color(0xFF94A3B8),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    } else if (progress >= 0.85f) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xEE78350F),
+                            border = BorderStroke(1.dp, Color(0xFFF59E0B))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                BlinkingLedIndicator(
+                                    color = Color(0xFFF59E0B),
+                                    size = 5.5.dp,
+                                    isBlinking = true,
+                                    pulseSpeedMs = 750
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "CLOSING SOON",
+                                    color = Color(0xFFFDE68A),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = 0.5.sp
+                                )
+                            }
+                        }
+                    } else {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xDD064E3B),
+                            border = BorderStroke(1.dp, Color(0xFF059669))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                BlinkingLedIndicator(
+                                    color = Color(0xFF10B981),
+                                    size = 5.5.dp,
+                                    isBlinking = true,
+                                    pulseSpeedMs = 1200
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "OPEN",
+                                    color = Color(0xFF6EE7B7),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Bottom Banner Overlay: Schedule pill on left, Game brand badge on right
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Schedule Tag
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xEE0A0F1D),
+                        border = BorderStroke(1.dp, Color(0x5538BDF8))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            Icon(
+                                imageVector = androidx.compose.ui.graphics.vector.ImageVector.vectorResource(com.example.R.drawable.ic_iconsax_timer),
+                                contentDescription = "Schedule",
+                                tint = Color(0xFF38BDF8),
+                                modifier = Modifier.size(12.dp)
+                            )
                             Text(
-                                text = "JOINED",
+                                text = displayTimeText,
                                 color = Color.White,
-                                fontSize = 11.sp,
+                                fontSize = 10.5.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         }
-                    } else if (isFull) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(50.dp))
-                                .background(Color(0xFF64748B))
-                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                    }
+
+                    // Game Badge
+                    val gameLabel = remember(game, title) {
+                        if (game.isNotBlank()) {
+                            if (game.contains("BGMI", true)) "BGMI" else "FREE FIRE"
+                        } else if (title.contains("BGMI", true)) {
+                            "BGMI"
+                        } else {
+                            "FREE FIRE"
+                        }
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xEE0A0F1D),
+                        border = BorderStroke(1.dp, if (gameLabel == "BGMI") Color(0x55F59E0B) else Color(0x55EF4444))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(5.dp)
+                                    .clip(androidx.compose.foundation.shape.CircleShape)
+                                    .background(if (gameLabel == "BGMI") Color(0xFFF59E0B) else Color(0xFFEF4444))
+                            )
                             Text(
-                                text = "FULL",
+                                text = gameLabel,
                                 color = Color.White,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
+                                fontSize = 9.5.sp,
+                                fontWeight = FontWeight.Black
                             )
                         }
                     }
                 }
             }
-            // Card Content
+
+            // Card Body - Pure, high-contrast, clean esports layout
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp)
+                    .padding(18.dp)
             ) {
+                // Title
                 Text(
                     text = title,
-                    fontSize = 18.sp,
+                    fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
                     color = cardTitleColor,
-                    maxLines = 1
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // Map & Format Row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = androidx.compose.ui.graphics.vector.ImageVector.vectorResource(com.example.R.drawable.ic_iconsax_landscape),
-                            contentDescription = "Map",
-                            modifier = Modifier.size(12.dp),
-                            tint = palette.mutedText
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = mapFormatText,
-                            fontSize = 12.sp,
-                            color = palette.mutedText
-                        )
-                    }
+                    Icon(
+                        imageVector = androidx.compose.ui.graphics.vector.ImageVector.vectorResource(com.example.R.drawable.ic_iconsax_landscape),
+                        contentDescription = "Map",
+                        modifier = Modifier.size(13.dp),
+                        tint = Color(0xFF94A3B8)
+                    )
+                    Text(
+                        text = mapFormatText,
+                        fontSize = 12.sp,
+                        color = Color(0xFF94A3B8),
+                        fontWeight = FontWeight.Medium
+                    )
+                }
 
-                    Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = badgeStyle.bgColor.copy(alpha = 0.5f),
-                        border = BorderStroke(0.8.dp, badgeStyle.borderColor.copy(alpha = 0.8f))
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // 1. DEDICATED SCHEDULED MATCH TIME HUD BAR
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    color = Color(0xFF131A29),
+                    border = BorderStroke(1.dp, Color(0xFF1E2B45))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(
-                            text = badgeStyle.text,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = badgeStyle.textColor,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = androidx.compose.ui.graphics.vector.ImageVector.vectorResource(com.example.R.drawable.ic_iconsax_timer),
+                                contentDescription = "Match Time",
+                                tint = Color(0xFF38BDF8),
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Column {
+                                Text(
+                                    text = "MATCH SCHEDULE",
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF94A3B8),
+                                    letterSpacing = 0.5.sp
+                                )
+                                Text(
+                                    text = displayTimeText,
+                                    fontSize = 12.5.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = Color.White
+                                )
+                            }
+                        }
+
+                        // Quick Remind Bell button
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0x2238BDF8),
+                            border = BorderStroke(0.5.dp, Color(0x6638BDF8)),
+                            modifier = Modifier.clickable { remindMeClick() }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = androidx.compose.ui.graphics.vector.ImageVector.vectorResource(com.example.R.drawable.ic_untitledui_bell),
+                                    contentDescription = "Remind Me",
+                                    tint = Color(0xFF38BDF8),
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Text(
+                                    text = "REMIND",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF38BDF8)
+                                )
+                            }
+                        }
                     }
                 }
-                Spacer(modifier = Modifier.height(16.dp))
-                // Metadata Stats (180° Contrast Text - No Yellow)
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // 2. MAJOR ROOM RULES & SPECS STRIP (Skills ON/OFF, Gun Attr ON/OFF, Limited Ammo)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
-                        Text(
-                            text = "PRIZE POOL",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = palette.mutedText
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = prizePoolText,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = palette.highContrastText
-                        )
+                    // 1. CHARACTER SKILL CHIP (Blinking / Glowing LED: Green if ON, Red if OFF)
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (isSkillOn) Color(0x2210B981) else Color(0x22EF4444),
+                        border = BorderStroke(1.dp, if (isSkillOn) Color(0x6610B981) else Color(0x66EF4444)),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            BlinkingLedIndicator(
+                                color = if (isSkillOn) Color(0xFF10B981) else Color(0xFFEF4444),
+                                size = 5.5.dp,
+                                isBlinking = true,
+                                pulseSpeedMs = if (isSkillOn) 1200 else 800
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = if (isSkillOn) "SKILL ON" else "SKILL OFF",
+                                fontSize = 9.5.sp,
+                                fontWeight = FontWeight.Black,
+                                color = if (isSkillOn) Color(0xFF6EE7B7) else Color(0xFFFCA5A5),
+                                maxLines = 1
+                            )
+                        }
                     }
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "ENTRY FEE",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = palette.mutedText
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = entryFeeText,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = palette.highContrastText
-                        )
+
+                    // 2. GUN ATTRIBUTES CHIP (Fair play competitive standard: Red if OFF, Green if ON)
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (!isGunAttrOn) Color(0x22F43F5E) else Color(0x2210B981),
+                        border = BorderStroke(1.dp, if (!isGunAttrOn) Color(0x66F43F5E) else Color(0x6610B981)),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            BlinkingLedIndicator(
+                                color = if (!isGunAttrOn) Color(0xFFF43F5E) else Color(0xFF10B981),
+                                size = 5.5.dp,
+                                isBlinking = !isGunAttrOn,
+                                pulseSpeedMs = 1300
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = if (!isGunAttrOn) "GUN ATTR: OFF" else "GUN ATTR: ON",
+                                fontSize = 9.5.sp,
+                                fontWeight = FontWeight.Black,
+                                color = if (!isGunAttrOn) Color(0xFFFDA4AF) else Color(0xFF6EE7B7),
+                                maxLines = 1
+                            )
+                        }
                     }
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(
-                            text = "SLOTS",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = palette.mutedText
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = slotsText,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = palette.highContrastText
-                        )
+
+                    // 3. LIMITED AMMO CHIP
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (isLimitedAmmo) Color(0x220284C7) else Color(0x22F59E0B),
+                        border = BorderStroke(1.dp, if (isLimitedAmmo) Color(0x660284C7) else Color(0x66F59E0B)),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            BlinkingLedIndicator(
+                                color = if (isLimitedAmmo) Color(0xFF38BDF8) else Color(0xFFF59E0B),
+                                size = 5.5.dp,
+                                isBlinking = !isLimitedAmmo,
+                                pulseSpeedMs = 1000
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = if (isLimitedAmmo) "AMMO: LTD" else "AMMO: UNLTD",
+                                fontSize = 9.5.sp,
+                                fontWeight = FontWeight.Black,
+                                color = if (isLimitedAmmo) Color(0xFFBAE6FD) else Color(0xFFFDE68A),
+                                maxLines = 1
+                            )
+                        }
                     }
                 }
-                Spacer(modifier = Modifier.height(16.dp))
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // 3-Column Bento Stats Grid
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // 1. PRIZE POOL
+                    Surface(
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFF161C2A),
+                        border = BorderStroke(1.dp, Color(0xFF232D42))
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "PRIZE POOL",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF94A3B8)
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = prizePoolText,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Black,
+                                color = Color(0xFF10B981)
+                            )
+                        }
+                    }
+
+                    // 2. ENTRY FEE / PER KILL
+                    Surface(
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFF161C2A),
+                        border = BorderStroke(1.dp, Color(0xFF232D42))
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = if (killBounty > 0) "PER KILL" else "ENTRY",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF94A3B8)
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = if (killBounty > 0) "VT ${killBounty.toInt()}" else entryFeeText,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Black,
+                                color = if (entryFee == 0.0) Color(0xFF10B981) else Color.White
+                            )
+                        }
+                    }
+
+                    // 3. SLOTS
+                    Surface(
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFF161C2A),
+                        border = BorderStroke(1.dp, Color(0xFF232D42))
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "SLOTS",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF94A3B8)
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = slotsText,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Black,
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
                 // Slots Progress Bar
                 LinearProgressIndicator(
                     progress = { progress },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(6.dp)),
-                    color = palette.accentColor,
-                    trackColor = Color.White.copy(alpha = 0.12f)
+                        .height(5.dp)
+                        .clip(RoundedCornerShape(3.dp)),
+                    color = Color(0xFF38BDF8),
+                    trackColor = Color(0xFF1E2638)
                 )
                 if (liveUpdate != null) {
                     Spacer(modifier = Modifier.height(16.dp))
@@ -514,7 +1039,7 @@ fun TournamentCard(
                                     text = "ALIVE: ${liveUpdate.alivePlayers}/${liveUpdate.totalPlayers}",
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = palette.highContrastText
+                                    color = Color.White
                                 )
                             }
                             Spacer(modifier = Modifier.height(8.dp))
@@ -525,29 +1050,18 @@ fun TournamentCard(
                                 Text(
                                     text = "Top Player: ${liveUpdate.topPlayer}",
                                     fontSize = 12.sp,
-                                    color = palette.mutedText
+                                    color = Color(0xFF94A3B8)
                                 )
                                 Text(
                                     text = "${liveUpdate.topKills} Kills",
                                     fontSize = 12.sp,
-                                    color = palette.mutedText
+                                    color = Color(0xFF94A3B8)
                                 )
                             }
                         }
                     }
                 }
-                Spacer(modifier = Modifier.height(20.dp))
-                val context = androidx.compose.ui.platform.LocalContext.current
-                val remindMeClick = remember(context, title, haptic) {
-                    {
-                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
-                        val intent = android.content.Intent(android.content.Intent.ACTION_INSERT).apply {
-                            data = android.provider.CalendarContract.Events.CONTENT_URI
-                            putExtra(android.provider.CalendarContract.Events.TITLE, "VeloRix Tournament: $title")
-                        }
-                        context.startActivity(intent)
-                    }
-                }
+                Spacer(modifier = Modifier.height(16.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -572,25 +1086,25 @@ fun TournamentCard(
                                 interactionSource = interactionSource,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(52.dp)
-                                    .clip(RoundedCornerShape(18.dp))
+                                    .height(48.dp)
+                                    .clip(RoundedCornerShape(14.dp))
                                     .graphicsLayer {
                                         scaleX = buttonScale
                                         scaleY = buttonScale
                                     }
                                     .testTag("join_now_action_button"),
-                                shape = RoundedCornerShape(18.dp),
+                                shape = RoundedCornerShape(14.dp),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = palette.accentColor,
-                                    contentColor = palette.onAccentColor,
-                                    disabledContainerColor = Color(0xFF2E313C),
-                                    disabledContentColor = Color(0xFF7E8494)
+                                    containerColor = Color(0xFF10B981),
+                                    contentColor = Color.White,
+                                    disabledContainerColor = Color(0xFF1E2638),
+                                    disabledContentColor = Color(0xFF64748B)
                                 )
                             ) {
                                 Text(
-                                    text = joinButtonText,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 15.sp,
+                                    text = joinButtonText.uppercase(),
+                                    fontWeight = FontWeight.Black,
+                                    fontSize = 13.sp,
                                     letterSpacing = 0.5.sp,
                                     modifier = Modifier.align(Alignment.CenterVertically)
                                 )
@@ -600,20 +1114,20 @@ fun TournamentCard(
                                 onClick = onClick,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(52.dp)
-                                    .clip(RoundedCornerShape(18.dp))
+                                    .height(48.dp)
+                                    .clip(RoundedCornerShape(14.dp))
                                     .testTag("view_details_button"),
-                                border = BorderStroke(1.5.dp, palette.accentColor),
-                                shape = RoundedCornerShape(18.dp),
+                                border = BorderStroke(1.2.dp, Color(0xFF10B981)),
+                                shape = RoundedCornerShape(14.dp),
                                 colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = palette.accentColor,
-                                    containerColor = palette.accentColor.copy(alpha = 0.12f)
+                                    contentColor = Color(0xFF10B981),
+                                    containerColor = Color(0x1A10B981)
                                 )
                             ) {
                                 Text(
-                                    text = "REGISTERED",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp,
+                                    text = "VIEW ROOM PASS",
+                                    fontWeight = FontWeight.Black,
+                                    fontSize = 12.sp,
                                     letterSpacing = 0.5.sp,
                                     modifier = Modifier.align(Alignment.CenterVertically)
                                 )
@@ -624,15 +1138,15 @@ fun TournamentCard(
                     OutlinedButton(
                         onClick = remindMeClick,
                         modifier = Modifier
-                            .height(52.dp)
-                            .clip(RoundedCornerShape(18.dp))
+                            .height(48.dp)
+                            .clip(RoundedCornerShape(14.dp))
                             .testTag("remind_me_button"),
-                        border = BorderStroke(1.dp, palette.highContrastText.copy(alpha = 0.25f)),
-                        shape = RoundedCornerShape(18.dp),
+                        border = BorderStroke(1.dp, Color(0xFF2A364F)),
+                        shape = RoundedCornerShape(14.dp),
                         contentPadding = PaddingValues(horizontal = 16.dp),
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = palette.highContrastText,
-                            containerColor = Color.Transparent
+                            contentColor = Color(0xFF94A3B8),
+                            containerColor = Color(0xFF141A28)
                         )
                     ) {
                         Text(

@@ -47,6 +47,10 @@ import com.example.ui.screens.*
 import com.example.ui.screens.situations.*
 import com.example.ui.navigation.LazyDestinationLoader
 import com.example.ui.components.*
+import com.example.ui.components.backdrop.backdrops.rememberLayerBackdrop
+import com.example.ui.components.backdrop.backdrops.layerBackdrop
+import com.example.ui.components.LocalAppBackdrop
+import com.example.ui.components.LocalLiquidGlassEnabled
 import com.example.ui.theme.MyApplicationTheme
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
@@ -350,30 +354,44 @@ class MainActivity : ComponentActivity() {
                               user?.phoneOrEmail.equals("anantisback47@gmail.com", ignoreCase = true) ||
                               user?.phoneOrEmail.equals("velorixtest@gmail.com", ignoreCase = true)
 
-                val activeSituation: SituationPreviewType = remember(situationPreview, user?.isBanned, user?.isSuspended, systemConfig.isMaintenance, systemConfig.isForceUpdate, isBanned, isVpnDetected, isAdmin) {
+                val fbUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+                val isGuestSession = !isLoggedIn ||
+                                     user == null ||
+                                     user?.phoneOrEmail == "guest_session@velorix.com" ||
+                                     user?.phoneOrEmail?.contains("guest", ignoreCase = true) == true ||
+                                     user?.username?.contains("Guest", ignoreCase = true) == true ||
+                                     user?.id == "guest" ||
+                                     user?.id?.startsWith("guest") == true ||
+                                     fbUser?.email == "guest_session@velorix.com" ||
+                                     fbUser?.isAnonymous == true
+
+                val activeSituation: SituationPreviewType = remember(situationPreview, user?.isBanned, user?.isSuspended, systemConfig.isMaintenance, systemConfig.isForceUpdate, isBanned, isVpnDetected, isAdmin, isGuestSession) {
                     if (situationPreview != SituationPreviewType.NONE) {
                         situationPreview
-                    } else if (user?.isBanned == true) {
+                    } else if (!isGuestSession && user?.isBanned == true) {
                         SituationPreviewType.BANNED
-                    } else if (user?.isSuspended == true) {
+                    } else if (!isGuestSession && user?.isSuspended == true) {
                         SituationPreviewType.SUSPENDED
                     } else if (systemConfig.isMaintenance && !isAdmin) {
                         SituationPreviewType.MAINTENANCE
                     } else if (systemConfig.isForceUpdate && !isAdmin) {
                         SituationPreviewType.FORCE_UPDATE
-                    } else if ((systemConfig.vpnRestrictionEnabled || isBanned) && isVpnDetected && !isAdmin) {
+                    } else if (!isGuestSession && (systemConfig.vpnRestrictionEnabled || isBanned) && isVpnDetected && !isAdmin) {
                         SituationPreviewType.VPN_BLOCKED
                     } else {
                         SituationPreviewType.NONE
                     }
                 }
 
-                // Global Background - Clean Vercel Dark Canvas
+                // Global Background - Clean Vercel Dark Canvas with Living Ambient Motion
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
+                        // Ambient slow-moving living mesh (pauses on Low Power / Reduce Motion)
+                        com.example.ui.components.LivingAmbientBackground(modifier = Modifier.fillMaxSize())
+
                         if (activeSituation != SituationPreviewType.NONE) {
                             when (activeSituation) {
                                 SituationPreviewType.BANNED -> {
@@ -381,7 +399,7 @@ class MainActivity : ComponentActivity() {
                                         viewModel = viewModel,
                                         user = user,
                                         onLogout = {
-                                            viewModel.logout()
+                                            viewModel.continueAsGuest()
                                             navController.navigate("auth") {
                                                 popUpTo(0) { inclusive = true }
                                             }
@@ -512,7 +530,7 @@ class MainActivity : ComponentActivity() {
                                 com.example.ui.components.BottomTab("home", "Home", homeIcon),
                                 com.example.ui.components.BottomTab("matches", "Matches", matchesIcon),
                                 com.example.ui.components.BottomTab("leaderboard", "Ranks", ranksIcon),
-                                com.example.ui.components.BottomTab("wallet", "Wallet", walletIcon)
+                                com.example.ui.components.BottomTab("wallet", "Wallet", walletIcon),
                             )
                         }
                         val profileTab = remember(profileIcon) {
@@ -539,17 +557,31 @@ class MainActivity : ComponentActivity() {
                         androidx.activity.compose.BackHandler(enabled = currentTabState != "home") {
                             currentTabState = "home"
                         }
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .statusBarsPadding()
+                        val windowBackground = MaterialTheme.colorScheme.background
+                        val paintBackdrop: androidx.compose.ui.graphics.drawscope.ContentDrawScope.() -> Unit = remember(windowBackground) {
+                            {
+                                drawRect(windowBackground)
+                                drawContent()
+                            }
+                        }
+                        val appBackdrop = rememberLayerBackdrop(onDraw = paintBackdrop)
+
+                        CompositionLocalProvider(
+                            LocalLiquidGlassEnabled provides true,
+                            LocalAppBackdrop provides appBackdrop,
                         ) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .then(if (!isEmuDevice) Modifier.haze(hazeState) else Modifier)
+                                    .statusBarsPadding()
                             ) {
-                                androidx.compose.animation.AnimatedContent(
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .layerBackdrop(appBackdrop)
+                                        .haze(hazeState)
+                                ) {
+                                    androidx.compose.animation.AnimatedContent(
                                     targetState = currentTabState,
                                     label = "tab_switch_animation",
                                     transitionSpec = {
@@ -661,9 +693,14 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
 
-                            // Floating Bottom Bar floats over content seamlessly (No black bars/strips)
+                            // Floating Bottom Bar & Mini Tournament Player (BitChord clone with true glass & transparency)
                             if (currentTabState != "support") {
-                                com.example.ui.components.FloatingBottomBar(
+                                val allTournaments by viewModel.tournaments.collectAsState()
+                                val activeTournament = remember(allTournaments) {
+                                    allTournaments.firstOrNull { it.status.equals("live", true) || it.joined }
+                                }
+
+                                com.example.ui.components.GlassNavBar(
                                     tabs = mainTabs,
                                     profileTab = profileTab,
                                     currentRoute = currentTabState,
@@ -671,39 +708,47 @@ class MainActivity : ComponentActivity() {
                                         currentTabState = route
                                     },
                                     hazeState = hazeState,
-                                    config = liquidGlassConfig,
+                                    userAvatarUrl = user?.avatarUrl,
+                                    activeTournament = activeTournament,
+                                    onExpandTournament = { t ->
+                                        navController.navigate("details/${t.id}")
+                                    },
+                                    onActionTournament = { t ->
+                                        navController.navigate("details/${t.id}")
+                                    },
                                     modifier = Modifier.align(Alignment.BottomCenter)
                                 )
                             }
                         }
+                    }
                     }
                     // 4. TOURNAMENT COMPREHENSIVE DETAIL DISPLAY PANEL
                     composable(
                         "details/{tournamentId}",
                         deepLinks = listOf(navDeepLink { uriPattern = "velorixtournaments://details/{tournamentId}" }),
                         enterTransition = {
-                            slideIntoContainer(
-                                towards = AnimatedContentTransitionScope.SlideDirection.Start,
-                                animationSpec = tween(350, easing = FastOutSlowInEasing)
-                            ) + fadeIn(tween(300))
+                            scaleIn(
+                                initialScale = 0.82f,
+                                animationSpec = spring(dampingRatio = 0.82f, stiffness = 340f)
+                            ) + fadeIn(animationSpec = tween(280, easing = FastOutSlowInEasing))
                         },
                         exitTransition = {
-                            slideOutOfContainer(
-                                towards = AnimatedContentTransitionScope.SlideDirection.End,
-                                animationSpec = tween(300, easing = FastOutSlowInEasing)
-                            ) + fadeOut(tween(250))
+                            scaleOut(
+                                targetScale = 1.08f,
+                                animationSpec = spring(dampingRatio = 0.85f, stiffness = 360f)
+                            ) + fadeOut(animationSpec = tween(220, easing = FastOutSlowInEasing))
                         },
                         popEnterTransition = {
-                            slideIntoContainer(
-                                towards = AnimatedContentTransitionScope.SlideDirection.End,
-                                animationSpec = tween(350, easing = FastOutSlowInEasing)
-                            ) + fadeIn(tween(300))
+                            scaleIn(
+                                initialScale = 1.08f,
+                                animationSpec = spring(dampingRatio = 0.85f, stiffness = 360f)
+                            ) + fadeIn(animationSpec = tween(220, easing = FastOutSlowInEasing))
                         },
                         popExitTransition = {
-                            slideOutOfContainer(
-                                towards = AnimatedContentTransitionScope.SlideDirection.End,
-                                animationSpec = tween(300, easing = FastOutSlowInEasing)
-                            ) + fadeOut(tween(250))
+                            scaleOut(
+                                targetScale = 0.82f,
+                                animationSpec = spring(dampingRatio = 0.82f, stiffness = 340f)
+                            ) + fadeOut(animationSpec = tween(280, easing = FastOutSlowInEasing))
                         }
                     ) { backStackEntry ->
                         val tournamentId = backStackEntry.arguments?.getString("tournamentId") ?: ""

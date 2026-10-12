@@ -90,17 +90,19 @@ fun AnimatedRollingCounter(
         }
 
         if (hasChanged) {
-            formattedString.forEachIndexed { _, char ->
+            formattedString.forEachIndexed { index, char ->
                 if (char.isDigit()) {
-                    AnimatedDigit(
-                        digit = char,
-                        isIncreasing = isIncreasing,
-                        fontSize = fontSize,
-                        fontWeight = fontWeight,
-                        color = color,
-                        letterSpacing = letterSpacing,
-                        style = style
-                    )
+                    key("digit_${index}_${formattedString.length}") {
+                        AnimatedDigit(
+                            digit = char,
+                            isIncreasing = isIncreasing,
+                            fontSize = fontSize,
+                            fontWeight = fontWeight,
+                            color = color,
+                            letterSpacing = letterSpacing,
+                            style = style
+                        )
+                    }
                 } else {
                     Text(
                         text = char.toString(),

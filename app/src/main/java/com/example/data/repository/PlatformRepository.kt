@@ -86,6 +86,9 @@ class PlatformRepository(
     }
 
     var dbErrorCallback: ((String) -> Unit)? = null
+
+    val firestoreUserSyncManager: com.example.data.sync.FirestoreUserSyncManager?
+        get() = listenerManager?.firestoreUserSyncManager
     
     // Realtime Database root reference
     private val rtdb: FirebaseDatabase by lazy {
@@ -168,6 +171,7 @@ class PlatformRepository(
         repositoryScope.launch(Dispatchers.IO) {
             cleanupAllMockData()
             initializeMissions()
+            unbanGuestSessionIfBanned()
         }
         val currentFbUser = FirebaseAuth.getInstance().currentUser
         if (currentFbUser != null && !currentFbUser.isAnonymous && currentFbUser.email != "guest_session@velorix.com") {
@@ -177,6 +181,10 @@ class PlatformRepository(
             }
             startRealtimeUserSync(uid)
             startRealtimeUserReportsSync(uid)
+        } else {
+            repositoryScope.launch(Dispatchers.IO) {
+                unbanGuestSessionIfBanned()
+            }
         }
         try {
             FirebaseAuth.getInstance().addAuthStateListener { fbAuth ->
@@ -189,6 +197,10 @@ class PlatformRepository(
                         startRealtimeUserSync(uid)
                         startRealtimeUserReportsSync(uid)
                         fetchDataFromServer(force = true)
+                    }
+                } else {
+                    repositoryScope.launch(Dispatchers.IO) {
+                        unbanGuestSessionIfBanned()
                     }
                 }
             }
@@ -204,6 +216,104 @@ class PlatformRepository(
         startCrossPanelSyncObserver()
     }
 
+    fun isGuestSessionUid(uid: String?): Boolean {
+        if (uid.isNullOrBlank() || uid == "guest" || uid.startsWith("guest") || uid.contains("guest", ignoreCase = true)) return true
+        val current = FirebaseAuth.getInstance().currentUser
+        if (current != null && current.uid == uid) {
+            if (current.isAnonymous || current.email == "guest_session@velorix.com") {
+                return true
+            }
+        }
+        return false
+    }
+
+    fun isGuestEmail(email: String?): Boolean {
+        if (email.isNullOrBlank()) return true
+        return email.equals("guest_session@velorix.com", ignoreCase = true) || email.contains("guest", ignoreCase = true)
+    }
+
+    suspend fun unbanGuestSessionIfBanned() {
+        try {
+            val auth = FirebaseAuth.getInstance()
+            val currentFbUser = auth.currentUser
+            val guestUid = currentFbUser?.uid
+            val isGuestAuth = currentFbUser == null || currentFbUser.isAnonymous || currentFbUser.email == "guest_session@velorix.com" || isGuestSessionUid(guestUid)
+
+            // 1. Sanitize local room user if marked as banned while in guest state
+            val local = db.userDao().getUserSync()
+            if (local != null) {
+                val isLocalGuest = local.id == "guest" ||
+                        local.phoneOrEmail.equals("guest_session@velorix.com", ignoreCase = true) ||
+                        local.phoneOrEmail.contains("guest", ignoreCase = true) ||
+                        local.username.equals("Guest", ignoreCase = true) ||
+                        local.username.contains("Guest", ignoreCase = true) ||
+                        local.id.startsWith("guest") ||
+                        (guestUid != null && local.id == guestUid) ||
+                        isGuestSessionUid(local.id)
+                if (isLocalGuest || isGuestAuth || local.isBanned) {
+                    val sanitized = local.copy(
+                        isBanned = false,
+                        isSuspended = false,
+                        banReason = "",
+                        banType = "NONE",
+                        bannedAt = 0L,
+                        suspendReason = "",
+                        suspensionExpiresAt = 0L
+                    )
+                    db.userDao().insert(sanitized)
+                    Log.i(TAG, "Unbanned and sanitized local guest user record.")
+                }
+            } else if (isGuestAuth) {
+                val guestUser = User(
+                    id = guestUid ?: "guest",
+                    username = "Guest Operative",
+                    fullName = "Guest User",
+                    phoneOrEmail = "guest_session@velorix.com",
+                    balance = 0.0,
+                    tokens = 50,
+                    isBanned = false,
+                    isSuspended = false,
+                    banReason = "",
+                    banType = "NONE",
+                    bannedAt = 0L,
+                    role = "guest",
+                    avatarIdx = 1,
+                    dateOfJoining = System.currentTimeMillis()
+                )
+                db.userDao().insert(guestUser)
+                Log.i(TAG, "Initialized default clean guest user record with 50 tokens.")
+            }
+
+            // 2. Clear remote banned records in Firebase for guest session UIDs
+            val unbanMap = mapOf<String, Any>(
+                "isBanned" to false,
+                "banned" to false,
+                "status" to "ACTIVE",
+                "isSuspended" to false,
+                "banReason" to "",
+                "banType" to "NONE",
+                "bannedAt" to 0L
+            )
+            rtdb.getReference("banned_users").child("guest").removeValue()
+            rtdb.getReference("suspended_users").child("guest").removeValue()
+
+            if (guestUid != null && isGuestAuth) {
+                usersRef.child(guestUid).updateChildren(unbanMap)
+                rtdb.getReference("banned_users").child(guestUid).removeValue()
+                rtdb.getReference("suspended_users").child(guestUid).removeValue()
+                try {
+                    FirebaseFirestore.getInstance().collection("users").document(guestUid)
+                        .set(unbanMap, com.google.firebase.firestore.SetOptions.merge())
+                } catch (e: Exception) {
+                    Log.w(TAG, "Firestore guest unban notice: ${e.message}")
+                }
+                Log.i(TAG, "Unbanned and sanitized remote guest session (UID=$guestUid) across RTDB and Firestore.")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Notice in unbanGuestSessionIfBanned: ${e.message}")
+        }
+    }
+
     fun ensureFirebaseAuth() {
         try {
             val auth = FirebaseAuth.getInstance()
@@ -212,6 +322,7 @@ class PlatformRepository(
                     .addOnSuccessListener { result ->
                         Log.i(TAG, "Firebase Anonymous Auth established (UID=${result.user?.uid}). Database read permissions unlocked.")
                         repositoryScope.launch(Dispatchers.IO) {
+                            unbanGuestSessionIfBanned()
                             fetchDataFromServer(force = true)
                         }
                     }
@@ -221,6 +332,7 @@ class PlatformRepository(
                             .addOnSuccessListener { result ->
                                 Log.i(TAG, "Firebase Guest Session established (UID=${result.user?.uid}). Database read permissions unlocked.")
                                 repositoryScope.launch(Dispatchers.IO) {
+                                    unbanGuestSessionIfBanned()
                                     fetchDataFromServer(force = true)
                                 }
                             }
@@ -233,6 +345,10 @@ class PlatformRepository(
                 if (fbUser != null && !fbUser.isAnonymous && fbUser.email != "guest_session@velorix.com") {
                     startRealtimeUserSync(fbUser.uid)
                     startRealtimeUserReportsSync(fbUser.uid)
+                } else {
+                    repositoryScope.launch(Dispatchers.IO) {
+                        unbanGuestSessionIfBanned()
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -279,6 +395,10 @@ class PlatformRepository(
                 override fun onUserStatusChanged(userId: String, newStatus: String, reason: String?) {
                     repositoryScope.launch(Dispatchers.IO) {
                         try {
+                            if (isGuestSessionUid(userId)) {
+                                Log.d(TAG, "SyncManager: ignoring status change for guest session: $userId")
+                                return@launch
+                            }
                             val localUser = db.userDao().getUserSync()
                             if (localUser != null && localUser.id == userId) {
                                 val isBanned = newStatus.equals("BANNED", ignoreCase = true)
@@ -791,10 +911,33 @@ class PlatformRepository(
     private val tournamentSyncMutex = kotlinx.coroutines.sync.Mutex()
 
     private suspend fun syncMergedTournamentsToDb(source: String, incoming: List<Tournament>) {
+        val incomingIds = incoming.map { it.id }.toSet()
         when (source) {
             "RTDB" -> {
+                // Authoritative RTDB /tournaments update: purge deleted tournaments from ALL caches
+                rtdbTournamentsCache.keys.filter { it !in incomingIds }.forEach { rtdbTournamentsCache.remove(it) }
+                rtdbMatchesCache.keys.filter { it !in incomingIds }.forEach { rtdbMatchesCache.remove(it) }
+                rtdbAllTournamentsCache.keys.filter { it !in incomingIds }.forEach { rtdbAllTournamentsCache.remove(it) }
+                fsTournamentsCache.keys.filter { it !in incomingIds }.forEach { fsTournamentsCache.remove(it) }
+                fsMatchesCache.keys.filter { it !in incomingIds }.forEach { fsMatchesCache.remove(it) }
+                fsAllTournamentsCache.keys.filter { it !in incomingIds }.forEach { fsAllTournamentsCache.remove(it) }
+                fsAdminTournamentsCache.keys.filter { it !in incomingIds }.forEach { fsAdminTournamentsCache.remove(it) }
+
                 rtdbTournamentsCache.clear()
                 incoming.forEach { rtdbTournamentsCache[it.id] = it }
+            }
+            "FS_TOURNAMENTS" -> {
+                // Authoritative Firestore tournaments update: purge deleted tournaments from ALL caches
+                rtdbTournamentsCache.keys.filter { it !in incomingIds }.forEach { rtdbTournamentsCache.remove(it) }
+                rtdbMatchesCache.keys.filter { it !in incomingIds }.forEach { rtdbMatchesCache.remove(it) }
+                rtdbAllTournamentsCache.keys.filter { it !in incomingIds }.forEach { rtdbAllTournamentsCache.remove(it) }
+                fsTournamentsCache.keys.filter { it !in incomingIds }.forEach { fsTournamentsCache.remove(it) }
+                fsMatchesCache.keys.filter { it !in incomingIds }.forEach { fsMatchesCache.remove(it) }
+                fsAllTournamentsCache.keys.filter { it !in incomingIds }.forEach { fsAllTournamentsCache.remove(it) }
+                fsAdminTournamentsCache.keys.filter { it !in incomingIds }.forEach { fsAdminTournamentsCache.remove(it) }
+
+                fsTournamentsCache.clear()
+                incoming.forEach { fsTournamentsCache[it.id] = it }
             }
             "RTDB_MATCHES" -> {
                 rtdbMatchesCache.clear()
@@ -803,10 +946,6 @@ class PlatformRepository(
             "RTDB_ALL" -> {
                 rtdbAllTournamentsCache.clear()
                 incoming.forEach { rtdbAllTournamentsCache[it.id] = it }
-            }
-            "FS_TOURNAMENTS" -> {
-                fsTournamentsCache.clear()
-                incoming.forEach { fsTournamentsCache[it.id] = it }
             }
             "FS_MATCHES" -> {
                 fsMatchesCache.clear()
@@ -825,16 +964,46 @@ class PlatformRepository(
         tournamentSyncMutex.withLock {
             tournamentSyncJob?.cancel()
             tournamentSyncJob = repositoryScope.launch(Dispatchers.Default) {
-                kotlinx.coroutines.delay(200L) // 200ms debouncing window to throttle rapid listener bursts
+                kotlinx.coroutines.delay(50L) // Debouncing window to throttle rapid listener bursts
 
                 val mergedMap = mutableMapOf<String, Tournament>()
-                rtdbAllTournamentsCache.forEach { (id, t) -> mergedMap[id] = t }
-                rtdbMatchesCache.forEach { (id, t) -> mergedMap[id] = t }
-                rtdbTournamentsCache.forEach { (id, t) -> mergedMap[id] = t }
-                fsAdminTournamentsCache.forEach { (id, t) -> mergedMap[id] = t }
-                fsAllTournamentsCache.forEach { (id, t) -> mergedMap[id] = t }
-                fsMatchesCache.forEach { (id, t) -> mergedMap[id] = t }
-                fsTournamentsCache.forEach { (id, t) -> mergedMap[id] = t }
+
+                fun mergeTournamentEntry(incomingT: Tournament) {
+                    val existing = mergedMap[incomingT.id]
+                    if (existing == null) {
+                        mergedMap[incomingT.id] = incomingT
+                    } else {
+                        // Apply latest non-empty updates from incomingT, preserving joined status and best image
+                        val bestImg = if (incomingT.imageUrl.isNotBlank() && incomingT.imageUrl != "null") incomingT.imageUrl else existing.imageUrl
+                        val bestTitle = if (incomingT.title.isNotBlank()) incomingT.title else existing.title
+                        val bestRoomId = if (incomingT.roomId.isNotBlank()) incomingT.roomId else existing.roomId
+                        val bestRoomPass = if (incomingT.roomPassword.isNotBlank()) incomingT.roomPassword else existing.roomPassword
+                        val isJoined = incomingT.joined || existing.joined || userRegisteredTournamentIds.contains(incomingT.id)
+                        val bestStatus = if (incomingT.status.isNotBlank()) incomingT.status else existing.status
+                        val bestDateTime = if (incomingT.dateTimeStr.isNotBlank()) incomingT.dateTimeStr else existing.dateTimeStr
+                        val filled = if (incomingT.filledSlots > 0) incomingT.filledSlots else existing.filledSlots
+
+                        mergedMap[incomingT.id] = incomingT.copy(
+                            title = bestTitle,
+                            imageUrl = bestImg,
+                            roomId = bestRoomId,
+                            roomPassword = bestRoomPass,
+                            joined = isJoined,
+                            status = bestStatus,
+                            dateTimeStr = bestDateTime,
+                            filledSlots = filled
+                        )
+                    }
+                }
+
+                // Merge in sequence: secondary caches first, then authoritative primary sources last
+                fsAdminTournamentsCache.values.forEach { mergeTournamentEntry(it) }
+                fsAllTournamentsCache.values.forEach { mergeTournamentEntry(it) }
+                fsMatchesCache.values.forEach { mergeTournamentEntry(it) }
+                rtdbAllTournamentsCache.values.forEach { mergeTournamentEntry(it) }
+                rtdbMatchesCache.values.forEach { mergeTournamentEntry(it) }
+                fsTournamentsCache.values.forEach { mergeTournamentEntry(it) }
+                rtdbTournamentsCache.values.forEach { mergeTournamentEntry(it) }
 
                 val mergedList = mergedMap.values
                     .filter { !isMockTournament(it.id, it.title) }
@@ -845,11 +1014,13 @@ class PlatformRepository(
                 val finalMergedList = mergedList.map { remoteT ->
                     val isReg = userRegisteredTournamentIds.contains(remoteT.id)
                     val localT = localTournaments.find { it.id == remoteT.id }
-                    if (isReg || localT?.joined == true || remoteT.joined) {
-                        remoteT.copy(joined = true)
+                    val resolvedImg = if (remoteT.imageUrl.isNotBlank() && remoteT.imageUrl != "null") {
+                        remoteT.imageUrl
                     } else {
-                        remoteT
+                        localT?.imageUrl?.takeIf { it.isNotBlank() && it != "null" } ?: ""
                     }
+                    val isJoined = isReg || localT?.joined == true || remoteT.joined
+                    remoteT.copy(joined = isJoined, imageUrl = resolvedImg)
                 }
 
                 // Check if identical to prevent continuous UI trigger loops
@@ -864,22 +1035,18 @@ class PlatformRepository(
                 }
 
                 withContext(Dispatchers.IO) {
-                    if (finalMergedList.isNotEmpty()) {
-                        val mergedIds = finalMergedList.map { it.id }.toSet()
-                        for (t in localTournaments) {
-                            if (t.id !in mergedIds || isMockTournament(t.id, t.title)) {
-                                db.tournamentDao().delete(t.id)
-                            }
+                    val mergedIds = finalMergedList.map { it.id }.toSet()
+                    // Delete any tournament from local database that is deleted on remote or mock
+                    for (t in localTournaments) {
+                        if (t.id !in mergedIds || isMockTournament(t.id, t.title)) {
+                            db.tournamentDao().delete(t.id)
                         }
+                    }
+                    if (finalMergedList.isNotEmpty()) {
                         db.tournamentDao().insertAll(finalMergedList)
                         Log.i(TAG, "Merged & synchronized ${finalMergedList.size} tournament(s) to Room DB (source: $source)")
                     } else {
-                        // Remote is empty or not yet loaded: preserve local legitimate tournaments
-                        for (t in localTournaments) {
-                            if (isMockTournament(t.id, t.title)) {
-                                db.tournamentDao().delete(t.id)
-                            }
-                        }
+                        Log.i(TAG, "No active tournaments on remote; cleared local Room DB")
                     }
                 }
                 _lastSyncedTimestamp.value = System.currentTimeMillis()
@@ -1157,10 +1324,84 @@ class PlatformRepository(
         return list
     }
 
+    private fun extractTournamentImageUrl(child: DataSnapshot): String {
+        val keys = listOf(
+            "imageUrl", "image_url", "bannerUrl", "banner_url", "image", "thumbnailUrl",
+            "thumbnail_url", "photoUrl", "photo_url", "tournamentImage", "customImage",
+            "imgUrl", "banner", "coverImage", "cover_image", "cover", "poster", "posterUrl",
+            "poster_url", "bannerImage", "banner_image", "picture", "pictureUrl", "photo",
+            "thumbnail", "thumb", "thumbUrl", "tournamentCover", "tournament_cover",
+            "gameImage", "game_image", "imageUri", "image_uri", "mediaUrl", "media_url", "media"
+        )
+        for (k in keys) {
+            if (child.hasChild(k)) {
+                val node = child.child(k)
+                val v = node.value
+                if (v is String) {
+                    val s = v.trim().trim('"', '\'')
+                    if (s.isNotBlank() && s != "null" && s != "undefined" && s != "{}") return s
+                } else if (node.hasChildren()) {
+                    val nestedUrl = node.getStringAny("url", "downloadUrl", "download_url", "secure_url", "secureUrl", "imageUrl", "image_url", "src", "path", "link")
+                    if (nestedUrl.isNotBlank() && nestedUrl != "null" && nestedUrl != "undefined") return nestedUrl
+                }
+            }
+        }
+        for (parent in listOf("details", "roomDetails", "matchDetails", "media", "meta")) {
+            if (child.hasChild(parent)) {
+                val nested = child.child(parent)
+                val nestedUrl = nested.getStringAny("imageUrl", "image_url", "coverImage", "cover_image", "cover", "bannerUrl", "image", "url")
+                if (nestedUrl.isNotBlank() && nestedUrl != "null" && nestedUrl != "undefined") return nestedUrl
+            }
+        }
+        return ""
+    }
+
+    private fun extractTournamentImageUrl(doc: DocumentSnapshot): String {
+        val keys = listOf(
+            "imageUrl", "image_url", "bannerUrl", "banner_url", "image", "thumbnailUrl",
+            "thumbnail_url", "photoUrl", "photo_url", "tournamentImage", "customImage",
+            "imgUrl", "banner", "coverImage", "cover_image", "cover", "poster", "posterUrl",
+            "poster_url", "bannerImage", "banner_image", "picture", "pictureUrl", "photo",
+            "thumbnail", "thumb", "thumbUrl", "tournamentCover", "tournament_cover",
+            "gameImage", "game_image", "imageUri", "image_uri", "mediaUrl", "media_url", "media"
+        )
+        for (k in keys) {
+            if (doc.contains(k)) {
+                val v = doc.get(k)
+                if (v is String) {
+                    val s = v.trim().trim('"', '\'')
+                    if (s.isNotBlank() && s != "null" && s != "undefined" && s != "{}") return s
+                } else if (v is Map<*, *>) {
+                    for (nestedKey in listOf("url", "downloadUrl", "download_url", "secure_url", "secureUrl", "imageUrl", "image_url", "src", "path", "link")) {
+                        val nestedVal = v[nestedKey]?.toString()?.trim()?.trim('"', '\'')
+                        if (!nestedVal.isNullOrBlank() && nestedVal != "null" && nestedVal != "undefined") return nestedVal
+                    }
+                }
+            }
+        }
+        for (parent in listOf("details", "roomDetails", "matchDetails", "media", "meta")) {
+            val parentMap = doc.get(parent) as? Map<*, *>
+            if (parentMap != null) {
+                for (nestedKey in listOf("imageUrl", "image_url", "coverImage", "cover_image", "cover", "bannerUrl", "image", "url")) {
+                    val nestedVal = parentMap[nestedKey]?.toString()?.trim()?.trim('"', '\'')
+                    if (!nestedVal.isNullOrBlank() && nestedVal != "null" && nestedVal != "undefined") return nestedVal
+                }
+            }
+        }
+        return ""
+    }
+
     private fun parseTournamentFromDataSnapshot(child: DataSnapshot, currentUserId: String?): Tournament? {
         try {
             val id = child.key ?: child.getStringAny("id", "tournamentId", "tournament_id", "matchId", "match_id", "tourneyId", "tourney_id", default = "")
             if (id.isBlank()) return null
+
+            // If tournament was marked deleted in admin panel, exclude it completely
+            val isDeleted = (child.hasChild("deleted") && (child.child("deleted").value == true || child.child("deleted").value.toString().equals("true", true))) ||
+                (child.hasChild("isDeleted") && (child.child("isDeleted").value == true || child.child("isDeleted").value.toString().equals("true", true))) ||
+                child.getStringAny("status", "matchStatus", "state").equals("DELETED", true) ||
+                child.getStringAny("status", "matchStatus", "state").equals("REMOVED", true)
+            if (isDeleted) return null
 
             // Detect if this is a parent/category/game folder node rather than an actual tournament
             val hasExplicitTitle = child.hasChild("title") || child.hasChild("tournamentTitle") || child.hasChild("tournament_title") || 
@@ -1303,6 +1544,8 @@ class PlatformRepository(
             val rank4To10Prize = child.getDoubleAny("rank4To10Prize", "rank_4_10_prize", default = 0.0)
             val killBounty = child.getDoubleAny("killBounty", "kill_bounty", "perKill", "per_kill", default = 0.0)
 
+            val imageUrl = extractTournamentImageUrl(child)
+
             return Tournament(
                 id = id,
                 title = title,
@@ -1328,7 +1571,8 @@ class PlatformRepository(
                 rules = rules,
                 matchCategory = matchCategory,
                 matchMode = matchMode,
-                customRuleBadge = customRuleBadge
+                customRuleBadge = customRuleBadge,
+                imageUrl = imageUrl
             )
         } catch (e: Exception) {
             Log.w(TAG, "Error parsing tournament from RTDB: ${e.message}")
@@ -1340,6 +1584,12 @@ class PlatformRepository(
         try {
             val id = doc.id
             if (id.isBlank()) return null
+
+            val isDeleted = (doc.getBoolean("deleted") == true) ||
+                (doc.getBoolean("isDeleted") == true) ||
+                doc.getStringAny("status", "matchStatus", "state").equals("DELETED", true) ||
+                doc.getStringAny("status", "matchStatus", "state").equals("REMOVED", true)
+            if (isDeleted) return null
 
             val rawGame = doc.getStringAny(
                 "game", "gameType", "game_type", "gameName", "game_name",
@@ -1468,6 +1718,8 @@ class PlatformRepository(
             val rank4To10Prize = doc.getDoubleAny("rank4To10Prize", "rank_4_10_prize", default = 0.0)
             val killBounty = doc.getDoubleAny("killBounty", "kill_bounty", "perKill", "per_kill", default = 0.0)
 
+            val imageUrl = extractTournamentImageUrl(doc)
+
             return Tournament(
                 id = id,
                 title = title,
@@ -1493,7 +1745,8 @@ class PlatformRepository(
                 rules = rules,
                 matchCategory = matchCategory,
                 matchMode = matchMode,
-                customRuleBadge = customRuleBadge
+                customRuleBadge = customRuleBadge,
+                imageUrl = imageUrl
             )
         } catch (e: Exception) {
             Log.w(TAG, "Error parsing Firestore tournament: ${e.message}")
@@ -1931,7 +2184,7 @@ class PlatformRepository(
      * Starts Realtime listener for the logged-in User profile from RTDB /users/$userId.
      */
     fun startRealtimeUserSync(userId: String) {
-        if (userId.isBlank() || userId == "guest") return
+        if (userId.isBlank() || userId == "guest" || isGuestSessionUid(userId)) return
         val userQuery = usersRef.child(userId)
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
@@ -1977,162 +2230,183 @@ class PlatformRepository(
             userQuery.addValueEventListener(listener)
         }
 
-        // Firestore real-time sync for User Profile (with listener tracking)
+        // Centralized Firestore real-time sync for User Profile (with LWW & version validation)
         try {
-            val userFsReg = FirebaseFirestore.getInstance().collection("users").document(userId)
-                .addSnapshotListener { doc, error ->
-                    if (error != null || doc == null || !doc.exists()) return@addSnapshotListener
-                    repositoryScope.launch(Dispatchers.Default) {
-                        try {
-                            val local = withContext(Dispatchers.IO) { db.userDao().getUserSync() }
+            val fsSyncManager = firestoreUserSyncManager
+            if (fsSyncManager != null) {
+                val userFsReg = fsSyncManager.startAuthoritativeUserSync(userId)
+                listenerManager?.registerFirestoreListener("fs_user_$userId", userFsReg)
+            } else {
+                val userFsReg = FirebaseFirestore.getInstance().collection("users").document(userId)
+                    .addSnapshotListener { doc, error ->
+                        if (error != null || doc == null || !doc.exists()) return@addSnapshotListener
+                        repositoryScope.launch(Dispatchers.Default) {
+                            try {
+                                val local = withContext(Dispatchers.IO) { db.userDao().getUserSync() }
 
-                            val fsTokens = when {
-                                doc.contains("tokens") -> (doc.get("tokens") as? Number)?.toInt() ?: (local?.tokens ?: 0)
-                                doc.contains("tokenBalance") -> (doc.get("tokenBalance") as? Number)?.toInt() ?: (local?.tokens ?: 0)
-                                doc.contains("tokensBalance") -> (doc.get("tokensBalance") as? Number)?.toInt() ?: (local?.tokens ?: 0)
-                                doc.contains("rewardTokens") -> (doc.get("rewardTokens") as? Number)?.toInt() ?: (local?.tokens ?: 0)
-                                doc.contains("activityPoints") -> (doc.get("activityPoints") as? Number)?.toInt() ?: (local?.tokens ?: 0)
-                                else -> local?.tokens ?: 0
-                            }
-                            val fsBalance = (doc.get("balance") as? Number)?.toDouble()
-                                ?: (doc.get("walletBalance") as? Number)?.toDouble()
-                                ?: (doc.get("wallet_balance") as? Number)?.toDouble() ?: (local?.balance ?: 0.0)
-                            val fsUsername = doc.getString("username") ?: doc.getString("name") ?: (local?.username ?: "Player")
-                            val fsFullName = doc.getString("fullName") ?: doc.getString("full_name") ?: (local?.fullName ?: fsUsername)
-                            val fsMobileNo = doc.getString("mobileNo") ?: doc.getString("mobile_no") ?: (local?.mobileNo ?: "")
-                            val fsDob = doc.getString("dob") ?: doc.getString("dateOfBirth") ?: (local?.dob ?: "")
-                            val fsBio = doc.getString("bio") ?: (local?.bio ?: "Ready to compete")
-                            val fsSocialLink = doc.getString("socialLink") ?: doc.getString("social_link") ?: (local?.socialLink ?: "")
-                            val fsState = doc.getString("state") ?: (local?.state ?: "Delhi")
-                            val fsIsAgeVerified = doc.getBoolean("isAgeVerified") ?: doc.getBoolean("is_age_verified") ?: (local?.isAgeVerified ?: false)
-                            val fsLegalConsent = doc.getBoolean("legalConsentAccepted") ?: doc.getBoolean("legal_consent_accepted") ?: (local?.legalConsentAccepted ?: true)
-                            val fsLegalTimestamp = (doc.get("legalConsentTimestamp") as? Number)?.toLong() ?: (local?.legalConsentTimestamp ?: 0L)
-                            val fsCoolingOff = (doc.get("coolingOffUntil") as? Number)?.toLong() ?: (local?.coolingOffUntil ?: 0L)
-                            val fsDataExported = doc.getBoolean("dataExported") ?: doc.getBoolean("data_exported") ?: (local?.dataExported ?: false)
-                            val fsFounderTier = doc.getString("founderTier") ?: doc.getString("founder_tier") ?: (local?.founderTier ?: "")
-                            val fsIsFounder = doc.getBoolean("isFounder") ?: doc.getBoolean("is_founder") ?: (fsFounderTier.isNotBlank())
-                            val fsReservedTokens = (doc.get("reservedTokens") as? Number)?.toInt() ?: (local?.reservedTokens ?: 0)
-                            val fsIgn = doc.getString("inGameName") ?: doc.getString("ign") ?: (local?.inGameName ?: "")
-                            val fsGameId = doc.getString("freeFireId") ?: doc.getString("gameId") ?: (local?.freeFireId ?: "")
-                            val fsAvatarUrl = doc.getString("avatarUrl") ?: doc.getString("avatar_url") ?: (local?.avatarUrl ?: "")
-                            val fsAvatarIdx = (doc.get("avatarIdx") as? Number)?.toInt() ?: (doc.get("avatar_idx") as? Number)?.toInt() ?: (local?.avatarIdx ?: 1)
-                            val fsStreak = (doc.get("loginStreak") as? Number)?.toInt() ?: (local?.loginStreak ?: 0)
-                            val fsLastClaim = doc.getString("lastLoginClaimDate") ?: (local?.lastLoginClaimDate ?: "")
-                            val fsDailyClaimed = (doc.get("dailyMissionsTokensClaimed") as? Number)?.toInt() ?: (local?.dailyMissionsTokensClaimed ?: 0)
-                            val fsLastMissionClaim = doc.getString("lastMissionClaimDate") ?: (local?.lastMissionClaimDate ?: "")
-                            val fsMatchesPlayed = (doc.get("matchesPlayed") as? Number)?.toInt() ?: (local?.matchesPlayed ?: 0)
-                            val fsTotalWins = (doc.get("totalWins") as? Number)?.toInt() ?: (doc.get("wins") as? Number)?.toInt() ?: (local?.totalWins ?: 0)
-                            val fsTotalKills = (doc.get("totalKills") as? Number)?.toInt() ?: (doc.get("kills") as? Number)?.toInt() ?: (local?.totalKills ?: 0)
-                            val fsRefEarnings = (doc.get("referralEarnings") as? Number)?.toDouble() ?: (local?.referralEarnings ?: 0.0)
-                            val fsRefCount = (doc.get("referralCount") as? Number)?.toInt() ?: (local?.referralCount ?: 0)
-                            val fsBanned = doc.getBoolean("isBanned") ?: doc.getBoolean("banned") ?: doc.getBoolean("is_banned") ?: (local?.isBanned ?: false)
-                            val fsBanReason = doc.getString("banReason") ?: doc.getString("ban_reason") ?: (local?.banReason ?: "")
-                            val fsBanType = doc.getString("banType") ?: doc.getString("ban_type") ?: (local?.banType ?: "PERMANENT")
-                            val fsSuspended = doc.getBoolean("isSuspended") ?: doc.getBoolean("suspended") ?: doc.getBoolean("is_suspended") ?: (local?.isSuspended ?: false)
-                            val fsSuspendReason = doc.getString("suspendReason") ?: doc.getString("suspend_reason") ?: (local?.suspendReason ?: "")
-                            val fsRole = doc.getString("role") ?: (local?.role ?: "user")
+                                val remoteUpdatedAt = (doc.get("updatedAtMillis") as? Number)?.toLong()
+                                    ?: doc.getTimestamp("updatedAt")?.toDate()?.time
+                                    ?: 0L
+                                val remoteVersion = (doc.get("version") as? Number)?.toLong() ?: 0L
 
-                            val updated = if (local != null && local.id == userId) {
-                                local.copy(
-                                    username = fsUsername,
-                                    fullName = fsFullName,
-                                    mobileNo = fsMobileNo,
-                                    dob = fsDob,
-                                    bio = fsBio,
-                                    socialLink = fsSocialLink,
-                                    state = fsState,
-                                    isAgeVerified = fsIsAgeVerified,
-                                    legalConsentAccepted = fsLegalConsent,
-                                    legalConsentTimestamp = fsLegalTimestamp,
-                                    coolingOffUntil = fsCoolingOff,
-                                    dataExported = fsDataExported,
-                                    founderTier = fsFounderTier,
-                                    isFounder = fsIsFounder,
-                                    reservedTokens = fsReservedTokens,
-                                    inGameName = fsIgn,
-                                    freeFireId = fsGameId,
-                                    avatarUrl = fsAvatarUrl,
-                                    avatarIdx = fsAvatarIdx,
-                                    balance = fsBalance,
-                                    tokens = fsTokens,
-                                    loginStreak = fsStreak,
-                                    lastLoginClaimDate = fsLastClaim,
-                                    dailyMissionsTokensClaimed = fsDailyClaimed,
-                                    lastMissionClaimDate = fsLastMissionClaim,
-                                    matchesPlayed = fsMatchesPlayed,
-                                    totalWins = fsTotalWins,
-                                    totalKills = fsTotalKills,
-                                    referralEarnings = fsRefEarnings,
-                                    referralCount = fsRefCount,
-                                    isBanned = fsBanned,
-                                    banReason = fsBanReason,
-                                    banType = fsBanType,
-                                    isSuspended = fsSuspended,
-                                    suspendReason = fsSuspendReason,
-                                    role = fsRole
-                                )
-                            } else {
-                                User(
-                                    id = userId,
-                                    username = fsUsername,
-                                    fullName = fsFullName,
-                                    phoneOrEmail = doc.getString("phoneOrEmail") ?: doc.getString("email") ?: "",
-                                    mobileNo = fsMobileNo,
-                                    dob = fsDob,
-                                    bio = fsBio,
-                                    socialLink = fsSocialLink,
-                                    state = fsState,
-                                    isAgeVerified = fsIsAgeVerified,
-                                    legalConsentAccepted = fsLegalConsent,
-                                    legalConsentTimestamp = fsLegalTimestamp,
-                                    coolingOffUntil = fsCoolingOff,
-                                    dataExported = fsDataExported,
-                                    founderTier = fsFounderTier,
-                                    isFounder = fsIsFounder,
-                                    reservedTokens = fsReservedTokens,
-                                    inGameName = fsIgn,
-                                    freeFireId = fsGameId,
-                                    avatarUrl = fsAvatarUrl,
-                                    avatarIdx = fsAvatarIdx,
-                                    balance = fsBalance,
-                                    tokens = fsTokens,
-                                    loginStreak = fsStreak,
-                                    lastLoginClaimDate = fsLastClaim,
-                                    dailyMissionsTokensClaimed = fsDailyClaimed,
-                                    lastMissionClaimDate = fsLastMissionClaim,
-                                    matchesPlayed = fsMatchesPlayed,
-                                    totalWins = fsTotalWins,
-                                    totalKills = fsTotalKills,
-                                    referralEarnings = fsRefEarnings,
-                                    referralCount = fsRefCount,
-                                    isBanned = fsBanned,
-                                    banReason = fsBanReason,
-                                    banType = fsBanType,
-                                    isSuspended = fsSuspended,
-                                    suspendReason = fsSuspendReason,
-                                    role = fsRole,
-                                    dateOfJoining = (doc.get("createdAt") as? Number)?.toLong() ?: System.currentTimeMillis()
-                                )
-                            }
-
-                            withContext(Dispatchers.IO) {
-                                db.userDao().deleteOtherUsers(userId)
-                                db.userDao().insert(updated)
-                                if (updated.lastLoginClaimDate == getTodayIstDate()) {
-                                    val currentMissions = db.missionDao().getAllMissions().firstOrNull() ?: emptyList()
-                                    val daily = currentMissions.find { it.id == "m_daily_checkin" }
-                                    if (daily != null && (!daily.isClaimed || !daily.isCompleted)) {
-                                        db.missionDao().update(daily.copy(progress = 1, isCompleted = true, isClaimed = true))
+                                if (local != null && local.id == userId && local.updatedAt > 0L && remoteUpdatedAt > 0L) {
+                                    if (remoteUpdatedAt < local.updatedAt && remoteVersion < local.version) {
+                                        return@launch
                                     }
                                 }
+
+                                val fsTokens = when {
+                                    doc.contains("tokens") -> (doc.get("tokens") as? Number)?.toInt() ?: (local?.tokens ?: 0)
+                                    doc.contains("tokenBalance") -> (doc.get("tokenBalance") as? Number)?.toInt() ?: (local?.tokens ?: 0)
+                                    doc.contains("tokensBalance") -> (doc.get("tokensBalance") as? Number)?.toInt() ?: (local?.tokens ?: 0)
+                                    doc.contains("rewardTokens") -> (doc.get("rewardTokens") as? Number)?.toInt() ?: (local?.tokens ?: 0)
+                                    doc.contains("activityPoints") -> (doc.get("activityPoints") as? Number)?.toInt() ?: (local?.tokens ?: 0)
+                                    else -> local?.tokens ?: 0
+                                }
+                                val fsBalance = (doc.get("balance") as? Number)?.toDouble()
+                                    ?: (doc.get("walletBalance") as? Number)?.toDouble()
+                                    ?: (doc.get("wallet_balance") as? Number)?.toDouble() ?: (local?.balance ?: 0.0)
+                                val fsUsername = doc.getString("username") ?: doc.getString("name") ?: (local?.username ?: "Player")
+                                val fsFullName = doc.getString("fullName") ?: doc.getString("full_name") ?: (local?.fullName ?: fsUsername)
+                                val fsMobileNo = doc.getString("mobileNo") ?: doc.getString("mobile_no") ?: (local?.mobileNo ?: "")
+                                val fsDob = doc.getString("dob") ?: doc.getString("dateOfBirth") ?: (local?.dob ?: "")
+                                val fsBio = doc.getString("bio") ?: (local?.bio ?: "Ready to compete")
+                                val fsSocialLink = doc.getString("socialLink") ?: doc.getString("social_link") ?: (local?.socialLink ?: "")
+                                val fsState = doc.getString("state") ?: (local?.state ?: "Delhi")
+                                val fsIsAgeVerified = doc.getBoolean("isAgeVerified") ?: doc.getBoolean("is_age_verified") ?: (local?.isAgeVerified ?: false)
+                                val fsLegalConsent = doc.getBoolean("legalConsentAccepted") ?: doc.getBoolean("legal_consent_accepted") ?: (local?.legalConsentAccepted ?: true)
+                                val fsLegalTimestamp = (doc.get("legalConsentTimestamp") as? Number)?.toLong() ?: (local?.legalConsentTimestamp ?: 0L)
+                                val fsCoolingOff = (doc.get("coolingOffUntil") as? Number)?.toLong() ?: (local?.coolingOffUntil ?: 0L)
+                                val fsDataExported = doc.getBoolean("dataExported") ?: doc.getBoolean("data_exported") ?: (local?.dataExported ?: false)
+                                val fsFounderTier = doc.getString("founderTier") ?: doc.getString("founder_tier") ?: (local?.founderTier ?: "")
+                                val fsIsFounder = doc.getBoolean("isFounder") ?: doc.getBoolean("is_founder") ?: (fsFounderTier.isNotBlank())
+                                val fsReservedTokens = (doc.get("reservedTokens") as? Number)?.toInt() ?: (local?.reservedTokens ?: 0)
+                                val fsIgn = doc.getString("inGameName") ?: doc.getString("ign") ?: (local?.inGameName ?: "")
+                                val fsGameId = doc.getString("freeFireId") ?: doc.getString("gameId") ?: (local?.freeFireId ?: "")
+                                val fsAvatarUrl = doc.getString("avatarUrl") ?: doc.getString("avatar_url") ?: (local?.avatarUrl ?: "")
+                                val fsAvatarIdx = (doc.get("avatarIdx") as? Number)?.toInt() ?: (doc.get("avatar_idx") as? Number)?.toInt() ?: (local?.avatarIdx ?: 1)
+                                val fsStreak = (doc.get("loginStreak") as? Number)?.toInt() ?: (local?.loginStreak ?: 0)
+                                val fsLastClaim = doc.getString("lastLoginClaimDate") ?: (local?.lastLoginClaimDate ?: "")
+                                val fsDailyClaimed = (doc.get("dailyMissionsTokensClaimed") as? Number)?.toInt() ?: (local?.dailyMissionsTokensClaimed ?: 0)
+                                val fsLastMissionClaim = doc.getString("lastMissionClaimDate") ?: (local?.lastMissionClaimDate ?: "")
+                                val fsMatchesPlayed = (doc.get("matchesPlayed") as? Number)?.toInt() ?: (local?.matchesPlayed ?: 0)
+                                val fsTotalWins = (doc.get("totalWins") as? Number)?.toInt() ?: (doc.get("wins") as? Number)?.toInt() ?: (local?.totalWins ?: 0)
+                                val fsTotalKills = (doc.get("totalKills") as? Number)?.toInt() ?: (doc.get("kills") as? Number)?.toInt() ?: (local?.totalKills ?: 0)
+                                val fsRefEarnings = (doc.get("referralEarnings") as? Number)?.toDouble() ?: (local?.referralEarnings ?: 0.0)
+                                val fsRefCount = (doc.get("referralCount") as? Number)?.toInt() ?: (local?.referralCount ?: 0)
+                                val fsBanned = doc.getBoolean("isBanned") ?: doc.getBoolean("banned") ?: doc.getBoolean("is_banned") ?: (local?.isBanned ?: false)
+                                val fsBanReason = doc.getString("banReason") ?: doc.getString("ban_reason") ?: (local?.banReason ?: "")
+                                val fsBanType = doc.getString("banType") ?: doc.getString("ban_type") ?: (local?.banType ?: "PERMANENT")
+                                val fsSuspended = doc.getBoolean("isSuspended") ?: doc.getBoolean("suspended") ?: doc.getBoolean("is_suspended") ?: (local?.isSuspended ?: false)
+                                val fsSuspendReason = doc.getString("suspendReason") ?: doc.getString("suspend_reason") ?: (local?.suspendReason ?: "")
+                                val fsRole = doc.getString("role") ?: (local?.role ?: "user")
+
+                                val updated = if (local != null && local.id == userId) {
+                                    local.copy(
+                                        username = fsUsername,
+                                        fullName = fsFullName,
+                                        mobileNo = fsMobileNo,
+                                        dob = fsDob,
+                                        bio = fsBio,
+                                        socialLink = fsSocialLink,
+                                        state = fsState,
+                                        isAgeVerified = fsIsAgeVerified,
+                                        legalConsentAccepted = fsLegalConsent,
+                                        legalConsentTimestamp = fsLegalTimestamp,
+                                        coolingOffUntil = fsCoolingOff,
+                                        dataExported = fsDataExported,
+                                        founderTier = fsFounderTier,
+                                        isFounder = fsIsFounder,
+                                        reservedTokens = fsReservedTokens,
+                                        inGameName = fsIgn,
+                                        freeFireId = fsGameId,
+                                        avatarUrl = fsAvatarUrl,
+                                        avatarIdx = fsAvatarIdx,
+                                        balance = fsBalance,
+                                        tokens = fsTokens,
+                                        loginStreak = fsStreak,
+                                        lastLoginClaimDate = fsLastClaim,
+                                        dailyMissionsTokensClaimed = fsDailyClaimed,
+                                        lastMissionClaimDate = fsLastMissionClaim,
+                                        matchesPlayed = fsMatchesPlayed,
+                                        totalWins = fsTotalWins,
+                                        totalKills = fsTotalKills,
+                                        referralEarnings = fsRefEarnings,
+                                        referralCount = fsRefCount,
+                                        isBanned = fsBanned,
+                                        banReason = fsBanReason,
+                                        banType = fsBanType,
+                                        isSuspended = fsSuspended,
+                                        suspendReason = fsSuspendReason,
+                                        role = fsRole,
+                                        updatedAt = maxOf(remoteUpdatedAt, local.updatedAt),
+                                        version = maxOf(remoteVersion, local.version)
+                                    )
+                                } else {
+                                    User(
+                                        id = userId,
+                                        username = fsUsername,
+                                        fullName = fsFullName,
+                                        phoneOrEmail = doc.getString("phoneOrEmail") ?: doc.getString("email") ?: "",
+                                        mobileNo = fsMobileNo,
+                                        dob = fsDob,
+                                        bio = fsBio,
+                                        socialLink = fsSocialLink,
+                                        state = fsState,
+                                        isAgeVerified = fsIsAgeVerified,
+                                        legalConsentAccepted = fsLegalConsent,
+                                        legalConsentTimestamp = fsLegalTimestamp,
+                                        coolingOffUntil = fsCoolingOff,
+                                        dataExported = fsDataExported,
+                                        founderTier = fsFounderTier,
+                                        isFounder = fsIsFounder,
+                                        reservedTokens = fsReservedTokens,
+                                        inGameName = fsIgn,
+                                        freeFireId = fsGameId,
+                                        avatarUrl = fsAvatarUrl,
+                                        avatarIdx = fsAvatarIdx,
+                                        balance = fsBalance,
+                                        tokens = fsTokens,
+                                        loginStreak = fsStreak,
+                                        lastLoginClaimDate = fsLastClaim,
+                                        dailyMissionsTokensClaimed = fsDailyClaimed,
+                                        lastMissionClaimDate = fsLastMissionClaim,
+                                        matchesPlayed = fsMatchesPlayed,
+                                        totalWins = fsTotalWins,
+                                        totalKills = fsTotalKills,
+                                        referralEarnings = fsRefEarnings,
+                                        referralCount = fsRefCount,
+                                        isBanned = fsBanned,
+                                        banReason = fsBanReason,
+                                        banType = fsBanType,
+                                        isSuspended = fsSuspended,
+                                        suspendReason = fsSuspendReason,
+                                        role = fsRole,
+                                        dateOfJoining = (doc.get("createdAt") as? Number)?.toLong() ?: System.currentTimeMillis(),
+                                        updatedAt = remoteUpdatedAt,
+                                        version = remoteVersion
+                                    )
+                                }
+
+                                withContext(Dispatchers.IO) {
+                                    db.userDao().deleteOtherUsers(userId)
+                                    db.userDao().insert(updated)
+                                    if (updated.lastLoginClaimDate == getTodayIstDate()) {
+                                        val currentMissions = db.missionDao().getAllMissions().firstOrNull() ?: emptyList()
+                                        val daily = currentMissions.find { it.id == "m_daily_checkin" }
+                                        if (daily != null && (!daily.isClaimed || !daily.isCompleted)) {
+                                            db.missionDao().update(daily.copy(progress = 1, isCompleted = true, isClaimed = true))
+                                        }
+                                    }
+                                }
+                                Log.d(TAG, "User profile updated from Firestore real-time listener (cross-device sync)")
+                            } catch (e: Exception) {
+                                Log.w(TAG, "Notice updating user from Firestore snapshot: ${e.message}")
                             }
-                            Log.d(TAG, "User profile updated from Firestore real-time listener (cross-device sync)")
-                        } catch (e: Exception) {
-                            Log.w(TAG, "Notice updating user from Firestore snapshot: ${e.message}")
                         }
                     }
-                }
-            listenerManager?.registerFirestoreListener("fs_user_$userId", userFsReg)
+                listenerManager?.registerFirestoreListener("fs_user_$userId", userFsReg)
+            }
         } catch (e: Exception) {
             Log.w(TAG, "Notice setting up Firestore user listener: ${e.message}")
         }
@@ -2564,6 +2838,7 @@ class PlatformRepository(
      * Synchronizes status updates, admin resolution notes, and replies from Admin Panel.
      */
     fun startRealtimeUserReportsSync(userId: String) {
+        if (userId.isBlank() || userId == "guest" || isGuestSessionUid(userId)) return
         val reportsQuery = reportsRef.orderByChild("userId").equalTo(userId)
         val reportsListener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
@@ -3180,7 +3455,25 @@ class PlatformRepository(
      * Converts Tokens to VT Tokens (Wallet Balance) at 10 Tokens = 1 VT Token.
      */
     suspend fun convertTokensToVt(tokensToConvert: Int): ConvertResult = withContext(Dispatchers.IO) {
-        val userItem = db.userDao().getUserSync() ?: user.firstOrNull() ?: return@withContext ConvertResult.Failure("User not found")
+        val userItem = db.userDao().getUserSync() ?: user.firstOrNull() ?: run {
+            val auth = FirebaseAuth.getInstance()
+            val guestUid = auth.currentUser?.uid ?: "guest"
+            val fallbackGuest = User(
+                id = guestUid,
+                username = "Guest Operative",
+                fullName = "Guest User",
+                phoneOrEmail = "guest_session@velorix.com",
+                balance = 0.0,
+                tokens = 50,
+                isBanned = false,
+                isSuspended = false,
+                role = "guest",
+                avatarIdx = 1,
+                dateOfJoining = System.currentTimeMillis()
+            )
+            db.userDao().insert(fallbackGuest)
+            fallbackGuest
+        }
         if (tokensToConvert < 10) {
             return@withContext ConvertResult.Failure("Minimum 10 Tokens required to convert (10 Tokens = 1 VT)")
         }
@@ -3188,12 +3481,15 @@ class PlatformRepository(
             return@withContext ConvertResult.Failure("Insufficient Tokens. You have ${userItem.tokens} Tokens.")
         }
 
-        val convertedVt = (tokensToConvert / 10).toDouble()
         val remainderTokens = tokensToConvert % 10
         val actualTokensDeducted = tokensToConvert - remainderTokens
+        if (actualTokensDeducted < 10) {
+            return@withContext ConvertResult.Failure("Minimum 10 Tokens required to convert (10 Tokens = 1 VT)")
+        }
+        val convertedVt = (actualTokensDeducted / 10).toDouble()
         val newTotalTokensConverted = userItem.totalTokensConverted + actualTokensDeducted
         val newRemainingTokens = (userItem.tokens - actualTokensDeducted).coerceAtLeast(0)
-        val newWalletBalance = userItem.balance + convertedVt
+        val newWalletBalance = kotlin.math.round((userItem.balance + convertedVt) * 100.0) / 100.0
 
         val updatedUser = userItem.copy(
             tokens = newRemainingTokens,
@@ -3214,71 +3510,61 @@ class PlatformRepository(
         )
 
         try {
-            db.userDao().update(updatedUser)
+            // 1. Immediately persist locally to Room so UI and userState Flow update without delay
+            db.userDao().insert(updatedUser)
             db.transactionDao().insert(newTx)
-            syncUserToRealtimeDb(updatedUser)
 
-            // Atomic Multi-Path Update to Firebase Realtime Database
-            try {
-                val updates = hashMapOf<String, Any>(
-                    "tokens" to newRemainingTokens,
-                    "tokenBalance" to newRemainingTokens,
-                    "tokensBalance" to newRemainingTokens,
-                    "rewardTokens" to newRemainingTokens,
-                    "reward_tokens" to newRemainingTokens,
-                    "activityPoints" to newRemainingTokens,
-                    "coins" to newRemainingTokens,
-                    "points" to newRemainingTokens,
-                    "token_balance" to newRemainingTokens,
-                    "tokens_balance" to newRemainingTokens,
-                    "balance" to newWalletBalance,
-                    "walletBalance" to newWalletBalance,
-                    "wallet_balance" to newWalletBalance,
-                    "totalTokensConverted" to newTotalTokensConverted,
-                    "total_tokens_converted" to newTotalTokensConverted,
-                    "tokensConverted" to newTotalTokensConverted,
-                    "lastTokenConversionAt" to timestamp
-                )
-                usersRef.child(userItem.id).updateChildren(updates).await()
-                transactionsRef.child(txId).setValue(newTx).await()
-                usersRef.child(userItem.id).child("transactions").child(txId).setValue(newTx)
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to sync token conversion to RTDB: ${e.message}")
+            // 2. Authoritative background sync to Realtime Database and Cloud Firestore
+            val isGuest = isGuestSessionUid(userItem.id) || isGuestEmail(userItem.phoneOrEmail)
+            if (!isGuest && userItem.id.isNotBlank() && userItem.id != "guest") {
+                CoroutineScope(Dispatchers.IO).launch {
+                    val syncMgr = firestoreUserSyncManager
+                    if (syncMgr != null) {
+                        try {
+                            syncMgr.updateUserProfileAuthoritative(updatedUser)
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Notice running authoritative user sync for conversion: ${e.message}")
+                        }
+                    }
+                    try {
+                        syncUserToRealtimeDb(updatedUser)
+                        val updates = hashMapOf<String, Any>(
+                            "tokens" to newRemainingTokens,
+                            "tokenBalance" to newRemainingTokens,
+                            "tokensBalance" to newRemainingTokens,
+                            "rewardTokens" to newRemainingTokens,
+                            "reward_tokens" to newRemainingTokens,
+                            "activityPoints" to newRemainingTokens,
+                            "coins" to newRemainingTokens,
+                            "points" to newRemainingTokens,
+                            "token_balance" to newRemainingTokens,
+                            "tokens_balance" to newRemainingTokens,
+                            "balance" to newWalletBalance,
+                            "walletBalance" to newWalletBalance,
+                            "wallet_balance" to newWalletBalance,
+                            "totalTokensConverted" to newTotalTokensConverted,
+                            "total_tokens_converted" to newTotalTokensConverted,
+                            "tokensConverted" to newTotalTokensConverted,
+                            "lastTokenConversionAt" to timestamp
+                        )
+                        usersRef.child(userItem.id).updateChildren(updates)
+                        transactionsRef.child(txId).setValue(newTx)
+                        usersRef.child(userItem.id).child("transactions").child(txId).setValue(newTx)
+                        val firestore = FirebaseFirestore.getInstance()
+                        firestore.collection("transactions").document(txId).set(newTx)
+                        firestore.collection("wallet_transactions").document(txId).set(newTx)
+                        firestore.collection("users").document(userItem.id)
+                            .collection("transactions").document(txId).set(newTx)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Notice syncing token conversion artifacts: ${e.message}")
+                    }
+                }
             }
 
-            // Atomic Merge to Cloud Firestore
+            // 3. Update mission progress
             try {
-                val firestore = FirebaseFirestore.getInstance()
-                firestore.collection("transactions").document(txId).set(newTx)
-                firestore.collection("wallet_transactions").document(txId).set(newTx)
-                firestore.collection("users").document(userItem.id)
-                    .collection("transactions").document(txId).set(newTx)
-                firestore.collection("users").document(userItem.id).set(
-                    mapOf(
-                        "balance" to newWalletBalance,
-                        "walletBalance" to newWalletBalance,
-                        "wallet_balance" to newWalletBalance,
-                        "tokens" to newRemainingTokens,
-                        "tokenBalance" to newRemainingTokens,
-                        "tokensBalance" to newRemainingTokens,
-                        "rewardTokens" to newRemainingTokens,
-                        "reward_tokens" to newRemainingTokens,
-                        "activityPoints" to newRemainingTokens,
-                        "coins" to newRemainingTokens,
-                        "points" to newRemainingTokens,
-                        "token_balance" to newRemainingTokens,
-                        "tokens_balance" to newRemainingTokens,
-                        "totalTokensConverted" to newTotalTokensConverted,
-                        "total_tokens_converted" to newTotalTokensConverted,
-                        "tokensConverted" to newTotalTokensConverted,
-                        "lastTokenConversionAt" to FieldValue.serverTimestamp(),
-                        "updatedAt" to FieldValue.serverTimestamp()
-                    ),
-                    com.google.firebase.firestore.SetOptions.merge()
-                ).await()
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to sync token conversion to Firestore: ${e.message}")
-            }
+                updateMissionProgress("m_weekly_converter", 1)
+            } catch (e: Exception) {}
 
             return@withContext ConvertResult.Success("Successfully converted $actualTokensDeducted Tokens to $convertedVt VT Tokens!")
         } catch (e: Exception) {
@@ -3414,10 +3700,13 @@ class PlatformRepository(
         val firebaseUser = firebaseAuth.currentUser
         val uid = firebaseUser?.uid ?: db.userDao().getUserSync()?.id ?: "guest"
         val email = firebaseUser?.email ?: ""
+        val isGuestAuth = firebaseUser == null || firebaseUser.isAnonymous || firebaseUser.email == "guest_session@velorix.com" || isGuestSessionUid(uid)
 
         try {
             withContext(Dispatchers.IO) {
-                if (firebaseUser != null) {
+                if (isGuestAuth) {
+                    unbanGuestSessionIfBanned()
+                } else if (firebaseUser != null) {
                     startRealtimeUserSync(uid)
                     startRealtimeUserReportsSync(uid)
 
@@ -3482,31 +3771,6 @@ class PlatformRepository(
                         if (fetchedTxs.isNotEmpty()) {
                             db.transactionDao().clearAll()
                             db.transactionDao().insertAll(fetchedTxs)
-
-                            val currentUser = db.userDao().getUserSync()
-                            if (currentUser != null) {
-                                var totalConverted = 0
-                                for (tx in fetchedTxs) {
-                                    val detail = tx.detail.lowercase()
-                                    val type = tx.type.uppercase()
-                                    if (type == "TOKEN_CONVERSION" || detail.contains("convert")) {
-                                        val regexMatch = Regex("""converted\s+(\d+)\s*tokens?""", RegexOption.IGNORE_CASE).find(detail)
-                                        val count = regexMatch?.groupValues?.get(1)?.toIntOrNull() ?: (tx.amount * 10).toInt()
-                                        totalConverted += count
-                                    }
-                                }
-                                if (totalConverted > currentUser.totalTokensConverted) {
-                                    val tokensToDeduct = totalConverted - currentUser.totalTokensConverted
-                                    val newTokens = (currentUser.tokens - tokensToDeduct).coerceAtLeast(0)
-                                    val reconciled = currentUser.copy(
-                                        tokens = newTokens,
-                                        totalTokensConverted = totalConverted
-                                    )
-                                    db.userDao().update(reconciled)
-                                    syncUserToRealtimeDb(reconciled)
-                                    Log.i(TAG, "Reconciled total converted tokens for user $uid to $totalConverted (tokens: ${currentUser.tokens} -> $newTokens)")
-                                }
-                            }
                         }
                     } catch (e: Exception) {
                         Log.w(TAG, "Transactions RTDB fetch notice: ${e.message}")
@@ -3560,7 +3824,28 @@ class PlatformRepository(
                         Log.w(TAG, "Firestore matches fetch notice: ${e.message}")
                     }
 
-                    val distinctTournaments = fetchedTournaments.distinctBy { it.id }
+                    val distinctTournaments = fetchedTournaments.groupBy { it.id }.values.map { group ->
+                        group.reduce { acc, t ->
+                            val bestImg = if (t.imageUrl.isNotBlank() && t.imageUrl != "null") t.imageUrl else acc.imageUrl
+                            val bestTitle = if (t.title.isNotBlank()) t.title else acc.title
+                            val bestRoomId = if (t.roomId.isNotBlank()) t.roomId else acc.roomId
+                            val bestRoomPass = if (t.roomPassword.isNotBlank()) t.roomPassword else acc.roomPassword
+                            val isJoined = acc.joined || t.joined
+                            val bestStatus = if (t.status.isNotBlank()) t.status else acc.status
+                            val bestDateTime = if (t.dateTimeStr.isNotBlank()) t.dateTimeStr else acc.dateTimeStr
+                            val filled = if (t.filledSlots > 0) t.filledSlots else acc.filledSlots
+                            t.copy(
+                                imageUrl = bestImg,
+                                title = bestTitle,
+                                roomId = bestRoomId,
+                                roomPassword = bestRoomPass,
+                                joined = isJoined,
+                                status = bestStatus,
+                                dateTimeStr = bestDateTime,
+                                filledSlots = filled
+                            )
+                        }
+                    }
                     if (distinctTournaments.isNotEmpty()) {
                         val validIds = distinctTournaments.map { it.id }.toSet()
                         val localTournaments = db.tournamentDao().getAllSync()
@@ -3572,17 +3857,21 @@ class PlatformRepository(
                         val reconciledTournaments = distinctTournaments.map { dt ->
                             val isReg = userRegisteredTournamentIds.contains(dt.id)
                             val local = localTournaments.find { it.id == dt.id }
-                            if (isReg || local?.joined == true || dt.joined) dt.copy(joined = true) else dt
+                            val resolvedImg = if (dt.imageUrl.isNotBlank() && dt.imageUrl != "null") {
+                                dt.imageUrl
+                            } else {
+                                local?.imageUrl?.takeIf { it.isNotBlank() && it != "null" } ?: ""
+                            }
+                            val isJoined = isReg || local?.joined == true || dt.joined
+                            dt.copy(joined = isJoined, imageUrl = resolvedImg)
                         }
                         db.tournamentDao().insertAll(reconciledTournaments)
                         Log.i(TAG, "Explicitly fetched and saved ${distinctTournaments.size} tournaments from remote")
                     } else {
-                        // Remote is empty or offline: preserve local legitimate tournaments
+                        // Remote returned empty: clear local tournaments so deleted tournaments do not linger
                         val localTournaments = db.tournamentDao().getAllSync()
                         for (t in localTournaments) {
-                            if (isMockTournament(t.id, t.title)) {
-                                db.tournamentDao().delete(t.id)
-                            }
+                            db.tournamentDao().delete(t.id)
                         }
                     }
                 } catch (e: Exception) {
@@ -4352,13 +4641,23 @@ class PlatformRepository(
 
     suspend fun updateProfile(updatedUser: User) {
         try {
-            db.userDao().update(updatedUser)
-            if (updatedUser.inGameName.isNotBlank() || updatedUser.freeFireId.isNotBlank()) {
+            // Centralized data synchronization layer using Firebase Firestore:
+            // Enforces Last-Write-Wins (LWW) and atomic server-timestamp / version validation
+            val syncMgr = firestoreUserSyncManager
+            val authoritativeUser = if (syncMgr != null && updatedUser.id.isNotBlank() && updatedUser.id != "guest") {
+                val result = syncMgr.updateUserProfileAuthoritative(updatedUser)
+                result.getOrNull() ?: updatedUser
+            } else {
+                updatedUser
+            }
+
+            db.userDao().update(authoritativeUser)
+            if (authoritativeUser.inGameName.isNotBlank() || authoritativeUser.freeFireId.isNotBlank()) {
                 updateMissionProgress("m_profile_master", 1)
             }
             CoroutineScope(Dispatchers.IO).launch {
                 try {
-                    syncUserToRealtimeDb(updatedUser)
+                    syncUserToRealtimeDb(authoritativeUser)
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to update profile on RTDB: ${e.message}")
                 }
@@ -4373,13 +4672,20 @@ class PlatformRepository(
         try {
             val userItem = user.firstOrNull() ?: getUserSync() ?: return
             val updatedUser = userItem.copy(avatarUrl = newAvatarUrl)
-            db.userDao().update(updatedUser)
+            val syncMgr = firestoreUserSyncManager
+            val authoritativeUser = if (syncMgr != null && updatedUser.id.isNotBlank() && updatedUser.id != "guest") {
+                val result = syncMgr.updateUserProfileAuthoritative(updatedUser)
+                result.getOrNull() ?: updatedUser
+            } else {
+                updatedUser
+            }
+            db.userDao().update(authoritativeUser)
             CoroutineScope(Dispatchers.IO).launch {
                 try {
-                    usersRef.child(updatedUser.id).child("avatarUrl").setValue(newAvatarUrl)
-                    usersRef.child(updatedUser.id).child("avatar_url").setValue(newAvatarUrl)
+                    usersRef.child(authoritativeUser.id).child("avatarUrl").setValue(newAvatarUrl)
+                    usersRef.child(authoritativeUser.id).child("avatar_url").setValue(newAvatarUrl)
                     val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
-                    firestore.collection("users").document(updatedUser.id).update("avatarUrl", newAvatarUrl)
+                    firestore.collection("users").document(authoritativeUser.id).update("avatarUrl", newAvatarUrl)
                 } catch (e: Exception) {
                     Log.w(TAG, "Notice syncing avatar to cloud: ${e.message}")
                 }
@@ -5052,21 +5358,24 @@ class PlatformRepository(
         val rawReserved = snapshot.getIntSafe("reservedTokens", "reserved_tokens", 0)
         val reservedTokens = if (rawReserved > 0) rawReserved else if (founderTier == "tier_1000" || isAnantEmail) 2000 else 0
 
-        val isBanned = snapshot.child("isBanned").getValue(Boolean::class.java)
+        val isGuest = isGuestSessionUid(uid) || isGuestEmail(phoneOrEmail)
+        val rawBanned = snapshot.child("isBanned").getValue(Boolean::class.java)
             ?: snapshot.child("banned").getValue(Boolean::class.java)
             ?: snapshot.child("is_banned").getValue(Boolean::class.java)
             ?: (snapshot.getStringSafe("status").equals("BANNED", ignoreCase = true))
-        val banReason = snapshot.getStringSafe("banReason", "ban_reason").ifEmpty { snapshot.getStringSafe("reason") }
-        val banType = snapshot.getStringSafe("banType", "ban_type").ifEmpty { "PERMANENT" }
-        val bannedAt = snapshot.getLongSafe("bannedAt", "banned_at")
-        val banExpiresAt = snapshot.getLongSafe("banExpiresAt", "ban_expires_at")
+        val isBanned = if (isGuest) false else rawBanned
+        val banReason = if (isGuest) "" else (snapshot.getStringSafe("banReason", "ban_reason").ifEmpty { snapshot.getStringSafe("reason") })
+        val banType = if (isGuest) "NONE" else (snapshot.getStringSafe("banType", "ban_type").ifEmpty { "PERMANENT" })
+        val bannedAt = if (isGuest) 0L else snapshot.getLongSafe("bannedAt", "banned_at")
+        val banExpiresAt = if (isGuest) 0L else snapshot.getLongSafe("banExpiresAt", "ban_expires_at")
 
-        val isSuspended = snapshot.child("isSuspended").getValue(Boolean::class.java)
+        val rawSuspended = snapshot.child("isSuspended").getValue(Boolean::class.java)
             ?: snapshot.child("suspended").getValue(Boolean::class.java)
             ?: snapshot.child("is_suspended").getValue(Boolean::class.java)
             ?: (snapshot.getStringSafe("status").equals("SUSPENDED", ignoreCase = true))
-        val suspendReason = snapshot.getStringSafe("suspendReason", "suspend_reason").ifEmpty { snapshot.getStringSafe("suspension_reason") }
-        val suspensionExpiresAt = snapshot.getLongSafe("suspensionExpiresAt", "suspension_expires_at")
+        val isSuspended = if (isGuest) false else rawSuspended
+        val suspendReason = if (isGuest) "" else (snapshot.getStringSafe("suspendReason", "suspend_reason").ifEmpty { snapshot.getStringSafe("suspension_reason") })
+        val suspensionExpiresAt = if (isGuest) 0L else snapshot.getLongSafe("suspensionExpiresAt", "suspension_expires_at")
         val role = snapshot.getStringSafe("role", "adminRole").ifEmpty { if (isAnantEmail) "super_admin" else "user" }
 
         val fullName = snapshot.getStringSafe("fullName", "full_name").ifEmpty { username }
@@ -5179,15 +5488,16 @@ class PlatformRepository(
         val isFounder = doc.getBoolean("isFounder") ?: (founderTier.isNotBlank())
         val reservedTokens = (doc.get("reservedTokens") as? Number)?.toInt() ?: 0
 
-        val isBanned = doc.getBoolean("isBanned") ?: doc.getBoolean("banned") ?: false
-        val banReason = doc.getString("banReason") ?: doc.getString("ban_reason") ?: ""
-        val banType = doc.getString("banType") ?: doc.getString("ban_type") ?: "PERMANENT"
-        val bannedAt = (doc.get("bannedAt") as? Number)?.toLong() ?: 0L
-        val banExpiresAt = (doc.get("banExpiresAt") as? Number)?.toLong() ?: 0L
+        val isGuest = isGuestSessionUid(uid) || isGuestEmail(phoneOrEmail)
+        val isBanned = if (isGuest) false else (doc.getBoolean("isBanned") ?: doc.getBoolean("banned") ?: false)
+        val banReason = if (isGuest) "" else (doc.getString("banReason") ?: doc.getString("ban_reason") ?: "")
+        val banType = if (isGuest) "NONE" else (doc.getString("banType") ?: doc.getString("ban_type") ?: "PERMANENT")
+        val bannedAt = if (isGuest) 0L else ((doc.get("bannedAt") as? Number)?.toLong() ?: 0L)
+        val banExpiresAt = if (isGuest) 0L else ((doc.get("banExpiresAt") as? Number)?.toLong() ?: 0L)
 
-        val isSuspended = doc.getBoolean("isSuspended") ?: doc.getBoolean("suspended") ?: false
-        val suspendReason = doc.getString("suspendReason") ?: doc.getString("suspend_reason") ?: ""
-        val suspensionExpiresAt = (doc.get("suspensionExpiresAt") as? Number)?.toLong() ?: 0L
+        val isSuspended = if (isGuest) false else (doc.getBoolean("isSuspended") ?: doc.getBoolean("suspended") ?: false)
+        val suspendReason = if (isGuest) "" else (doc.getString("suspendReason") ?: doc.getString("suspend_reason") ?: "")
+        val suspensionExpiresAt = if (isGuest) 0L else ((doc.get("suspensionExpiresAt") as? Number)?.toLong() ?: 0L)
 
         val role = doc.getString("role") ?: "user"
         val isAgeVerified = doc.getBoolean("isAgeVerified") ?: doc.getBoolean("is_age_verified") ?: false
@@ -6097,26 +6407,53 @@ class PlatformRepository(
                     "matchCategory" to tournamentToSave.matchCategory,
                     "matchMode" to tournamentToSave.matchMode,
                     "customRuleBadge" to tournamentToSave.customRuleBadge,
+                    "imageUrl" to tournamentToSave.imageUrl,
+                    "image_url" to tournamentToSave.imageUrl,
+                    "bannerUrl" to tournamentToSave.imageUrl,
+                    "banner_url" to tournamentToSave.imageUrl,
+                    "image" to tournamentToSave.imageUrl,
+                    "thumbnailUrl" to tournamentToSave.imageUrl,
+                    "thumbnail_url" to tournamentToSave.imageUrl,
+                    "coverImage" to tournamentToSave.imageUrl,
+                    "cover_image" to tournamentToSave.imageUrl,
+                    "cover" to tournamentToSave.imageUrl,
+                    "poster" to tournamentToSave.imageUrl,
+                    "posterUrl" to tournamentToSave.imageUrl,
+                    "poster_url" to tournamentToSave.imageUrl,
+                    "tournamentCover" to tournamentToSave.imageUrl,
+                    "gameImage" to tournamentToSave.imageUrl,
                     "updatedAt" to System.currentTimeMillis()
                 )
 
                 // 1. Insert into local cache FIRST (Offline-First: guarantees immediate UI display)
                 db.tournamentDao().insert(tournamentToSave)
                 rtdbTournamentsCache[tId] = tournamentToSave
+                rtdbMatchesCache[tId] = tournamentToSave
+                rtdbAllTournamentsCache[tId] = tournamentToSave
+                fsTournamentsCache[tId] = tournamentToSave
+                fsMatchesCache[tId] = tournamentToSave
+                fsAllTournamentsCache[tId] = tournamentToSave
+                fsAdminTournamentsCache[tId] = tournamentToSave
 
                 // 2. Synchronize to Firebase Realtime Database
                 try {
                     tournamentsRef.child(tId).setValue(map).await()
                     matchesRef.child(tId).setValue(map).await()
+                    allTournamentsRef.child(tId).setValue(map).await()
                 } catch (e: Exception) {
                     Log.w(TAG, "RTDB tournament save notice: ${e.message}")
                 }
 
                 // 3. Synchronize to Cloud Firestore
                 try {
-                    FirebaseFirestore.getInstance().collection("tournaments").document(tId)
+                    val firestore = FirebaseFirestore.getInstance()
+                    firestore.collection("tournaments").document(tId)
                         .set(map, com.google.firebase.firestore.SetOptions.merge()).await()
-                    FirebaseFirestore.getInstance().collection("matches").document(tId)
+                    firestore.collection("matches").document(tId)
+                        .set(map, com.google.firebase.firestore.SetOptions.merge()).await()
+                    firestore.collection("all_tournaments").document(tId)
+                        .set(map, com.google.firebase.firestore.SetOptions.merge()).await()
+                    firestore.collection("admin_tournaments").document(tId)
                         .set(map, com.google.firebase.firestore.SetOptions.merge()).await()
                 } catch (e: Exception) {
                     Log.w(TAG, "Firestore tournament write note: ${e.message}")
@@ -6134,23 +6471,29 @@ class PlatformRepository(
     suspend fun deleteTournament(tournamentId: String): Result<Unit> {
         return withContext(Dispatchers.IO) {
             try {
-                // Remove from local cache first
+                // Remove from local cache and in-memory caches first
                 db.tournamentDao().delete(tournamentId)
                 rtdbTournamentsCache.remove(tournamentId)
                 rtdbMatchesCache.remove(tournamentId)
                 rtdbAllTournamentsCache.remove(tournamentId)
                 fsTournamentsCache.remove(tournamentId)
                 fsMatchesCache.remove(tournamentId)
+                fsAllTournamentsCache.remove(tournamentId)
+                fsAdminTournamentsCache.remove(tournamentId)
 
                 try {
                     tournamentsRef.child(tournamentId).removeValue().await()
                     matchesRef.child(tournamentId).removeValue().await()
+                    allTournamentsRef.child(tournamentId).removeValue().await()
                 } catch (e: Exception) {
                     Log.w(TAG, "RTDB tournament delete note: ${e.message}")
                 }
                 try {
-                    FirebaseFirestore.getInstance().collection("tournaments").document(tournamentId).delete().await()
-                    FirebaseFirestore.getInstance().collection("matches").document(tournamentId).delete().await()
+                    val fs = FirebaseFirestore.getInstance()
+                    fs.collection("tournaments").document(tournamentId).delete().await()
+                    fs.collection("matches").document(tournamentId).delete().await()
+                    fs.collection("all_tournaments").document(tournamentId).delete().await()
+                    fs.collection("admin_tournaments").document(tournamentId).delete().await()
                 } catch (e: Exception) {
                     Log.w(TAG, "Firestore tournament delete note: ${e.message}")
                 }
@@ -6201,6 +6544,10 @@ class PlatformRepository(
     }
 
     suspend fun toggleUserBan(userId: String, isBanned: Boolean, reason: String = "", banType: String = "PERMANENT") {
+        if (isGuestSessionUid(userId)) {
+            Log.w(TAG, "Cannot ban guest session (UID=$userId). Operation rejected.")
+            return
+        }
         try {
             val banMap = mapOf(
                 "isBanned" to isBanned,
@@ -6236,6 +6583,10 @@ class PlatformRepository(
     }
 
     suspend fun toggleUserSuspension(userId: String, isSuspended: Boolean, reason: String = "") {
+        if (isGuestSessionUid(userId)) {
+            Log.w(TAG, "Cannot suspend guest session (UID=$userId). Operation rejected.")
+            return
+        }
         try {
             val suspendMap = mapOf(
                 "isSuspended" to isSuspended,

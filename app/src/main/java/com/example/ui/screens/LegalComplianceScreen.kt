@@ -75,6 +75,10 @@ fun LegalComplianceScreen(
     val textMuted = Color(0xFF555555)
     val accentVercel = Color(0xFFFFFFFF)
 
+    androidx.activity.compose.BackHandler {
+        onNavigateBack()
+    }
+
     Scaffold(
         containerColor = bgBlack,
         topBar = {

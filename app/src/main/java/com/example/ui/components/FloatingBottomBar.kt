@@ -1,53 +1,63 @@
+/*
+ * Directly cloned from BitChord (com.music.bitchord.ui.components.FloatingBottomBar & GlassNavBar)
+ * Provides:
+ * - Liquid glass selection pill that enlarges and lifts past the bar edges on hold, tap, and drag.
+ * - Refraction lens with chromatic aberration rainbow rim and contact shadow (GlassSelectionPill).
+ * - Under-damped spring kinematics (GlassPillMotion) with acceleration squash & stretch.
+ * - Exact BitChord padding, sizing, and tab hierarchy.
+ * - Standalone circular glass profile button.
+ */
 package com.example.ui.components
 
-import androidx.compose.animation.AnimatedVisibility
+import android.os.Build
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.AnimationSpec
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -56,482 +66,532 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.data.model.LiquidGlassConfig
-import com.example.ui.theme.GffDevanagariFontFamily
+import com.example.ui.components.backdrop.backdrops.layerBackdrop
+import com.example.ui.components.backdrop.backdrops.rememberLayerBackdrop
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeChild
-import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.roundToInt
 
 data class BottomTab(
-    val route: String,
+    val route: String = "",
     val label: String,
     val icon: ImageVector,
 )
 
 /**
- * Sleek 56dp Stadium Pill Navigation Metrics
+ * The gap between the pill's glass edge and the tabs inside it.
+ * Sourced directly from BitChord.
  */
-private val BAR_HEIGHT = 56.dp
-private val BAR_PILL_SHAPE = CircleShape // 100% Stadium Capsule Shape
-private val ACTIVE_PILL_SHAPE = CircleShape // 100% Stadium Capsule Indicator
-private val PILL_INSET_VERTICAL = 5.dp
-private val PILL_INSET_HORIZONTAL = 5.dp
-private val PAGE_GUTTER = 14.dp
+internal val PILL_INSET = 6.dp
 
 /**
- * Ultra-smooth, stutter-free spring physics
+ * How far the floating bars stand off the bottom edge: the system navigation
+ * bar's inset, but never less than a gesture bar's floor.
  */
-private val GlassSpring: AnimationSpec<Float> = spring(
-    dampingRatio = 0.82f,
-    stiffness = 420f
-)
+internal val floatingBarInsets: WindowInsets
+    @Composable get() = WindowInsets.navigationBars.union(WindowInsets(bottom = GESTURE_BAR_FLOOR))
+
+private val GESTURE_BAR_FLOOR = 15.dp
+
+/** Each tab's vertical padding, counterweight to PILL_INSET. Sourced directly from BitChord. */
+internal val TAB_VERTICAL_PADDING = 9.dp
+
+/** Gap between tab icon and label text. Sourced directly from BitChord. */
+internal val TAB_ICON_LABEL_GAP = 2.dp
+
+/** Margin from side edges. */
+internal val BAR_GUTTER = 16.dp
 
 /**
- * Floating Pill Bottom Navigation Bar with Apple Liquid Glass Lens Optics:
- * - True Stadium / Pill Shape (CircleShape / 100% Rounded Capsule)
- * - Compact 56dp height matching reference design
- * - Dynamic high transparency & low tint overlay per user request
- * - Softened specular rim light without blinding white harshness
- * - Fully customizable via runtime LiquidGlassConfig (Beta)
+ * The spring the selection indicator and the tab glyphs both travel on.
+ * Sourced directly from BitChord.
+ */
+internal val GlassSpring = spring<Float>(dampingRatio = 0.72f, stiffness = 320f)
+
+/**
+ * Liquid glass bottom bar cloned from BitChord:
+ * - Liquid glass pill lens that inflates and enlarges past the bar's top and bottom on hold, tap, and drag.
+ * - Real-time refraction lens with chromatic aberration rainbow highlight rim and contact shadow.
+ * - Precise physics spring model (GlassPillMotion) with acceleration squash & stretch.
+ * - BitChord vertical icon + label layout with equal width weighting.
+ * - Standalone circular glass profile button.
  */
 @Composable
 fun FloatingBottomBar(
     tabs: List<BottomTab>,
-    profileTab: BottomTab,
     currentRoute: String,
     onTabSelected: (String) -> Unit,
-    hazeState: HazeState,
     modifier: Modifier = Modifier,
-    config: LiquidGlassConfig = LiquidGlassConfig()
+    hazeState: HazeState? = null,
+    profileTab: BottomTab? = null,
+    userAvatarUrl: String? = null,
+    config: LiquidGlassConfig? = null,
 ) {
-    val density = LocalDensity.current
+    val (groupedTabs, resolvedProfileTab) = remember(tabs, profileTab) {
+        if (profileTab != null) {
+            tabs.filter { it.route != profileTab.route } to profileTab
+        } else {
+            val foundProfile = tabs.firstOrNull {
+                it.route == "profile" || it.label.equals("Profile", ignoreCase = true)
+            }
+            if (foundProfile != null && tabs.size > 1) {
+                tabs.filter { it != foundProfile } to foundProfile
+            } else {
+                tabs to null
+            }
+        }
+    }
+
+    val isProfileSelected = resolvedProfileTab != null && currentRoute == resolvedProfileTab.route
+    val selectedIndex = if (isProfileSelected) -1 else groupedTabs.indexOfFirst { it.route == currentRoute }
+
+    FloatingBottomBarContent(
+        groupedTabs = groupedTabs,
+        selectedIndex = selectedIndex,
+        onTabSelected = { index ->
+            if (index in groupedTabs.indices) {
+                onTabSelected(groupedTabs[index].route)
+            }
+        },
+        profileTab = resolvedProfileTab,
+        isProfileSelected = isProfileSelected,
+        onProfileSelected = {
+            if (resolvedProfileTab != null) {
+                onTabSelected(resolvedProfileTab.route)
+            }
+        },
+        userAvatarUrl = userAvatarUrl,
+        hazeState = hazeState,
+        modifier = modifier
+    )
+}
+
+@Composable
+fun FloatingBottomBar(
+    tabs: List<BottomTab>,
+    selectedIndex: Int,
+    onTabSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    hazeState: HazeState? = null,
+    profileTab: BottomTab? = null,
+    isProfileSelected: Boolean = false,
+    onProfileSelected: () -> Unit = {},
+    userAvatarUrl: String? = null,
+) {
+    FloatingBottomBarContent(
+        groupedTabs = tabs,
+        selectedIndex = selectedIndex,
+        onTabSelected = onTabSelected,
+        profileTab = profileTab,
+        isProfileSelected = isProfileSelected,
+        onProfileSelected = onProfileSelected,
+        userAvatarUrl = userAvatarUrl,
+        hazeState = hazeState,
+        modifier = modifier
+    )
+}
+
+@Composable
+internal fun FloatingBottomBarContent(
+    groupedTabs: List<BottomTab>,
+    selectedIndex: Int,
+    onTabSelected: (Int) -> Unit,
+    profileTab: BottomTab? = null,
+    isProfileSelected: Boolean = false,
+    onProfileSelected: () -> Unit = {},
+    userAvatarUrl: String? = null,
+    modifier: Modifier = Modifier,
+    hazeState: HazeState? = null,
+) {
+    val pillShape = remember { RoundedCornerShape(percent = 50) }
+    val container = MaterialTheme.colorScheme.surface
+    val useGlass = LocalLiquidGlassEnabled.current && isGlassSupported()
+    val glassPill = isGlassSupported()
     val haptic = LocalHapticFeedback.current
+    val density = LocalDensity.current
+    val scope = rememberCoroutineScope()
 
-    val selectedIndex = tabs.indexOfFirst { it.route == currentRoute }
-    val isProfileSelected = currentRoute == profileTab.route
+    // Glass pill motion physics instance from BitChord
+    val pill = remember(groupedTabs.size) {
+        GlassPillMotion(scope, initialIndex = selectedIndex.coerceAtLeast(0))
+    }
 
-    var dragOffset by remember { mutableFloatStateOf(0f) }
-    val currentSelectedIndex by rememberUpdatedState(if (selectedIndex != -1) selectedIndex else 0)
+    var lastHapticTab by remember { mutableIntStateOf(selectedIndex) }
+    var lastSelectedTabIndex by remember { mutableIntStateOf(selectedIndex) }
+    val currentSelectedIndex by rememberUpdatedState(selectedIndex)
 
+    LaunchedEffect(selectedIndex) {
+        if (selectedIndex >= 0) {
+            if (lastSelectedTabIndex < 0) {
+                pill.snapTo(selectedIndex)
+            } else {
+                pill.animateTo(selectedIndex)
+            }
+        }
+        lastSelectedTabIndex = selectedIndex
+        lastHapticTab = selectedIndex
+    }
+
+    // Backdrop recorders for bar glass and tab row refraction
+    val barGlass = rememberLayerBackdrop()
+    val tabRow = rememberLayerBackdrop()
     var rowSize by remember { mutableStateOf(IntSize.Zero) }
-    val tabGap = 2.dp
-    val gapPx = with(density) { tabGap.toPx() }
-    val n = tabs.size
 
-    val tabWidthPx = if (rowSize.width > 0 && n > 0) {
-        (rowSize.width - gapPx * (n - 1)) / n
+    val tabSpacingPx = with(density) { 6.dp.toPx() }
+    val tabCount = groupedTabs.size
+    val tabWidthPx = if (rowSize.width > 0 && tabCount > 0) {
+        (rowSize.width - tabSpacingPx * (tabCount - 1)) / tabCount
     } else 0f
-    val tabStepPx = if (rowSize.width > 0 && n > 0) {
-        (rowSize.width + gapPx) / n
+    val tabStepPx = if (rowSize.width > 0 && tabCount > 0) {
+        (rowSize.width + tabSpacingPx) / tabCount
     } else 0f
+    pill.stepDp = if (density.density > 0f) tabStepPx / density.density else 0f
 
-    val pillTargetPx = if (tabStepPx > 0f && selectedIndex >= 0) {
-        selectedIndex * tabStepPx + dragOffset
-    } else 0f
+    val padLeftPx = with(density) { PILL_INSET.toPx() }
+    val padTopPx = with(density) { PILL_INSET.toPx() }
+    val padBottomPx = with(density) { PILL_INSET.toPx() }
+    val rowHeightPx = rowSize.height.toFloat()
 
-    val animatedPillOffset by animateFloatAsState(
-        targetValue = pillTargetPx,
-        animationSpec = GlassSpring,
-        label = "pillOffset",
-    )
-
-    val lag = if (tabStepPx > 0f && selectedIndex >= 0) {
-        (abs(pillTargetPx - animatedPillOffset) / tabStepPx).coerceIn(0f, 1f)
+    val restSize = Size(tabWidthPx, rowHeightPx)
+    val liftedHeightPx = rowHeightPx + padTopPx + padBottomPx + with(density) { PILL_GROW_HEIGHT.toPx() }
+    val extraWidthPx = with(density) { 14.dp.toPx() }
+    val liftedSize = if (rowHeightPx > 0f) {
+        Size(liftedHeightPx * tabWidthPx / rowHeightPx + extraWidthPx, liftedHeightPx)
     } else {
-        0f
+        restSize
     }
 
-    var lastHapticTab by remember { mutableIntStateOf(if (selectedIndex >= 0) selectedIndex else 0) }
-
-    LaunchedEffect(selectedIndex) { dragOffset = 0f }
-
-    // -----------------------------------------------------------------
-    // Dynamic Apple Liquid Glass Material Calculation
-    // -----------------------------------------------------------------
-    val isEmu = remember { com.example.EnvUtils.isEmu() }
-    val isGlassEnabled = config.enableLiquidGlass && config.glassNavBar
-    val tintOpacity = config.surfaceOpacity.coerceIn(0.08f, 0.85f)
-    val specularIntensity = (config.lensRefractionAmount * 1.6f).coerceIn(0.08f, 0.55f)
-    val glareHeightFraction = config.lensRefractionHeight.coerceIn(0.15f, 0.95f)
-
-    // Base surface tint colors
-    val baseTint = when (config.surfaceTint.lowercase()) {
-        "crimson" -> Color(0xFF1E030B)
-        "midnight" -> Color(0xFF091122)
-        "clear" -> Color(0xFF06080E)
-        "emerald" -> Color(0xFF031A0F)
-        "gold" -> Color(0xFF1E1704)
-        else -> Color(0xFF0D111A) // obsidian
+    val pillCenterInRow: (Float) -> Offset = { position ->
+        val x = position * tabStepPx + tabWidthPx / 2f
+        Offset(x, rowHeightPx / 2f)
     }
 
-    val liquidGlassBackground = Brush.verticalGradient(
-        colors = listOf(
-            baseTint.copy(alpha = tintOpacity * 0.75f),
-            baseTint.copy(alpha = tintOpacity * 1.15f)
-        )
-    )
+    val showPill = selectedIndex >= 0 && tabWidthPx > 0f
 
-    // Non-harsh specular top light catcher with chromatic dispersion & smooth refraction
-    val specularRimGradient = if (config.chromaticAberration) {
-        Brush.verticalGradient(
-            0.0f to Color(0xFF38BDF8).copy(alpha = (specularIntensity * 1.3f).coerceIn(0.1f, 0.6f)),
-            0.20f to Color.White.copy(alpha = specularIntensity * 0.40f),
-            0.75f to Color(0xFFF43F5E).copy(alpha = (specularIntensity * 0.25f).coerceIn(0.04f, 0.25f)),
-            1.0f to Color.White.copy(alpha = specularIntensity * 0.45f)
-        )
-    } else {
-        Brush.verticalGradient(
-            0.0f to Color.White.copy(alpha = specularIntensity),
-            0.20f to Color.White.copy(alpha = specularIntensity * 0.35f),
-            0.75f to Color.White.copy(alpha = specularIntensity * 0.10f),
-            1.0f to Color.White.copy(alpha = specularIntensity * 0.40f)
-        )
-    }
-
-    val activePillBackground = Brush.verticalGradient(
-        colors = listOf(
-            Color.White.copy(alpha = (specularIntensity * 0.55f).coerceIn(0.08f, 0.25f)),
-            Color.White.copy(alpha = (specularIntensity * 0.25f).coerceIn(0.03f, 0.12f))
-        )
-    )
-
-    val activePillSpecular = Brush.verticalGradient(
-        0.0f to Color.White.copy(alpha = (specularIntensity * 1.1f).coerceIn(0.15f, 0.45f)),
-        0.4f to Color.White.copy(alpha = (specularIntensity * 0.4f).coerceIn(0.05f, 0.20f)),
-        1.0f to Color.White.copy(alpha = (specularIntensity * 0.25f).coerceIn(0.04f, 0.15f))
-    )
-
-    val textColor = when (config.glassTextColor.lowercase()) {
-        "platinum" -> Color(0xFFE2E8F0)
-        "adaptive" -> Color(0xFFF1F5F9)
-        else -> Color.White
-    }
-
-    val bottomPadding = if (config.floatingNavBar) 10.dp else 2.dp
-    val sidePadding = if (config.floatingNavBar) PAGE_GUTTER else 6.dp
-
-    // Outer Floating Layout Container
     Row(
         modifier = modifier
-            .navigationBarsPadding()
-            .padding(horizontal = sidePadding)
-            .padding(bottom = bottomPadding)
-            .widthIn(max = 560.dp)
-            .fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .testTag("floating_bottom_bar")
+            .windowInsetsPadding(floatingBarInsets)
+            .padding(horizontal = BAR_GUTTER)
+            .padding(bottom = 2.dp)
+            .fillMaxWidth()
+            .height(IntrinsicSize.Max),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        // -------------------------------------------------------------
-        // 1. LEFT MAIN PILL CONTAINER (Stadium Capsule)
-        // -------------------------------------------------------------
+        // 1. Grouped Core Tabs Dock
+        // Outer wrapper is unclipped so the enlarged/lifted pill can stand taller and wider than the bar!
         Box(
             modifier = Modifier
-                .weight(1f)
-                .height(BAR_HEIGHT)
-                .shadow(
-                    elevation = if (config.depthEffect) 14.dp else 0.dp,
-                    shape = BAR_PILL_SHAPE,
-                    ambientColor = Color.Black.copy(alpha = 0.30f),
-                    spotColor = Color.Black.copy(alpha = 0.45f)
-                )
-                .clip(BAR_PILL_SHAPE)
-                .then(
-                    if (isGlassEnabled) {
-                        val base = if (!isEmu) Modifier.hazeChild(state = hazeState, shape = BAR_PILL_SHAPE) else Modifier
-                        base.background(brush = liquidGlassBackground)
-                    } else {
-                        Modifier.background(Color(0xFF141722))
-                    }
-                )
-                // Upper Curvature Glare & Lens Refraction
-                .drawBehind {
-                    if (isGlassEnabled) {
-                        drawRoundRect(
-                            brush = Brush.verticalGradient(
-                                0.0f to Color.White.copy(alpha = (specularIntensity * 0.35f).coerceIn(0.02f, 0.14f)),
-                                0.6f to Color.White.copy(alpha = (specularIntensity * 0.08f).coerceIn(0.005f, 0.04f)),
-                                1.0f to Color.Transparent
-                            ),
-                            size = androidx.compose.ui.geometry.Size(size.width, size.height * glareHeightFraction),
-                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2f, size.height / 2f)
-                        )
-                    }
-                }
-                // Specular Glass Rim Border
-                .border(
-                    width = 1.dp,
-                    brush = if (isGlassEnabled) specularRimGradient else androidx.compose.ui.graphics.SolidColor(Color.White.copy(alpha = 0.12f)),
-                    shape = BAR_PILL_SHAPE
-                )
-                .padding(horizontal = PILL_INSET_HORIZONTAL, vertical = PILL_INSET_VERTICAL),
-            contentAlignment = Alignment.CenterStart,
+                .weight(1f),
+            contentAlignment = Alignment.CenterStart
         ) {
-            // Sliding Active Capsule Pill Indicator
-            if (tabWidthPx > 0f && selectedIndex >= 0) {
+            // Bar surface and resting flat pill
+            CompositionLocalProvider(LocalGlassExport provides barGlass) {
                 Box(
                     modifier = Modifier
-                        .width(with(density) { tabWidthPx.toDp() })
-                        .fillMaxHeight()
-                        .graphicsLayer {
-                            translationX = animatedPillOffset
-                            // Subtle momentum stretch (Apple physical response)
-                            scaleX = 1f + lag * 0.08f
-                            scaleY = 1f - lag * 0.04f
-                        }
-                        .padding(horizontal = 2.dp, vertical = 1.dp)
-                        .clip(ACTIVE_PILL_SHAPE)
-                        // Active Pill Fill: Translucent Glass with subtle ambient depth
-                        .background(brush = activePillBackground)
-                        // Active Pill Specular Inner Bevel
-                        .border(
-                            width = 1.dp,
-                            brush = activePillSpecular,
-                            shape = ACTIVE_PILL_SHAPE
+                        .fillMaxWidth()
+                        .clip(pillShape)
+                        .layerBackdrop(barGlass)
+                        .then(
+                            if (useGlass && LocalAppBackdrop.current != null) {
+                                Modifier.liquidGlass(shape = pillShape)
+                            } else if (hazeState != null) {
+                                Modifier.optimizedHazeEffect(
+                                    state = hazeState,
+                                    shape = pillShape,
+                                    style = bitChordGlassStyle(container, alpha = 0.20f),
+                                )
+                            } else {
+                                Modifier.background(container.copy(alpha = 0.35f))
+                            }
                         )
-                )
+                        .border(GLASS_EDGE_WIDTH, GLASS_EDGE_COLOR, pillShape)
+                        .padding(horizontal = PILL_INSET, vertical = PILL_INSET)
+                ) {
+                    // Flat selection pill (drawn behind tabs when resting/flat)
+                    if (showPill && (!glassPill || pill.isFlat)) {
+                        FlatSelectionPill(
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+                            modifier = Modifier
+                                .matchParentSize()
+                                .pillPlacement(
+                                    center = { pillCenterInRow(pill.position) },
+                                    size = { pill.liveSize(restSize, liftedSize) },
+                                ),
+                        )
+                    }
+
+                    // Tabs Row (recorded into tabRow backdrop so the lifted lens can refract it)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onSizeChanged { rowSize = it }
+                            .layerBackdrop(tabRow)
+                            .pointerInput(tabCount, tabStepPx, selectedIndex) {
+                                if (tabStepPx <= 0f) return@pointerInput
+                                var totalDrag = 0f
+                                detectHorizontalDragGestures(
+                                    onDragStart = {
+                                        totalDrag = 0f
+                                        pill.startDrag()
+                                    },
+                                    onDragCancel = {
+                                        pill.release(currentSelectedIndex.coerceAtLeast(0))
+                                    },
+                                    onDragEnd = {
+                                        val ratio = totalDrag / tabStepPx
+                                        val shift = when {
+                                            ratio > 0.35f -> max(1, ratio.roundToInt())
+                                            ratio < -0.35f -> min(-1, ratio.roundToInt())
+                                            else -> 0
+                                        }
+                                        val newIndex = (currentSelectedIndex + shift)
+                                            .coerceIn(0, groupedTabs.lastIndex)
+                                        pill.release(newIndex)
+                                        if (newIndex != currentSelectedIndex) {
+                                            onTabSelected(newIndex)
+                                        }
+                                    },
+                                    onHorizontalDrag = { _, delta ->
+                                        totalDrag += delta
+                                        val dragOffset = when {
+                                            totalDrag > 0 && currentSelectedIndex == groupedTabs.lastIndex ->
+                                                totalDrag * 0.25f
+                                            totalDrag < 0 && currentSelectedIndex == 0 ->
+                                                totalDrag * 0.25f
+                                            else -> totalDrag
+                                        }
+                                        pill.dragTo(currentSelectedIndex + dragOffset / tabStepPx)
+                                        val approxTab = (currentSelectedIndex + dragOffset / tabStepPx)
+                                            .coerceIn(0f, groupedTabs.lastIndex.toFloat())
+                                            .roundToInt()
+                                        if (approxTab != lastHapticTab) {
+                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                            lastHapticTab = approxTab
+                                        }
+                                    }
+                                )
+                            },
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        val glassTint = glassContentColor()
+                        val adaptiveTint = if (useGlass) glassTint else null
+
+                        groupedTabs.forEachIndexed { index, tab ->
+                            val isSelected = index == selectedIndex
+                            BottomBarItem(
+                                tab = tab,
+                                selected = isSelected,
+                                onClick = {
+                                    pill.animateTo(index)
+                                    onTabSelected(index)
+                                },
+                                onHoldStart = {
+                                    pill.startDrag()
+                                },
+                                onHoldEnd = {
+                                    pill.release(index)
+                                },
+                                selectedTint = adaptiveTint,
+                                unselectedTint = adaptiveTint?.copy(alpha = 0.65f),
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+                }
             }
 
-            // Interactive Tabs Row with horizontal drag gesture tracking
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .onSizeChanged { rowSize = it }
-                    .pointerInput(Unit) {
-                        var totalDrag = 0f
-                        detectHorizontalDragGestures(
-                            onDragStart = { totalDrag = 0f },
-                            onDragCancel = { dragOffset = 0f },
-                            onDragEnd = {
-                                if (tabStepPx > 0f) {
-                                    val ratio = totalDrag / tabStepPx
-                                    val shift = when {
-                                        ratio > 0.35f -> kotlin.math.max(1, ratio.roundToInt())
-                                        ratio < -0.35f -> kotlin.math.min(-1, ratio.roundToInt())
-                                        else -> 0
-                                    }
-                                    val newIndex = (currentSelectedIndex + shift).coerceIn(0, tabs.lastIndex)
-                                    if (newIndex != currentSelectedIndex) {
-                                        onTabSelected(tabs[newIndex].route)
-                                    }
-                                }
-                                dragOffset = 0f
-                            },
-                            onHorizontalDrag = { _, delta ->
-                                totalDrag += delta
-                                val rawPx = when {
-                                    totalDrag > 0 && currentSelectedIndex == tabs.lastIndex ->
-                                        totalDrag * 0.25f
-                                    totalDrag < 0 && currentSelectedIndex == 0 ->
-                                        totalDrag * 0.25f
-                                    else -> totalDrag
-                                }
-                                dragOffset = rawPx
-
-                                val approxTab = (currentSelectedIndex + dragOffset / tabStepPx)
-                                    .coerceIn(0f, tabs.lastIndex.toFloat())
-                                    .roundToInt()
-                                if (approxTab != lastHapticTab) {
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    lastHapticTab = approxTab
-                                }
-                            },
-                        )
-                    },
-                horizontalArrangement = Arrangement.spacedBy(tabGap),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                tabs.forEachIndexed { index, tab ->
-                    val isSelected = index == selectedIndex
-                    BottomBarItem(
-                        tab = tab,
-                        selected = isSelected,
-                        textColor = textColor,
-                        onClick = { onTabSelected(tab.route) },
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight(),
-                    )
-                }
+            // 2. The Lifted Glass Lens Pill (Drawn ABOVE the bar and free to stand past the bar's edges)
+            // Exactly matching BitChord's held glass expansion physics!
+            if (glassPill && showPill && !pill.isFlat) {
+                GlassSelectionPill(
+                    motion = pill,
+                    fillColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+                    barGlass = barGlass,
+                    tabRow = tabRow,
+                    modifier = Modifier
+                        .matchParentSize()
+                        .pillPlacement(
+                            center = { pillCenterInRow(pill.position) + Offset(padLeftPx, padTopPx) },
+                            size = { pill.liveSize(restSize, liftedSize) },
+                        ),
+                )
             }
         }
 
-        // -------------------------------------------------------------
-        // 2. RIGHT STANDALONE ORB: Profile Button (Exact matching 56dp size)
-        // -------------------------------------------------------------
-        val profileScale by animateFloatAsState(
-            targetValue = if (isProfileSelected) 1.05f else 1f,
-            animationSpec = GlassSpring,
-            label = "profileScale"
-        )
-        val profileTint by animateColorAsState(
-            targetValue = if (isProfileSelected) textColor else Color(0xFF94A3B8).copy(alpha = 0.75f),
-            animationSpec = tween(180),
-            label = "profileTint"
-        )
-
-        Box(
-            modifier = Modifier
-                .size(BAR_HEIGHT) // Exactly 56dp x 56dp - matching main nav bar height perfectly
-                .graphicsLayer {
-                    scaleX = profileScale
-                    scaleY = profileScale
-                }
-                .shadow(
-                    elevation = if (config.depthEffect) 14.dp else 0.dp,
-                    shape = CircleShape,
-                    ambientColor = Color.Black.copy(alpha = 0.30f),
-                    spotColor = Color.Black.copy(alpha = 0.45f)
-                )
-                .clip(CircleShape)
-                .then(
-                    if (isGlassEnabled) {
-                        val base = if (!isEmu) Modifier.hazeChild(state = hazeState, shape = CircleShape) else Modifier
-                        base.background(brush = liquidGlassBackground)
-                    } else {
-                        Modifier.background(Color(0xFF141722))
-                    }
-                )
-                .drawBehind {
-                    if (isGlassEnabled) {
-                        drawRoundRect(
-                            brush = Brush.verticalGradient(
-                                0.0f to Color.White.copy(alpha = (specularIntensity * 0.38f).coerceIn(0.02f, 0.15f)),
-                                0.6f to Color.White.copy(alpha = (specularIntensity * 0.08f).coerceIn(0.005f, 0.04f)),
-                                1.0f to Color.Transparent
-                            ),
-                            size = androidx.compose.ui.geometry.Size(size.width, size.height * glareHeightFraction),
-                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2f, size.height / 2f)
-                        )
-                    }
-                }
-                .border(
-                    width = 1.dp,
-                    brush = if (isProfileSelected) {
-                        Brush.verticalGradient(
-                            0.0f to Color.White.copy(alpha = (specularIntensity * 1.5f).coerceIn(0.25f, 0.65f)),
-                            0.2f to Color.White.copy(alpha = (specularIntensity * 0.7f).coerceIn(0.10f, 0.30f)),
-                            0.8f to Color.White.copy(alpha = (specularIntensity * 0.25f).coerceIn(0.03f, 0.12f)),
-                            1.0f to Color.White.copy(alpha = (specularIntensity * 0.8f).coerceIn(0.12f, 0.35f))
-                        )
-                    } else if (isGlassEnabled) specularRimGradient else androidx.compose.ui.graphics.SolidColor(Color.White.copy(alpha = 0.12f)),
-                    shape = CircleShape
-                )
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                ) {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    onTabSelected(profileTab.route)
+        // 3. Standalone Separated Profile Tab (Circular glass button)
+        if (profileTab != null) {
+            val profBorderColor by animateColorAsState(
+                targetValue = if (isProfileSelected) {
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.65f)
+                } else {
+                    GLASS_EDGE_COLOR
                 },
-            contentAlignment = Alignment.Center,
-        ) {
-            // Active selection pill inside the profile orb
-            if (isProfileSelected) {
-                Box(
-                    modifier = Modifier
-                        .size(BAR_HEIGHT - 12.dp)
-                        .clip(CircleShape)
-                        .background(brush = activePillBackground)
-                        .border(
-                            width = 1.dp,
-                            brush = activePillSpecular,
-                            shape = CircleShape
-                        )
-                )
-            }
-
-            Icon(
-                imageVector = profileTab.icon,
-                contentDescription = profileTab.label,
-                tint = profileTint,
-                modifier = Modifier.size(if (isProfileSelected) 24.dp else 22.dp),
+                animationSpec = tween(200),
+                label = "profileBorder"
             )
+            val profBgColor by animateColorAsState(
+                targetValue = if (isProfileSelected) {
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.20f)
+                } else {
+                    Color.Transparent
+                },
+                animationSpec = tween(200),
+                label = "profileBg"
+            )
+            val profTint by animateColorAsState(
+                targetValue = if (isProfileSelected) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    Color.White.copy(alpha = 0.70f)
+                },
+                animationSpec = tween(200),
+                label = "profileTint"
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .aspectRatio(1f)
+                    .clip(CircleShape)
+                    .then(
+                        if (useGlass && LocalAppBackdrop.current != null) {
+                            Modifier.liquidGlass(shape = CircleShape)
+                        } else if (hazeState != null) {
+                            Modifier.optimizedHazeEffect(
+                                state = hazeState,
+                                shape = CircleShape,
+                                style = bitChordGlassStyle(container, alpha = 0.20f),
+                            )
+                        } else {
+                            Modifier.background(container.copy(alpha = 0.35f))
+                        }
+                    )
+                    .background(profBgColor)
+                    .border(
+                        if (isProfileSelected) 1.5.dp else GLASS_EDGE_WIDTH,
+                        profBorderColor,
+                        CircleShape
+                    )
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onProfileSelected()
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                if (userAvatarUrl != null) {
+                    AsyncImage(
+                        model = userAvatarUrl,
+                        contentDescription = profileTab.label,
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                    )
+                } else {
+                    Icon(
+                        imageVector = profileTab.icon,
+                        contentDescription = profileTab.label,
+                        tint = profTint,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
         }
     }
 }
 
 /**
- * Individual Tab Item:
- * - When UNSELECTED: Displays ONLY the clean, centered icon (no text clutter).
- * - When SELECTED: Displays the icon + smooth animated label text underneath.
+ * BottomBarItem: individual tab chip inside the floating bar.
+ * Matches BitChord's layout:
+ * - 25dp glyph icon with 1.08x scale on select
+ * - 2dp gap (TAB_ICON_LABEL_GAP)
+ * - labelSmall text
+ * - 9dp vertical padding (TAB_VERTICAL_PADDING)
+ * - Detects touch down to immediately lift & enlarge the glass pill!
  */
 @Composable
 private fun BottomBarItem(
     tab: BottomTab,
     selected: Boolean,
-    textColor: Color,
     onClick: () -> Unit,
+    onHoldStart: () -> Unit,
+    onHoldEnd: () -> Unit,
     modifier: Modifier = Modifier,
+    selectedTint: Color? = null,
+    unselectedTint: Color? = null,
 ) {
-    val haptic = LocalHapticFeedback.current
-
-    val iconScale by animateFloatAsState(
-        targetValue = if (selected) 1.05f else 0.95f,
-        animationSpec = spring(dampingRatio = 0.85f, stiffness = 450f),
-        label = "tabIconScale",
+    val scale by animateFloatAsState(
+        targetValue = if (selected) 1.08f else 1f,
+        animationSpec = GlassSpring,
+        label = "tabScale",
     )
-
+    val haptic = LocalHapticFeedback.current
     val tint by animateColorAsState(
-        targetValue = if (selected) textColor else Color(0xFF94A3B8).copy(alpha = 0.75f),
-        animationSpec = tween(durationMillis = 180),
+        targetValue = if (selected) {
+            selectedTint ?: MaterialTheme.colorScheme.primary
+        } else {
+            unselectedTint ?: MaterialTheme.colorScheme.onSurfaceVariant
+        },
+        animationSpec = tween(200),
         label = "tabTint",
     )
 
-    Box(
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    LaunchedEffect(isPressed) {
+        if (isPressed) {
+            onHoldStart()
+        } else {
+            onHoldEnd()
+        }
+    }
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
-            .clip(ACTIVE_PILL_SHAPE)
+            .clip(RoundedCornerShape(percent = 50))
             .clickable(
-                interactionSource = remember { MutableInteractionSource() },
+                interactionSource = interactionSource,
                 indication = null,
             ) {
                 if (!selected) {
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 }
                 onClick()
-            },
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-            modifier = Modifier.fillMaxHeight()
-        ) {
-            Icon(
-                imageVector = tab.icon,
-                contentDescription = tab.label,
-                tint = tint,
-                modifier = Modifier
-                    .size(if (selected) 21.dp else 22.dp)
-                    .graphicsLayer {
-                        scaleX = iconScale
-                        scaleY = iconScale
-                    },
-            )
-
-            // Name / Label appears ONLY when selected (Smooth, non-blocking fade & expand)
-            AnimatedVisibility(
-                visible = selected,
-                enter = fadeIn(animationSpec = tween(160)),
-                exit = fadeOut(animationSpec = tween(100))
-            ) {
-                Text(
-                    text = tab.label,
-                    fontSize = 10.sp,
-                    fontFamily = GffDevanagariFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    color = textColor,
-                    maxLines = 1,
-                    letterSpacing = 0.2.sp,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 1.dp),
-                )
             }
-        }
+            .padding(vertical = TAB_VERTICAL_PADDING),
+    ) {
+        Icon(
+            imageVector = tab.icon,
+            contentDescription = tab.label,
+            tint = tint,
+            modifier = Modifier
+                .size(25.dp)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                },
+        )
+        Spacer(Modifier.height(TAB_ICON_LABEL_GAP))
+        Text(
+            text = tab.label,
+            style = MaterialTheme.typography.labelSmall,
+            color = tint,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }

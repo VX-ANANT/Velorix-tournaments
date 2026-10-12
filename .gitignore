@@ -9,14 +9,13 @@
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
 .DS_Store
-/build
-/captures
 .externalNativeBuild
 .cxx
 local.properties
 .env
 debug.keystore
 
-# Track only single consolidated APK file
+# Track APK download files
 !/APK_DOWNLOAD/
-!/APK_DOWNLOAD/velorix.apk
+!/APK_DOWNLOAD/*
+!/app-release.apk
