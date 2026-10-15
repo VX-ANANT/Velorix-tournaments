@@ -439,12 +439,14 @@ private class PillSquashModel {
 internal fun Modifier.pillPlacement(center: () -> Offset, size: () -> Size): Modifier =
     layout { measurable, constraints ->
         val s = size()
-        val w = s.width.roundToInt().coerceAtLeast(1)
-        val h = s.height.roundToInt().coerceAtLeast(1)
+        val w = if (s.width.isNaN() || s.width <= 0f) 1 else s.width.roundToInt().coerceAtLeast(1)
+        val h = if (s.height.isNaN() || s.height <= 0f) 1 else s.height.roundToInt().coerceAtLeast(1)
         val placeable = measurable.measure(Constraints.fixed(w, h))
         layout(constraints.minWidth, constraints.minHeight) {
             val c = center()
-            placeable.place((c.x - w / 2f).roundToInt(), (c.y - h / 2f).roundToInt())
+            val cx = if (c.x.isNaN()) 0f else c.x
+            val cy = if (c.y.isNaN()) 0f else c.y
+            placeable.place((cx - w / 2f).roundToInt(), (cy - h / 2f).roundToInt())
         }
     }
 
@@ -475,12 +477,8 @@ internal fun GlassSelectionPill(
     val page = LocalAppBackdrop.current
     val shape = remember { RoundedCornerShape(percent = 50) }
     val backdrop = remember(page, barGlass, tabRow, fillColor) {
-        if (page != null) {
-            SelectionPillBackdrop(page, barGlass, tabRow) {
-                fillColor.copy(alpha = fillColor.alpha * (1f - motion.material))
-            }
-        } else {
-            barGlass
+        SelectionPillBackdrop(page, barGlass, tabRow) {
+            fillColor.copy(alpha = fillColor.alpha * (1f - motion.material))
         }
     }
 
@@ -490,11 +488,15 @@ internal fun GlassSelectionPill(
             shape = { shape },
             effects = {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    lens(
-                        refractionHeight = LENS_HEIGHT.toPx() * motion.glassPresence,
-                        refractionAmount = LENS_AMOUNT.toPx() * motion.material,
-                        chromaticAberration = true,
-                    )
+                    val rHeight = LENS_HEIGHT.toPx() * motion.glassPresence
+                    val rAmount = LENS_AMOUNT.toPx() * motion.material
+                    if (rHeight > 0.05f && rAmount > 0.05f) {
+                        lens(
+                            refractionHeight = rHeight,
+                            refractionAmount = rAmount,
+                            chromaticAberration = true,
+                        )
+                    }
                 }
             },
             highlight = {
@@ -519,9 +521,9 @@ private val PILL_SHADOW = Shadow(
 )
 
 private class SelectionPillBackdrop(
-    private val page: Backdrop,
-    private val bar: Backdrop,
-    private val tabs: Backdrop,
+    private val page: Backdrop?,
+    private val bar: Backdrop?,
+    private val tabs: Backdrop?,
     private val fill: () -> Color,
 ) : Backdrop {
     override val isCoordinatesDependent: Boolean = true
@@ -531,16 +533,30 @@ private class SelectionPillBackdrop(
         coordinates: LayoutCoordinates?,
         layerBlock: (GraphicsLayerScope.() -> Unit)?,
     ) {
-        with(page) { drawBackdrop(density, coordinates, layerBlock) }
-        with(bar) { drawBackdrop(density, coordinates, layerBlock) }
-        val color = fill()
-        if (color.alpha > 0f) {
-            drawRect(
-                color = color,
-                topLeft = Offset(-size.width, -size.height),
-                size = Size(size.width * 3, size.height * 3),
-            )
-        }
-        with(tabs) { drawBackdrop(density, coordinates, layerBlock) }
+        try {
+            if (page != null) {
+                with(page) { drawBackdrop(density, coordinates, layerBlock) }
+            }
+        } catch (_: Throwable) {}
+        try {
+            if (bar != null) {
+                with(bar) { drawBackdrop(density, coordinates, layerBlock) }
+            }
+        } catch (_: Throwable) {}
+        try {
+            val color = fill()
+            if (color.alpha > 0f) {
+                drawRect(
+                    color = color,
+                    topLeft = Offset(-size.width, -size.height),
+                    size = Size(size.width * 3, size.height * 3),
+                )
+            }
+        } catch (_: Throwable) {}
+        try {
+            if (tabs != null) {
+                with(tabs) { drawBackdrop(density, coordinates, layerBlock) }
+            }
+        } catch (_: Throwable) {}
     }
 }

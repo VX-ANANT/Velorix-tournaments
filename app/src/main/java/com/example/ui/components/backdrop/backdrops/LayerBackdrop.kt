@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.GraphicsLayerScope
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -59,20 +60,30 @@ class LayerBackdrop internal constructor(
     ) {
         val coordinates = coordinates ?: return
         val layerCoordinates = layerCoordinates ?: return
-        withTransform({
-            if (layerBlock != null) {
-                with(obtainInverseLayerScope()) { inverseTransform(density, layerBlock) }
-            }
-            val offset =
-                try {
-                    layerCoordinates.localPositionOf(coordinates)
-                } catch (_: Exception) {
-                    // TODO: outer transformations lead to wrong position calculation
-                    coordinates.positionInWindow() - layerCoordinates.positionInWindow()
+        if (!coordinates.isAttached || !layerCoordinates.isAttached) return
+        try {
+            withTransform({
+                if (layerBlock != null) {
+                    try {
+                        with(obtainInverseLayerScope()) { inverseTransform(density, layerBlock) }
+                    } catch (_: Throwable) {}
                 }
-            translate(-offset.x, -offset.y)
-        }) {
-            drawLayer(graphicsLayer)
+                val offset =
+                    try {
+                        layerCoordinates.localPositionOf(coordinates)
+                    } catch (_: Throwable) {
+                        try {
+                            coordinates.positionInWindow() - layerCoordinates.positionInWindow()
+                        } catch (_: Throwable) {
+                            Offset.Zero
+                        }
+                    }
+                translate(-offset.x, -offset.y)
+            }) {
+                drawLayer(graphicsLayer)
+            }
+        } catch (_: Throwable) {
+            // Ignored if graphics layer is not yet recorded or invalid
         }
     }
 

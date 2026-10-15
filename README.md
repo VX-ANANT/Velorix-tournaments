@@ -20,7 +20,7 @@
   <img src="https://img.shields.io/badge/UI_SUBSYSTEM-COMPOSE_M3-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white" alt="Compose M3" />
   <img src="https://img.shields.io/badge/PROTOCOL-FIREBASE_RTDB_SOCKET-FFCA28?style=for-the-badge&logo=firebase&logoColor=black" alt="Socket Protocol" />
   <img src="https://img.shields.io/badge/AI_DAEMON-GEMINI_FLASH_PIPELINE-8E75B2?style=for-the-badge&logo=google&logoColor=white" alt="Gemini AI" />
-  <img src="https://img.shields.io/badge/RELEASE_TAG-v0.0.2_PRODUCTION_GLOBAL-FF4081?style=for-the-badge&logo=githubactions&logoColor=white" alt="Version Tag" />
+  <img src="https://img.shields.io/badge/RELEASE_TAG-V1--0.0--Dev-FF4081?style=for-the-badge&logo=githubactions&logoColor=white" alt="Version Tag" />
 </p>
 
 <!-- Execution & Network CTA Badges -->
@@ -61,7 +61,7 @@
 + [DETERMINISTIC] Atomic Slot Reservation Mutex (Zero Concurrency Skew)  : 0 Double-Booking Faults
 + [DEPLOYED]      Gemini 3.6 Flash Heuristic Watchdog & Dispute Daemon   : Continuous Autonomous Monitoring
 + [CRYPTOGRAPHIC] Time-Gated Credential Revelation Matrix (T-15min Rule) : Hardware-Isolated Decryption
-+ [VERIFIED]      Deterministic Client Binary (Dev-0.0.2-Release-global) : Clean Signed Artifact (34MB)
++ [VERIFIED]      Deterministic Client Binary (V1-0.0-Dev)               : Clean Signed Artifact (34MB)
 ```
 
 ---
