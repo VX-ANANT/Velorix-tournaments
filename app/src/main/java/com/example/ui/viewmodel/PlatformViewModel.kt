@@ -824,16 +824,26 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
             if (isFirebaseAuthed) {
                 _isLoggedIn.value = true
                 prefs.edit().putBoolean("is_logged_in", true).apply()
-                repository.fetchDataFromServer(force = true)
-                val userItem = repository.getUserSync()
-                checkAndSetOnboardingStatus(userItem)
+                _isCheckingAuth.value = false
+                try {
+                    repository.fetchDataFromServer(force = true)
+                    val userItem = repository.getUserSync()
+                    checkAndSetOnboardingStatus(userItem)
+                } catch (e: Exception) {
+                    android.util.Log.w("PlatformVM", "Error fetching authed data: ${e.message}")
+                }
             } else {
                 prefs.edit().putBoolean("is_logged_in", false).apply()
                 _isLoggedIn.value = false
                 _isVpnBanned.value = false
                 prefs.edit().remove("is_vpn_banned").apply()
-                repository.unbanGuestSessionIfBanned()
-                repository.fetchDataFromServer(force = false)
+                _isCheckingAuth.value = false
+                try {
+                    repository.unbanGuestSessionIfBanned()
+                    repository.fetchDataFromServer(force = false)
+                } catch (e: Exception) {
+                    android.util.Log.w("PlatformVM", "Error fetching guest data: ${e.message}")
+                }
             }
             _isLoadingTournaments.value = false
             _isCheckingAuth.value = false

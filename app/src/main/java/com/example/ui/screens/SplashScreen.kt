@@ -142,10 +142,20 @@ fun SplashScreen(
     val isCheckingAuth by viewModel.isCheckingAuth.collectAsState()
     val isLoggedIn by viewModel.isLoggedIn.collectAsState()
 
-    LaunchedEffect(isCheckingAuth) {
-        if (!isCheckingAuth) {
-            delay(2400) // Optimal display time for splash & boot feel
-            if (isLoggedIn) {
+    LaunchedEffect(Unit) {
+        var hasNavigated = false
+        // Guaranteed smooth splash duration for emblem animation
+        delay(2200)
+
+        // Wait up to an additional 600ms if local auth check is still initializing
+        val startTime = System.currentTimeMillis()
+        while (viewModel.isCheckingAuth.value && (System.currentTimeMillis() - startTime) < 600L) {
+            delay(100)
+        }
+
+        if (!hasNavigated) {
+            hasNavigated = true
+            if (viewModel.isLoggedIn.value) {
                 onNavigateToHome()
             } else {
                 onNavigateToAuth()
