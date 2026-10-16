@@ -335,11 +335,6 @@ class MainActivity : ComponentActivity() {
                     viewModel.checkVpnStatus()
                 }
 
-                LaunchedEffect(isLoggedIn, user) {
-                    if (isLoggedIn && user != null) {
-                        viewModel.checkAndTriggerDailyDeveloperPopup()
-                    }
-                }
 
                 LaunchedEffect(user) {
                     val currentOperative = user
@@ -997,16 +992,13 @@ class MainActivity : ComponentActivity() {
                     } // End of NavHost
                         } // End of activeSituation == NONE check
 
-                        // Developer highlight & support popup (Shown daily if enabled, or explicitly previewed/triggered)
-                        val isUserReadyForPopup = isLoggedIn && user != null && currentRoute != "auth" && currentRoute != "splash" && currentRoute != "onboarding" && systemConfig.showDeveloperModal
-                        if ((showDailyDeveloperPopup && isUserReadyForPopup) || showExplicitDeveloperPopup) {
+                        // Developer highlight & support popup (Triggered only when explicitly previewed/requested by user)
+                        if (showExplicitDeveloperPopup) {
                             com.example.ui.components.DeveloperPopupDialog(
                                 onDismissRequest = {
-                                    if (showDailyDeveloperPopup) viewModel.dismissDailyDeveloperPopup()
                                     showExplicitDeveloperPopup = false
                                 },
                                 onOpenSettings = {
-                                    if (showDailyDeveloperPopup) viewModel.dismissDailyDeveloperPopup()
                                     showExplicitDeveloperPopup = false
                                     navController.navigate("about")
                                 }

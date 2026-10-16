@@ -314,11 +314,12 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
                     }
                 }
             }
+            // Only check actual virtual tunnel interfaces, NEVER p2p (which is standard Wi-Fi Direct)
             val interfaces = java.net.NetworkInterface.getNetworkInterfaces()
             while (interfaces != null && interfaces.hasMoreElements()) {
                 val iface = interfaces.nextElement()
                 val name = iface.name.lowercase()
-                if (iface.isUp && (name.contains("tun") || name.contains("ppp") || name.contains("p2p") || name.contains("tap") || name.contains("wg0") || name.contains("wg1"))) {
+                if (iface.isUp && !iface.isLoopback && (name.startsWith("tun") || name.startsWith("ppp") || name.startsWith("tap") || name.startsWith("wg"))) {
                     return true
                 }
             }
@@ -569,15 +570,8 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
     val showDailyDeveloperPopup: StateFlow<Boolean> = _showDailyDeveloperPopup.asStateFlow()
 
     fun checkAndTriggerDailyDeveloperPopup() {
-        if (!_isLoggedIn.value || userState.value == null) {
-            // Only trigger for authenticated users
-            return
-        }
-        val todayStr = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date())
-        val lastShownDate = prefs.getString("last_dev_popup_date", "") ?: ""
-        if (lastShownDate != todayStr) {
-            _showDailyDeveloperPopup.value = true
-        }
+        // Disabled automatic modal pop-up on launch to ensure instantaneous navigation and prevent dialog collision ANRs
+        _showDailyDeveloperPopup.value = false
     }
 
     fun dismissDailyDeveloperPopup() {
@@ -960,9 +954,12 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
                     userItem = repository.ensureFirestoreUserDocument(firebaseUser)
                 }
                 val username = userItem.username
+                _isVpnBanned.value = false
                 prefs.edit()
                     .putBoolean("is_logged_in", true)
                     .putBoolean("has_completed_onboarding", true)
+                    .remove("is_vpn_banned")
+                    .putInt("vpn_warning_count", 0)
                     .apply()
                 _hasCompletedOnboarding.value = true
                 _isLoggedIn.value = true
@@ -1453,9 +1450,12 @@ class PlatformViewModel(application: Application) : AndroidViewModel(application
                     userItem = newUser
                 }
                 val username = userItem.username
+                _isVpnBanned.value = false
                 prefs.edit()
                     .putBoolean("is_logged_in", true)
                     .putBoolean("has_completed_onboarding", true)
+                    .remove("is_vpn_banned")
+                    .putInt("vpn_warning_count", 0)
                     .apply()
                 _hasCompletedOnboarding.value = true
                 _isLoggedIn.value = true

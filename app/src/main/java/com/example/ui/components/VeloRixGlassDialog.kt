@@ -37,16 +37,18 @@ import com.example.ui.theme.NeonGreen
 fun ApplyDialogWindowBlur(dimAmount: Float = 0.35f, blurRadius: Int = 100) {
     val view = LocalView.current
     DisposableEffect(view) {
-        val window = (view.parent as? DialogWindowProvider)?.window
-        if (window != null) {
-            window.setDimAmount(dimAmount)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                window.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
-                try {
-                    window.setBackgroundBlurRadius(blurRadius)
-                } catch (_: Throwable) {}
+        try {
+            val window = (view.parent as? DialogWindowProvider)?.window
+            if (window != null) {
+                window.setDimAmount(dimAmount)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    try {
+                        window.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
+                        window.setBackgroundBlurRadius(blurRadius)
+                    } catch (_: Throwable) {}
+                }
             }
-        }
+        } catch (_: Throwable) {}
         onDispose {}
     }
 }
